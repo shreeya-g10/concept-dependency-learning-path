@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "nodes": [
+    {
+      "id": "recursion",
+      "name": "Recursion"
+    },
+    {
+      "id": "trees",
+      "name": "Trees"
+    },
+    {
+      "id": "binary_tree",
+      "name": "Binary Trees"
+    },
+    {
+      "id": "binary_search_tree",
+      "name": "Binary Search Trees"
+    },
+    {
+      "id": "avl_tree",
+      "name": "AVL Trees"
+    },
+    {
+      "id": "graphs",
+      "name": "Graphs"
+    }
+  ],
+  "edges": [
+    {
+      "id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.95,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.72,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "A binary tree is a tree in which"
+        }
+      ],
+      "reason": "Binary trees are defined as a restricted kind of tree."
+    },
+    {
+      "id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.7,
+      "evidence": [
+        {
+          "chunk_id": "ch_l7_p18",
+          "doc": "ds_lec7.pdf",
+          "page": 18,
+          "quote": "A binary search tree is a binary tree"
+        }
+      ],
+      "reason": "BST is defined as a binary tree with an ordering rule."
+    },
+    {
+      "id": "r3",
+      "source": "binary_search_tree",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.67,
+      "evidence": [
+        {
+          "chunk_id": "ch_l9_p04",
+          "doc": "ds_lec9.pdf",
+          "page": 4,
+          "quote": "self-balancing binary search tree"
+        }
+      ],
+      "reason": "AVL rotations must preserve the BST ordering property."
+    },
+    {
+      "id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "decision": "ACCEPT",
+      "confidence": 0.78,
+      "checks": {
+        "evidence": "medium",
+        "semantic": "strong",
+        "necessity": "medium",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.25,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "Traversals are defined recursively"
+        }
+      ],
+      "reason": "Tree traversals are taught recursively; helpful but not strictly required."
+    },
+    {
+      "id": "r5",
+      "source": "trees",
+      "target": "graphs",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "decision": "HUMAN_REVIEW",
+      "confidence": 0.55,
+      "checks": {
+        "evidence": "medium",
+        "semantic": "medium",
+        "necessity": "weak",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.12,
+      "evidence": [
+        {
+          "chunk_id": "ch_l10_p01",
+          "doc": "ds_lec10.pdf",
+          "page": 1,
+          "quote": "A graph generalises a tree"
+        }
+      ],
+      "reason": "Graphs generalise trees, but graph basics can be learned without trees."
+    },
+    {
+      "id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "decision": "REJECT",
+      "confidence": 0.92,
+      "checks": {
+        "evidence": "none",
+        "semantic": "weak",
+        "necessity": "none",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.02,
+      "evidence": [],
+      "reason": "No evidence and no conceptual dependency between graphs and AVL trees."
+    }
+  ]
+}

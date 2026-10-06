@@ -1,0 +1,10 @@
+# Installs everything. Do not edit — add packages to YOUR folder's requirements.txt instead.
+-r cdlp/shared/requirements.txt
+-r cdlp/extraction/requirements.txt
+-r cdlp/discovery/requirements.txt
+-r cdlp/validation/requirements.txt
+-r cdlp/learning_path/requirements.txt
+-r website/requirements.txt
+pytest
+ruff
+nbstripout

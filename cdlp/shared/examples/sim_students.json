@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "students": [
+    {
+      "student_id": "student_a",
+      "mastery": {
+        "recursion": 0.1,
+        "trees": 0.9,
+        "binary_tree": 0.1,
+        "binary_search_tree": 0.05,
+        "avl_tree": 0.0,
+        "graphs": 0.1
+      },
+      "slip": 0.1,
+      "guess": 0.2
+    },
+    {
+      "student_id": "student_b",
+      "mastery": {
+        "recursion": 0.9,
+        "trees": 0.95,
+        "binary_tree": 0.9,
+        "binary_search_tree": 0.2,
+        "avl_tree": 0.0,
+        "graphs": 0.5
+      },
+      "slip": 0.1,
+      "guess": 0.2
+    }
+  ]
+}

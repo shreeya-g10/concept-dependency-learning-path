@@ -1,0 +1,6 @@
+{"chunk_id": "ch_l5_p03", "course_id": "ds101", "doc": "ds_lec5.pdf", "page": 3, "heading": "Recursion", "text": "A recursive function calls itself on a smaller input until it reaches a base case."}
+{"chunk_id": "ch_l6_p02", "course_id": "ds101", "doc": "ds_lec6.pdf", "page": 2, "heading": "Trees", "text": "A tree is a hierarchical structure of nodes connected by edges, with a single root."}
+{"chunk_id": "ch_l6_p11", "course_id": "ds101", "doc": "ds_lec6.pdf", "page": 11, "heading": "Binary Trees", "text": "A binary tree is a tree in which each node has at most two children. Traversals are defined recursively."}
+{"chunk_id": "ch_l7_p18", "course_id": "ds101", "doc": "ds_lec7.pdf", "page": 18, "heading": "Binary Search Trees", "text": "A binary search tree is a binary tree in which values smaller than the root are stored in the left subtree and larger values in the right subtree."}
+{"chunk_id": "ch_l9_p04", "course_id": "ds101", "doc": "ds_lec9.pdf", "page": 4, "heading": "AVL Trees", "text": "An AVL tree is a self-balancing binary search tree. After each insert, rotations restore the height balance while preserving the BST ordering."}
+{"chunk_id": "ch_l10_p01", "course_id": "ds101", "doc": "ds_lec10.pdf", "page": 1, "heading": "Graphs", "text": "A graph generalises a tree: nodes connected by edges, possibly with cycles and no root."}

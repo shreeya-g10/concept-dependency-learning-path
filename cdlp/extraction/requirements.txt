@@ -1,0 +1,4 @@
+# extraction module (Vaidehi). Add this module's packages here.
+pymupdf
+python-pptx
+sentence-transformers

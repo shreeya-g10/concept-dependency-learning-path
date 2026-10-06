@@ -1,0 +1,4 @@
+# validation module (Shreeya). Add this module's packages here.
+sentence-transformers
+faiss-cpu
+networkx

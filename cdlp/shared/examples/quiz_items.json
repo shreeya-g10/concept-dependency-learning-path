@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "items": [
+    {
+      "id": "q_rec_1",
+      "concept_id": "recursion",
+      "question": "What stops a recursive function from running forever?",
+      "options": [
+        "A base case",
+        "A loop counter",
+        "A global variable",
+        "Tail call"
+      ],
+      "answer": "A base case",
+      "chunk_id": "ch_l5_p03"
+    },
+    {
+      "id": "q_trees_1",
+      "concept_id": "trees",
+      "question": "How many roots does a tree have?",
+      "options": [
+        "0",
+        "1",
+        "2",
+        "Any number"
+      ],
+      "answer": "1",
+      "chunk_id": "ch_l6_p02"
+    },
+    {
+      "id": "q_bt_1",
+      "concept_id": "binary_tree",
+      "question": "What is the maximum number of children of a node in a binary tree?",
+      "options": [
+        "1",
+        "2",
+        "3",
+        "Unlimited"
+      ],
+      "answer": "2",
+      "chunk_id": "ch_l6_p11"
+    },
+    {
+      "id": "q_bst_1",
+      "concept_id": "binary_search_tree",
+      "question": "Insert 5, 3, 8 into an empty BST. What is the left child of 5?",
+      "options": [
+        "3",
+        "8",
+        "None",
+        "5"
+      ],
+      "answer": "3",
+      "chunk_id": "ch_l7_p18"
+    },
+    {
+      "id": "q_avl_1",
+      "concept_id": "avl_tree",
+      "question": "Insert 10, 20, 30 into an empty AVL tree. What is the root?",
+      "options": [
+        "10",
+        "20",
+        "30",
+        "None"
+      ],
+      "answer": "20",
+      "chunk_id": "ch_l9_p04"
+    }
+  ]
+}

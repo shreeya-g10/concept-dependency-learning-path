@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "concepts": [
+    {
+      "id": "recursion",
+      "name": "Recursion",
+      "aliases": [],
+      "description": "A function defined in terms of itself.",
+      "sources": [
+        {
+          "doc": "ds_lec5.pdf",
+          "page": 3,
+          "chunk_id": "ch_l5_p03"
+        }
+      ]
+    },
+    {
+      "id": "trees",
+      "name": "Trees",
+      "aliases": [
+        "Tree"
+      ],
+      "description": "Hierarchical node structure with a root.",
+      "sources": [
+        {
+          "doc": "ds_lec6.pdf",
+          "page": 2,
+          "chunk_id": "ch_l6_p02"
+        }
+      ]
+    },
+    {
+      "id": "binary_tree",
+      "name": "Binary Trees",
+      "aliases": [
+        "Binary Tree"
+      ],
+      "description": "Tree where each node has at most two children.",
+      "sources": [
+        {
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "chunk_id": "ch_l6_p11"
+        }
+      ]
+    },
+    {
+      "id": "binary_search_tree",
+      "name": "Binary Search Trees",
+      "aliases": [
+        "BST",
+        "Binary Search Tree"
+      ],
+      "description": "Binary tree ordered left < root < right.",
+      "sources": [
+        {
+          "doc": "ds_lec7.pdf",
+          "page": 18,
+          "chunk_id": "ch_l7_p18"
+        }
+      ]
+    },
+    {
+      "id": "avl_tree",
+      "name": "AVL Trees",
+      "aliases": [
+        "AVL Tree",
+        "AVL"
+      ],
+      "description": "Self-balancing BST using rotations.",
+      "sources": [
+        {
+          "doc": "ds_lec9.pdf",
+          "page": 4,
+          "chunk_id": "ch_l9_p04"
+        }
+      ]
+    },
+    {
+      "id": "graphs",
+      "name": "Graphs",
+      "aliases": [
+        "Graph"
+      ],
+      "description": "Nodes and edges, possibly cyclic.",
+      "sources": [
+        {
+          "doc": "ds_lec10.pdf",
+          "page": 1,
+          "chunk_id": "ch_l10_p01"
+        }
+      ]
+    }
+  ]
+}

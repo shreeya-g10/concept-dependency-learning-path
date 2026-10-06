@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "student_state.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "students"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "students": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "target",
+          "mastery",
+          "questions_asked"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "mastery": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "ESTIMATED mastery"
+          },
+          "questions_asked": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "item_id",
+                "correct"
+              ],
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "correct": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

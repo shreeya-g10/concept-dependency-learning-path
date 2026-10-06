@@ -1,0 +1,3 @@
+# learning_path module (Shrestha). Add this module's packages here.
+networkx
+numpy

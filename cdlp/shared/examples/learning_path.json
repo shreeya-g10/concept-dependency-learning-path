@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "paths": [
+    {
+      "student_id": "student_a",
+      "target": "avl_tree",
+      "steps": [
+        {
+          "concept_id": "recursion",
+          "why": "Binary tree traversals are defined recursively.",
+          "evidence": [
+            {
+              "doc": "ds_lec5.pdf",
+              "page": 3,
+              "chunk_id": "ch_l5_p03"
+            }
+          ]
+        },
+        {
+          "concept_id": "binary_tree",
+          "why": "A BST is a binary tree with an ordering rule.",
+          "evidence": [
+            {
+              "doc": "ds_lec6.pdf",
+              "page": 11,
+              "chunk_id": "ch_l6_p11"
+            }
+          ]
+        },
+        {
+          "concept_id": "binary_search_tree",
+          "why": "AVL trees are self-balancing BSTs.",
+          "evidence": [
+            {
+              "doc": "ds_lec7.pdf",
+              "page": 18,
+              "chunk_id": "ch_l7_p18"
+            }
+          ]
+        },
+        {
+          "concept_id": "avl_tree",
+          "why": "Your target concept.",
+          "evidence": [
+            {
+              "doc": "ds_lec9.pdf",
+              "page": 4,
+              "chunk_id": "ch_l9_p04"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "student_id": "student_b",
+      "target": "avl_tree",
+      "steps": [
+        {
+          "concept_id": "binary_search_tree",
+          "why": "You know binary trees, but your BST answers broke the ordering rule.",
+          "evidence": [
+            {
+              "doc": "ds_lec7.pdf",
+              "page": 18,
+              "chunk_id": "ch_l7_p18"
+            }
+          ]
+        },
+        {
+          "concept_id": "avl_tree",
+          "why": "Your target concept.",
+          "evidence": [
+            {
+              "doc": "ds_lec9.pdf",
+              "page": 4,
+              "chunk_id": "ch_l9_p04"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

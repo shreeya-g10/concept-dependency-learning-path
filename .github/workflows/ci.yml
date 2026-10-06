@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-ci.txt
+      - name: Lint and formatting (run `ruff format .` before committing)
+        run: ruff check . && ruff format --check .
+      - name: Contract examples are valid
+        run: python -m cdlp.shared.validate cdlp/shared/examples/*
+      - name: Every module's CLI still honours its contract
+        run: pytest -q
+      - name: Pipeline runs end to end
+        run: python pipeline.py

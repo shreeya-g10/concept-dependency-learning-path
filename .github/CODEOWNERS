@@ -1,0 +1,32 @@
+# Who must approve changes to each path. Later lines win, so the catch-all comes first.
+
+# Shreeya (lead): everything not listed below — root files, cdlp/shared/, pipeline.py, docs/, .github/
+*                                           @shreeya-g10
+
+# Vaidehi
+/cdlp/extraction/                           @vkumaw
+/website/                                   @vkumaw
+/data/gold/                                 @vkumaw
+/data/raw/                                  @vkumaw
+
+# Sneha
+/cdlp/discovery/                            @snehadebnath26
+/website/pages/2_Proposed_Dependencies.py   @snehadebnath26
+
+# Shreeya
+/cdlp/validation/                           @shreeya-g10
+/website/pages/3_Validation_Agent.py        @shreeya-g10
+
+# Shrestha
+/cdlp/learning_path/                        @shrestha035
+/website/pages/4_Knowledge_Graph.py         @shrestha035
+/website/pages/5_My_Learning_Path.py        @shrestha035
+
+# Each person's own annotation file
+/data/gold/annotations/annotator_a.csv      @vkumaw
+/data/gold/annotations/annotator_b.csv      @snehadebnath26
+/data/gold/annotations/annotator_c.csv      @shreeya-g10
+/data/gold/annotations/annotator_d.csv      @shrestha035
+
+# Contracts: whole team agrees, Shreeya merges
+/cdlp/shared/                               @shreeya-g10

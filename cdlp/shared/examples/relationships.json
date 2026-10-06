@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "relationships": [
+    {
+      "id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.93,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "A binary tree is a tree in which"
+        }
+      ],
+      "method": "llm_discovery_v0"
+    },
+    {
+      "id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.91,
+      "evidence": [
+        {
+          "chunk_id": "ch_l7_p18",
+          "doc": "ds_lec7.pdf",
+          "page": 18,
+          "quote": "A binary search tree is a binary tree"
+        }
+      ],
+      "method": "llm_discovery_v0"
+    },
+    {
+      "id": "r3",
+      "source": "binary_search_tree",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.9,
+      "evidence": [
+        {
+          "chunk_id": "ch_l9_p04",
+          "doc": "ds_lec9.pdf",
+          "page": 4,
+          "quote": "self-balancing binary search tree"
+        }
+      ],
+      "method": "llm_discovery_v0"
+    },
+    {
+      "id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "confidence": 0.71,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "Traversals are defined recursively"
+        }
+      ],
+      "method": "llm_discovery_v0"
+    },
+    {
+      "id": "r5",
+      "source": "trees",
+      "target": "graphs",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "confidence": 0.66,
+      "evidence": [
+        {
+          "chunk_id": "ch_l10_p01",
+          "doc": "ds_lec10.pdf",
+          "page": 1,
+          "quote": "A graph generalises a tree"
+        }
+      ],
+      "method": "llm_discovery_v0"
+    },
+    {
+      "id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "confidence": 0.41,
+      "evidence": [],
+      "method": "llm_discovery_v0"
+    }
+  ]
+}

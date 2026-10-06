@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "students": [
+    {
+      "student_id": "student_a",
+      "target": "avl_tree",
+      "mastery": {
+        "recursion": 0.15,
+        "trees": 0.85,
+        "binary_tree": 0.15,
+        "binary_search_tree": 0.1,
+        "avl_tree": 0.05
+      },
+      "questions_asked": 3,
+      "answers": [
+        {
+          "item_id": "q_bst_1",
+          "correct": false
+        },
+        {
+          "item_id": "q_bt_1",
+          "correct": false
+        },
+        {
+          "item_id": "q_rec_1",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "student_id": "student_b",
+      "target": "avl_tree",
+      "mastery": {
+        "recursion": 0.85,
+        "trees": 0.9,
+        "binary_tree": 0.88,
+        "binary_search_tree": 0.15,
+        "avl_tree": 0.05
+      },
+      "questions_asked": 3,
+      "answers": [
+        {
+          "item_id": "q_bst_1",
+          "correct": false
+        },
+        {
+          "item_id": "q_avl_1",
+          "correct": false
+        },
+        {
+          "item_id": "q_bt_1",
+          "correct": true
+        }
+      ]
+    }
+  ]
+}

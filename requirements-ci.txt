@@ -1,0 +1,5 @@
+# Light install used by CI (no ML models). Do not edit.
+-r cdlp/shared/requirements.txt
+pytest
+ruff
+streamlit

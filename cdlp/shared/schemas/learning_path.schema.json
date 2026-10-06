@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "learning_path.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "paths"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "target",
+          "steps"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "concept_id",
+                "why"
+              ],
+              "properties": {
+                "concept_id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9_]+$",
+                  "description": "stable slug, e.g. binary_search_tree"
+                },
+                "why": {
+                  "type": "string"
+                },
+                "evidence": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "doc",
+                      "page"
+                    ],
+                    "properties": {
+                      "doc": {
+                        "type": "string"
+                      },
+                      "page": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "chunk_id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

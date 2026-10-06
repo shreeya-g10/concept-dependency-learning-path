@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sim_students.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "students"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "students": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "mastery"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "mastery": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "TRUE knowledge state (ground truth for evaluation)"
+          },
+          "slip": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "guess": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

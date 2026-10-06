@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "validated_graph.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "type",
+          "strength",
+          "decision",
+          "confidence",
+          "checks",
+          "evidence",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "type": {
+            "enum": [
+              "PREREQUISITE"
+            ]
+          },
+          "strength": {
+            "enum": [
+              "hard",
+              "soft"
+            ]
+          },
+          "decision": {
+            "enum": [
+              "ACCEPT",
+              "REJECT",
+              "HUMAN_REVIEW"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "checks": {
+            "type": "object",
+            "required": [
+              "evidence",
+              "semantic",
+              "necessity",
+              "graph"
+            ],
+            "properties": {
+              "evidence": {
+                "enum": [
+                  "strong",
+                  "medium",
+                  "weak",
+                  "none"
+                ]
+              },
+              "semantic": {
+                "enum": [
+                  "strong",
+                  "medium",
+                  "weak",
+                  "none"
+                ]
+              },
+              "necessity": {
+                "enum": [
+                  "strong",
+                  "medium",
+                  "weak",
+                  "none"
+                ]
+              },
+              "graph": {
+                "enum": [
+                  "ok",
+                  "cycle",
+                  "duplicate",
+                  "redundant",
+                  "self_loop",
+                  "contradiction"
+                ]
+              }
+            }
+          },
+          "necessity_gap": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "chunk_id"
+              ],
+              "properties": {
+                "chunk_id": {
+                  "type": "string"
+                },
+                "doc": {
+                  "type": "string"
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "quote": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

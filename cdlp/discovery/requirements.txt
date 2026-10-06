@@ -1,0 +1,4 @@
+# discovery module (Sneha). Add this module's packages here.
+sentence-transformers
+faiss-cpu
+numpy
