@@ -21,7 +21,7 @@ Course PDF / PPT
 Running example used throughout the plan (Data Structures):
 `Trees → Binary Trees → Binary Search Trees → AVL Trees`. Second domain for generality: an ML course (`Vectors → Matrices → Linear Regression → Gradient Descent → Neural Networks`).
 
-The original plan is `docs/original_plan.docx`. The team guide is `README.md`.
+The original plan is `docs/original_plan.docx`. `README.md` describes the project; `CONTRIBUTING.md` is the team guide (ownership, workflow, timeline).
 
 ## Research contributions (what the paper claims)
 
@@ -82,7 +82,7 @@ Any experiment script must be reproducible: fixed seeds, configs in files, resul
 
 ## Team, modules and ownership (2-week sprint, 4 people)
 
-Each person owns specific paths (see `README.md`, `website/README.md` and `.github/CODEOWNERS`). **Only edit paths owned by the person you are working for.** If you don't know who that is, ask before editing. Never edit someone else's paths unless the user says the owner agreed.
+Each person owns specific paths (see `CONTRIBUTING.md`, `website/README.md` and `.github/CODEOWNERS`). **Only edit paths owned by the person you are working for.** If you don't know who that is, ask before editing. Never edit someone else's paths unless the user says the owner agreed.
 
 | Person | Owns | Builds | Writes |
 |---|---|---|---|
