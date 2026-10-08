@@ -6,6 +6,7 @@ from cdlp.discovery.llm_discovery import (
     build_contract_relationships,
     discover_candidates,
 )
+from cdlp.discovery.quiz import generate_quiz_items
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 
@@ -39,9 +40,15 @@ def main() -> None:
         exist_ok=True,
     )
 
-    concepts_data = read_json(args.concepts)
+    concepts_data = read_json(
+        args.concepts
+    )
+
     concepts = concepts_data["concepts"]
-    chunks = read_jsonl(args.chunks)
+
+    chunks = read_jsonl(
+        args.chunks
+    )
 
     candidates = generate_candidates(
         concepts_data,
@@ -69,17 +76,26 @@ def main() -> None:
         },
     )
 
+    quiz_items = generate_quiz_items(
+        concepts,
+        chunks,
+    )
+
     write_json(
         args.out_dir / "quiz_items.json",
-        read_json(
-            Path("cdlp/shared/examples/quiz_items.json")
-        ),
+        {
+            "schema_version": "1.0",
+            "course_id": concepts_data["course_id"],
+            "items": quiz_items,
+        },
     )
 
     write_json(
         args.out_dir / "sim_students.json",
         read_json(
-            Path("cdlp/shared/examples/sim_students.json")
+            Path(
+                "cdlp/shared/examples/sim_students.json"
+            )
         ),
     )
 

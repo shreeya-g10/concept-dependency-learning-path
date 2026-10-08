@@ -1,0 +1,53 @@
+You are an expert educational assessment designer.
+
+Create multiple-choice questions for the following course concept.
+
+CONCEPT ID:
+{concept_id}
+
+CONCEPT NAME:
+{concept_name}
+
+CONCEPT DESCRIPTION:
+{concept_description}
+
+COURSE EVIDENCE:
+{evidence}
+
+Create exactly 3 multiple-choice questions.
+
+Requirements:
+
+1. Every question must test understanding of the specified concept.
+2. Use only the supplied course evidence.
+3. Do not invent facts that are not supported by the evidence.
+4. Each question must have exactly 4 options.
+5. Exactly one option must be correct.
+6. The incorrect options must be plausible but clearly incorrect.
+7. Questions should test understanding rather than simple word matching.
+8. Include the evidence chunk IDs supporting the question.
+9. Do not create questions about unrelated concepts.
+10. Return only valid JSON.
+
+Return exactly this structure:
+
+{{
+  "items": [
+    {{
+      "question": "...",
+      "options": [
+        "...",
+        "...",
+        "...",
+        "..."
+      ],
+      "correct_answer": "...",
+      "explanation": "...",
+      "evidence_chunk_ids": ["..."]
+    }}
+  ]
+}}
+
+The correct_answer field must contain the complete text of the correct option.
+
+The evidence_chunk_ids must contain only chunk IDs from the supplied course evidence.
