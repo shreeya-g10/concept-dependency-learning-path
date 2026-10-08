@@ -7,6 +7,9 @@ from cdlp.discovery.llm_discovery import (
     discover_candidates,
 )
 from cdlp.discovery.quiz import generate_quiz_items
+from cdlp.discovery.sim_students import (
+    generate_simulated_students,
+)
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 
@@ -90,13 +93,20 @@ def main() -> None:
         },
     )
 
+    sim_students = generate_simulated_students(
+        concepts,
+        contract_relationships,
+        count=500,
+        seed=42,
+    )
+
     write_json(
         args.out_dir / "sim_students.json",
-        read_json(
-            Path(
-                "cdlp/shared/examples/sim_students.json"
-            )
-        ),
+        {
+            "schema_version": "1.0",
+            "course_id": concepts_data["course_id"],
+            "students": sim_students,
+        },
     )
 
 
