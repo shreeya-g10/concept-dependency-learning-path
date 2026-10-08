@@ -1,1 +1,7 @@
 source,target,label,note
+trees,binary_tree,hard,A binary tree is a specialized form of a tree.
+binary_tree,binary_search_tree,hard,A binary search tree is defined as a binary tree with an ordering property.
+binary_search_tree,avl_tree,hard,An AVL tree is a self-balancing binary search tree.
+recursion,binary_tree,soft,Binary tree traversals are commonly defined recursively, but binary trees can be learned without recursion.
+trees,graphs,soft,A graph generalizes a tree, so knowledge of trees helps but is not required.
+graphs,avl_tree,none,Graphs are not a direct prerequisite for AVL trees.
