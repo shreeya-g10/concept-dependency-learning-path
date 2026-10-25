@@ -1,1 +1,11 @@
 source,target,label,note
+trees,binary_tree,hard,tree is generalization
+recursion,binary_tree,soft,recursive traversal helper
+binary_tree,binary_search_tree,hard,BST requires binary tree
+binary_search_tree,avl_tree,hard,AVL is balanced BST
+recursion,avl_tree,none,indirect
+trees,avl_tree,none,redundant through BST
+graphs,avl_tree,none,different topic
+trees,graphs,soft,tree is acyclic connected graph
+recursion,binary_search_tree,soft,recursive BST search
+binary_tree,avl_tree,none,indirect via BST
