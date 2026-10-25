@@ -14,7 +14,21 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from sklearn.metrics import cohen_kappa_score
+try:
+    from sklearn.metrics import cohen_kappa_score
+except ImportError:
+    # Pure-Python Cohen's kappa fallback for lightweight environments
+    def cohen_kappa_score(y1: list[str], y2: list[str]) -> float:
+        if not y1 or not y2 or len(y1) != len(y2):
+            return 0.0
+        n = len(y1)
+        categories = list(set(y1) | set(y2))
+        po = sum(1 for a, b in zip(y1, y2, strict=True) if a == b) / n
+        pe = sum((y1.count(c) / n) * (y2.count(c) / n) for c in categories)
+        if pe == 1.0:
+            return 1.0
+        return (po - pe) / (1 - pe)
+
 
 GOLD_DIR = Path("data/gold")
 ANNOTATIONS_DIR = GOLD_DIR / "annotations"

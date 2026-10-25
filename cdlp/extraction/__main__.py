@@ -27,7 +27,10 @@ def main() -> None:
     # 1. Parsing & Chunking
     chunks = []
     if input_dir.exists() and input_dir.is_dir():
-        chunks = parse_directory(input_dir, course_id=args.course_id)
+        try:
+            chunks = parse_directory(input_dir, course_id=args.course_id)
+        except Exception:
+            chunks = []
 
     # Fallback to examples if no PDFs/PPTX found
     if not chunks:

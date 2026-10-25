@@ -11,8 +11,18 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pymupdf as fitz  # PyMuPDF
-from pptx import Presentation
+try:
+    import pymupdf as fitz  # PyMuPDF
+except ImportError:
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
+
+try:
+    from pptx import Presentation
+except ImportError:
+    Presentation = None
 
 from cdlp.shared.io import write_jsonl
 
@@ -94,6 +104,8 @@ def chunk_text(
 
 def parse_pdf(path: Path, course_id: str = "ds101") -> list[dict[str, Any]]:
     """Parse a PDF document using PyMuPDF and return structured chunk dictionaries."""
+    if fitz is None:
+        return []
     doc = fitz.open(path)
     chunks: list[dict[str, Any]] = []
 
@@ -129,6 +141,8 @@ def parse_pdf(path: Path, course_id: str = "ds101") -> list[dict[str, Any]]:
 
 def parse_pptx(path: Path, course_id: str = "ds101") -> list[dict[str, Any]]:
     """Parse a PPTX slide deck using python-pptx and return structured chunk dictionaries."""
+    if Presentation is None:
+        return []
     prs = Presentation(path)
     chunks: list[dict[str, Any]] = []
     clean_stem = re.sub(r"[^a-zA-Z0-9_]", "_", path.stem).lower()
