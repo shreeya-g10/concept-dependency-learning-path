@@ -28,3 +28,18 @@ Use **ACCEPT edges only**. Ignore REJECT; HUMAN_REVIEW is excluded by default (m
 
 ## Done when
 The CLI produces both files for all simulated students, the accuracy-vs-questions curve is in `cdlp/learning_path/results/`, page 5 runs a live quiz, and `pytest cdlp/learning_path` passes.
+
+## Implementation (Shrestha)
+
+The three public API signatures remain unchanged. The graph is a DAG of accepted prerequisite edges, with soft edges included by default. Quiz selection uses entropy weighted by downstream reach. The response update uses a Bayesian observation likelihood for the tested concept, with a weaker heuristic propagation to ancestors. A mastery estimate of 0.8 or above skips a concept.
+
+Run from repository root:
+
+```bash
+python -m cdlp.learning_path --graph cdlp/shared/examples/validated_graph.json --quiz cdlp/shared/examples/quiz_items.json --students cdlp/shared/examples/sim_students.json --target avl_tree --out-dir outputs
+python -m cdlp.learning_path.evaluate --graph cdlp/shared/examples/validated_graph.json --quiz cdlp/shared/examples/quiz_items.json --students cdlp/shared/examples/sim_students.json --target avl_tree
+pytest -q cdlp/learning_path
+streamlit run website/Home.py
+```
+
+Evaluation: `results/rq2_accuracy.csv` contains mean absolute error and mastery classification accuracy by question budget for three policies. The simulation is illustrative, not evidence of actual learning gains. One quiz item per concept limits the experiment. Self-reported mastery is a prior, not ground truth.
