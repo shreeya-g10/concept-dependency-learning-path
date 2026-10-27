@@ -1,0 +1,34 @@
+You are an expert computer science educator analyzing lecture material.
+Extract all key concepts taught or referenced in the following course chunk.
+
+Chunk metadata:
+Document: {doc}
+Page: {page}
+Heading: {heading}
+
+Chunk text:
+\"\"\"
+{text}
+\"\"\"
+
+Guidelines:
+1. Extract specific, substantive computer science concepts (e.g., "Binary Search Tree", "Recursion", "AVL Tree", "Breadth-First Search").
+2. Exclude terms that are too fine-grained (e.g. "Left Subtree", "Variable i", "Temporary Pointer") or too broad (e.g. "Computer Science", "Programming", "Introduction").
+3. For each concept, provide:
+   - "name": Clean Title Case name (e.g. "Binary Search Tree")
+   - "id": Lowercase alphanumeric snake_case slug (e.g. "binary_search_tree")
+   - "aliases": List of common alternative names, acronyms, or singular/plural variants found in text (e.g. ["BST", "Binary Search Trees"])
+   - "description": A concise 1-sentence definition of what the concept is based on the chunk.
+
+Return ONLY a JSON object with this exact format:
+{
+  "concepts": [
+    {
+      "id": "binary_search_tree",
+      "name": "Binary Search Tree",
+      "aliases": ["BST"],
+      "description": "A binary tree in which left subtree values are smaller and right subtree values are larger than the root."
+    }
+  ]
+}
+
