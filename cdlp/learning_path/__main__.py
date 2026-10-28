@@ -1,29 +1,113 @@
-"""learning_path — validated graph + quiz items + students -> student_state.json, learning_path.json
 
-    python -m cdlp.learning_path --graph outputs/validated_graph.json \
-        --quiz outputs/quiz_items.json --students outputs/sim_students.json \
-        --target avl_tree --out-dir outputs
-"""
+"""CLI for generating student states and personalized learning paths."""
 
 import argparse
 from pathlib import Path
 
-from cdlp.shared.io import EXAMPLES, read_json, write_json
+from cdlp.shared.io import read_json, write_json
+from cdlp.learning_path import api
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--graph", type=Path, required=True)
-    parser.add_argument("--quiz", type=Path, required=True)
-    parser.add_argument("--students", type=Path, required=True)
-    parser.add_argument("--target", required=True, help="target concept id, e.g. avl_tree")
-    parser.add_argument("--out-dir", type=Path, required=True)
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate adaptive learning paths for simulated students."
+    )
+    parser.add_argument(
+        "--graph",
+        default="cdlp/shared/examples/validated_graph.json",
+    )
+    parser.add_argument(
+        "--quiz",
+        default="cdlp/shared/examples/quiz_items.json",
+    )
+    parser.add_argument(
+        "--students",
+        default="cdlp/shared/examples/sim_students.json",
+    )
+    parser.add_argument("--out", default="outputs")
     args = parser.parse_args()
 
-    # TODO(Shrestha): build the graph from ACCEPT edges, run adaptive diagnosis
-    # for each student, then compute the personalized path.
-    write_json(args.out_dir / "student_state.json", read_json(EXAMPLES / "student_state.json"))
-    write_json(args.out_dir / "learning_path.json", read_json(EXAMPLES / "learning_path.json"))
+    graph = read_json(Path(args.graph))
+    quiz = read_json(Path(args.quiz))
+    students_data = read_json(Path(args.students))
+
+    students = (
+        students_data
+        if isinstance(students_data, list)
+        else students_data.get("students", [])
+    )
+
+    states = []
+    paths = []
+
+    for student in students:
+        student_id = student["id"]
+        true_mastery = student.get("mastery", {})
+        target = student.get("target", "avl_tree")
+
+        mastery = {
+            concept: 0.5
+            for concept in api.prerequisite_order(graph, target)
+        }
+
+        answers = []
+        asked_ids = []
+
+        for _ in range(10):
+            question = api.next_question(
+                graph,
+                quiz,
+                {**mastery, "__asked__": asked_ids},
+                target,
+            )
+
+            if question is None:
+                break
+
+            concept = question["concept_id"]
+            correct = true_mastery.get(concept, 0.5) > 0.5
+
+            mastery = api.update_mastery(
+                graph, mastery, concept, correct
+            )
+
+            asked_ids.append(question["id"])
+            answers.append(
+                {
+                    "item_id": question["id"],
+                    "correct": correct,
+                }
+            )
+
+        states.append(
+            {
+                "student_id": student_id,
+                "target": target,
+                "mastery": mastery,
+                "answers": answers,
+            }
+        )
+
+        paths.append(
+            {
+                "student_id": student_id,
+                "target": target,
+                "steps": api.personalized_path(
+                    graph, mastery, target
+                ),
+            }
+        )
+
+    output_dir = Path(args.out)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    write_json(output_dir / "student_state.json", {"students": states})
+    write_json(output_dir / "learning_path.json", {"paths": paths})
+
+    print(
+        f"Generated {len(states)} student states "
+        f"and {len(paths)} personalized paths"
+    )
 
 
 if __name__ == "__main__":
