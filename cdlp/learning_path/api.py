@@ -9,9 +9,7 @@ Keep the three public function signatures stable:
 
 from __future__ import annotations
 
-import networkx as nx
-
-from cdlp.learning_path.graph import generic_path, load_graph
+from cdlp.learning_path.graph import ancestors, generic_path, load_graph
 
 
 def prerequisite_order(graph: dict, target: str) -> list[str]:
@@ -80,7 +78,7 @@ def update_mastery(
     if correct:
         updated[concept_id] = 0.9
         if concept_id in G:
-            for prerequisite in nx.ancestors(G, concept_id):
+            for prerequisite in ancestors(G, concept_id):
                 updated[prerequisite] = max(
                     updated.get(prerequisite, 0.5),
                     0.85,
@@ -88,7 +86,7 @@ def update_mastery(
     else:
         updated[concept_id] = 0.1
         if concept_id in G:
-            for prerequisite in nx.ancestors(G, concept_id):
+            for prerequisite in ancestors(G, concept_id):
                 if prerequisite not in updated or updated[prerequisite] > 0.8:
                     updated[prerequisite] = 0.5
 

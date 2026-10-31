@@ -10,9 +10,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-import networkx as nx
-
-from cdlp.learning_path.graph import load_graph
+from cdlp.learning_path.graph import load_graph, topological_sort
 from cdlp.shared.io import write_json
 
 
@@ -30,7 +28,7 @@ def generate_simulated_students(
     rng = random.Random(seed)
     G = load_graph(graph_data)
     nodes = list(G.nodes)
-    topo_order = list(nx.topological_sort(G)) if nodes else []
+    topo_order = topological_sort(G) if nodes else []
 
     students = []
     for i in range(1, num_students + 1):
