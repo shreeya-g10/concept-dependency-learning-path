@@ -9,3 +9,13 @@ graphs,avl_tree,none,unrelated data structures
 trees,graphs,soft,graph generalises tree structure
 recursion,binary_search_tree,soft,search and insert operations use recursion
 binary_tree,avl_tree,none,shortcut pair via binary_search_tree
+linear_regression,loss_function,soft,linear regression introduces MSE loss
+loss_function,gradient_descent,hard,gradient descent minimizes loss function
+gradient_descent,logistic_regression,hard,logistic regression optimized via gradient descent
+linear_regression,logistic_regression,soft,logistic regression generalizes linear model to probability
+loss_function,regularization,soft,regularization augments loss with penalty term
+gradient_descent,neural_networks,hard,neural networks trained with gradient descent via backprop
+loss_function,neural_networks,hard,loss function required for backpropagation
+regularization,neural_networks,soft,regularization prevents overfitting in deep networks
+linear_regression,neural_networks,none,indirect foundational concept
+loss_function,logistic_regression,hard,binary cross-entropy loss required for logistic regression
