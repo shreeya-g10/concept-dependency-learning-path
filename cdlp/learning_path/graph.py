@@ -13,6 +13,41 @@ except ImportError:
     nx = None
 
 
+class _EdgeView:
+    """Edge view mimicking NetworkX's G.edges supporting iteration, calling, and indexing."""
+
+    def __init__(self, graph: DiGraph) -> None:
+        self._graph = graph
+
+    def __iter__(self):
+        for u, nbrs in self._graph._succ.items():
+            for v in nbrs:
+                yield (u, v)
+
+    def __call__(self, data: bool = False) -> list[Any]:
+        res = []
+        for u, nbrs in self._graph._succ.items():
+            for v, dat in nbrs.items():
+                if data:
+                    res.append((u, v, dat))
+                else:
+                    res.append((u, v))
+        return res
+
+    def __getitem__(self, edge: tuple[str, str]) -> dict[str, Any]:
+        u, v = edge
+        if u in self._graph._succ and v in self._graph._succ[u]:
+            return self._graph._succ[u][v]
+        raise KeyError(edge)
+
+    def __contains__(self, edge: tuple[str, str]) -> bool:
+        u, v = edge
+        return u in self._graph._succ and v in self._graph._succ[u]
+
+    def __len__(self) -> int:
+        return sum(len(nbrs) for nbrs in self._graph._succ.values())
+
+
 class DiGraph:
     """Lightweight pure-Python directed graph fallback for environments without networkx."""
 
@@ -38,15 +73,28 @@ class DiGraph:
     def nodes(self) -> dict[str, dict[str, Any]]:
         return self._nodes
 
-    def edges(self, data: bool = False) -> list[Any]:
-        res = []
-        for u, nbrs in self._succ.items():
-            for v, dat in nbrs.items():
-                if data:
-                    res.append((u, v, dat))
-                else:
-                    res.append((u, v))
-        return res
+    @property
+    def edges(self) -> _EdgeView:
+        return _EdgeView(self)
+
+    def predecessors(self, n: str):
+        if n in self._pred:
+            return iter(list(self._pred[n].keys()))
+        return iter([])
+
+    def successors(self, n: str):
+        if n in self._succ:
+            return iter(list(self._succ[n].keys()))
+        return iter([])
+
+    def neighbors(self, n: str):
+        return self.successors(n)
+
+    def has_edge(self, u: str, v: str) -> bool:
+        return u in self._succ and v in self._succ[u]
+
+    def has_node(self, n: str) -> bool:
+        return n in self._nodes
 
     def in_edges(self, n: str, data: bool = False) -> list[Any]:
         res = []
@@ -80,6 +128,9 @@ class DiGraph:
                     if v in nodes_set:
                         sub.add_edge(u, v, **dat)
         return sub
+
+    def __getitem__(self, n: str) -> dict[str, dict[str, Any]]:
+        return self._succ[n]
 
     def __contains__(self, n: str) -> bool:
         return n in self._nodes
