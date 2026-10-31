@@ -3,6 +3,7 @@
     python pipeline.py --course ds101 --target avl_tree
 
 Reads course files from data/raw/<course>/ and writes to outputs/<course>/.
+Root-cause tracing runs only when outputs/<course>/student_answers.json exists.
 Each step calls one module's CLI and checks its output against the contract.
 Modules never import each other; they only exchange the files in outputs/<course>/.
 """
@@ -74,6 +75,20 @@ def main() -> None:
         "--out-dir",
         str(out),
     )
+    if (out / "student_answers.json").exists():
+        run(
+            "cdlp.root_cause",
+            "--graph",
+            str(out / "validated_graph.json"),
+            "--quiz",
+            str(out / "quiz_items.json"),
+            "--answers",
+            str(out / "student_answers.json"),
+            "--out",
+            str(out / "root_cause.json"),
+        )
+    else:
+        print("\n==> cdlp.root_cause skipped (no student_answers.json)")
 
     print("\n==> contract check")
     failed = False
