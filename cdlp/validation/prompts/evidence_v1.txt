@@ -1,0 +1,28 @@
+You are checking a proposed prerequisite relation against course material.
+
+Proposed relation: a student must learn "{source_name}" ({source_aliases}) BEFORE "{target_name}" ({target_aliases}).
+
+Course material excerpts (each starts with its chunk id, document and page):
+{chunks}
+
+Judge ONLY from these excerpts, not from your own knowledge, whether the material supports
+learning "{source_name}" before "{target_name}". Support means the text defines, builds or
+explains "{target_name}" in terms of "{source_name}", or clearly needs "{source_name}" to
+understand "{target_name}". Two concepts merely appearing in the same course, or being
+related in some other way, is NOT support.
+
+Grades:
+- "strong": an excerpt states or directly shows that "{target_name}" builds on "{source_name}".
+- "medium": the excerpts imply the dependency, but do not state it.
+- "weak": only an indirect or vague hint.
+- "none": the excerpts do not support this order, or are unrelated.
+
+Every quote must be copied word for word from one excerpt and must name the chunk id it came
+from. Give no quotes for "none".
+
+Return ONLY a JSON object with this exact format:
+{
+  "support": "strong" | "medium" | "weak" | "none",
+  "quotes": [{"chunk_id": "<chunk id>", "quote": "<exact text from that excerpt>"}],
+  "rationale": "<one or two sentences>"
+}
