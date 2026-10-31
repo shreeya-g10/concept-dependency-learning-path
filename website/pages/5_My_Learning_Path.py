@@ -119,6 +119,17 @@ if question is not None and not st.session_state.get("quiz_done", False):
                     )
                     is_correct = str(choice).strip().lower() == str(correct_answer).strip().lower()
 
+                    root_cause_info = None
+                    if not is_correct:
+                        try:
+                            from cdlp.root_cause import api as root_cause_api
+
+                            root_cause_info = root_cause_api.trace(
+                                graph_data, question, str(choice), current_mastery
+                            )
+                        except Exception:
+                            root_cause_info = None
+
                     # Update mastery through api.py
                     new_mastery = api.update_mastery(
                         graph_data, current_mastery, concept_id, is_correct
@@ -131,6 +142,9 @@ if question is not None and not st.session_state.get("quiz_done", False):
                             "concept_id": concept_id,
                             "selected": choice,
                             "correct": is_correct,
+                            "root_cause": (
+                                root_cause_info.get("explanation") if root_cause_info else None
+                            ),
                         }
                     )
                     st.rerun()
@@ -158,6 +172,8 @@ if answers:
             c_name = names.get(a["concept_id"], a["concept_id"])
             status = "✅ Correct" if a["correct"] else "❌ Incorrect"
             st.markdown(f"- **{c_name}**: {status} (Answered: `{a['selected']}`)")
+            if a.get("root_cause"):
+                st.caption(f"  🔍 Root-cause diagnosis: {a['root_cause']}")
 
     # Generate Personalized Path via api.py
     st.divider()

@@ -66,3 +66,19 @@ def test_generic_path(graph):
 def test_unknown_concept(graph):
     with pytest.raises(ValueError, match="Unknown concept"):
         prerequisites(graph, "quantum_computing")
+
+
+def test_evaluate_rq2_and_rq4():
+    from cdlp.discovery.quiz import get_quiz_items
+    from cdlp.discovery.sim_students import generate_simulated_students
+    from cdlp.learning_path.evaluate import evaluate_rq2_and_rq4
+
+    data = read_json(EXAMPLES / "validated_graph.json")
+    sim = generate_simulated_students(data, num_students=10, seed=123)
+    quiz = get_quiz_items(course_id="ds101")
+
+    res = evaluate_rq2_and_rq4(data, quiz["items"], sim["students"], target="avl_tree")
+    assert res["num_students"] == 10
+    assert "rq2_diagnosis" in res
+    assert "rq4_learning_path" in res
+    assert res["rq4_learning_path"]["total_order_mistakes"] == 0
