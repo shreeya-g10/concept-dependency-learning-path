@@ -16,10 +16,7 @@ def discover_relationship(
 ) -> dict:
     prompt_template = load_prompt()
 
-    evidence_text = "\n".join(
-        f"Chunk ID: {item['chunk_id']}\n{item['text']}"
-        for item in evidence
-    )
+    evidence_text = "\n".join(f"Chunk ID: {item['chunk_id']}\n{item['text']}" for item in evidence)
 
     prompt = prompt_template.format(
         source_id=source["id"],
@@ -67,9 +64,7 @@ def _remove_transitive_relationships(
                 continue
 
             if (source, middle_target) in direct_edges:
-                transitive_edges.add(
-                    (source, middle_target)
-                )
+                transitive_edges.add((source, middle_target))
 
     filtered = []
 
@@ -94,15 +89,9 @@ def discover_candidates(
     concepts: list[dict],
     chunks: list[dict],
 ) -> list[dict]:
-    concept_map = {
-        concept["id"]: concept
-        for concept in concepts
-    }
+    concept_map = {concept["id"]: concept for concept in concepts}
 
-    chunk_map = {
-        chunk["chunk_id"]: chunk
-        for chunk in chunks
-    }
+    chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     relationships = []
 
@@ -131,9 +120,7 @@ def discover_candidates(
 
         relationships.append(result)
 
-    return _remove_transitive_relationships(
-        relationships
-    )
+    return _remove_transitive_relationships(relationships)
 
 
 def build_contract_relationships(
@@ -141,10 +128,7 @@ def build_contract_relationships(
     concepts: list[dict],
     chunks: list[dict],
 ) -> list[dict]:
-    chunk_map = {
-        chunk["chunk_id"]: chunk
-        for chunk in chunks
-    }
+    chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     contract_relationships = []
 

@@ -58,20 +58,11 @@ def test_generate_simulated_students():
         for mastery in student["mastery"].values():
             assert 0 <= mastery <= 1
 
-        assert (
-            student["mastery"]["binary_tree"]
-            <= student["mastery"]["trees"]
-        )
+        assert student["mastery"]["binary_tree"] <= student["mastery"]["trees"]
 
-        assert (
-            student["mastery"]["binary_search_tree"]
-            <= student["mastery"]["binary_tree"]
-        )
+        assert student["mastery"]["binary_search_tree"] <= student["mastery"]["binary_tree"]
 
-        assert (
-            student["mastery"]["avl_tree"]
-            <= student["mastery"]["binary_search_tree"]
-        )
+        assert student["mastery"]["avl_tree"] <= student["mastery"]["binary_search_tree"]
 
 
 def test_soft_relationship_does_not_constrain_mastery():
@@ -104,7 +95,4 @@ def test_soft_relationship_does_not_constrain_mastery():
     )
 
     for student in students:
-        assert (
-            student["mastery"]["binary_tree"]
-            <= student["mastery"]["trees"]
-        )
+        assert student["mastery"]["binary_tree"] <= student["mastery"]["trees"]

@@ -15,10 +15,7 @@ def generate_quiz_items(
 ) -> list[dict]:
     prompt_template = load_prompt()
 
-    chunk_map = {
-        chunk["chunk_id"]: chunk
-        for chunk in chunks
-    }
+    chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     quiz_items = []
 
@@ -32,8 +29,7 @@ def generate_quiz_items(
                 evidence.append(chunk_map[chunk_id])
 
         evidence_text = "\n".join(
-            f"Chunk ID: {chunk['chunk_id']}\n{chunk['text']}"
-            for chunk in evidence
+            f"Chunk ID: {chunk['chunk_id']}\n{chunk['text']}" for chunk in evidence
         )
 
         prompt = prompt_template.format(
@@ -65,10 +61,7 @@ def generate_quiz_items(
                     "explanation": item["explanation"],
                     "evidence_chunk_ids": item.get(
                         "evidence_chunk_ids",
-                        [
-                            chunk["chunk_id"]
-                            for chunk in evidence
-                        ],
+                        [chunk["chunk_id"] for chunk in evidence],
                     ),
                 }
             )

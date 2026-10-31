@@ -88,9 +88,6 @@ def test_generate_candidates_uses_course_order():
         embedding_threshold=1.0,
     )
 
-    pairs = {
-        (candidate.source, candidate.target)
-        for candidate in candidates
-    }
+    pairs = {(candidate.source, candidate.target) for candidate in candidates}
 
     assert ("first", "second") in pairs

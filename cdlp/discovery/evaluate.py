@@ -11,15 +11,9 @@ def evaluate(
     relationships: list[dict],
     gold: list[dict],
 ) -> dict:
-    gold_map = {
-        (row["source"], row["target"]): row["label"].lower()
-        for row in gold
-    }
+    gold_map = {(row["source"], row["target"]): row["label"].lower() for row in gold}
 
-    predicted_map = {
-        (row["source"], row["target"]): row
-        for row in relationships
-    }
+    predicted_map = {(row["source"], row["target"]): row for row in relationships}
 
     positive_labels = {"hard", "soft"}
 
@@ -49,28 +43,16 @@ def evaluate(
                 false_positive += 1
 
     precision = (
-        true_positive / (true_positive + false_positive)
-        if true_positive + false_positive
-        else 0.0
+        true_positive / (true_positive + false_positive) if true_positive + false_positive else 0.0
     )
 
     recall = (
-        true_positive / (true_positive + false_negative)
-        if true_positive + false_negative
-        else 0.0
+        true_positive / (true_positive + false_negative) if true_positive + false_negative else 0.0
     )
 
-    f1 = (
-        2 * precision * recall / (precision + recall)
-        if precision + recall
-        else 0.0
-    )
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
-    strength_accuracy = (
-        strength_correct / true_positive
-        if true_positive
-        else 0.0
-    )
+    strength_accuracy = strength_correct / true_positive if true_positive else 0.0
 
     return {
         "true_positive": true_positive,

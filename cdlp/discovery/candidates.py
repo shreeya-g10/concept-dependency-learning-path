@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -27,10 +27,7 @@ def _course_position(
     concepts: list,
     chunks: list,
 ) -> dict:
-    chunk_position = {
-        chunk["chunk_id"]: index
-        for index, chunk in enumerate(chunks)
-    }
+    chunk_position = {chunk["chunk_id"]: index for index, chunk in enumerate(chunks)}
 
     positions = {}
 
@@ -41,11 +38,7 @@ def _course_position(
             if source["chunk_id"] in chunk_position
         ]
 
-        positions[concept["id"]] = (
-            min(source_positions)
-            if source_positions
-            else float("inf")
-        )
+        positions[concept["id"]] = min(source_positions) if source_positions else float("inf")
 
     return positions
 
@@ -67,9 +60,7 @@ def _same_chunk_pairs(
     for concept_ids in chunk_to_concepts.values():
         for i in range(len(concept_ids)):
             for j in range(i + 1, len(concept_ids)):
-                pairs.add(
-                    (concept_ids[i], concept_ids[j])
-                )
+                pairs.add((concept_ids[i], concept_ids[j]))
 
     return pairs
 
@@ -86,18 +77,14 @@ def _name_in_definition(
             if source["id"] == target["id"]:
                 continue
 
-            description = _normalise(
-                target.get("description", "")
-            )
+            description = _normalise(target.get("description", ""))
 
             for term in source_terms:
                 if term and re.search(
                     rf"\b{re.escape(term)}\b",
                     description,
                 ):
-                    candidates.add(
-                        (source["id"], target["id"])
-                    )
+                    candidates.add((source["id"], target["id"]))
                     break
 
     return candidates
@@ -107,14 +94,9 @@ def _embedding_pairs(
     concepts: list,
     threshold: float = 0.55,
 ) -> set:
-    model = SentenceTransformer(
-        "all-MiniLM-L6-v2"
-    )
+    model = SentenceTransformer("all-MiniLM-L6-v2")
 
-    texts = [
-        f"{concept['name']}. {concept.get('description', '')}"
-        for concept in concepts
-    ]
+    texts = [f"{concept['name']}. {concept.get('description', '')}" for concept in concepts]
 
     embeddings = model.encode(
         texts,
@@ -216,7 +198,5 @@ def generate_candidates(
             target=target,
             reasons=sorted(reasons),
         )
-        for (source, target), reasons in sorted(
-            signals.items()
-        )
+        for (source, target), reasons in sorted(signals.items())
     ]

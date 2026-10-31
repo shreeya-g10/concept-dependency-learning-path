@@ -7,10 +7,7 @@ def _hard_prerequisites(
     prerequisites = {}
 
     for relationship in relationships:
-        if (
-            relationship.get("type") == "PREREQUISITE"
-            and relationship.get("strength") == "hard"
-        ):
+        if relationship.get("type") == "PREREQUISITE" and relationship.get("strength") == "hard":
             source = relationship["source"]
             target = relationship["target"]
 
@@ -26,10 +23,7 @@ def _topological_order(
     concepts: list[dict],
     prerequisites: dict[str, list[str]],
 ) -> list[str]:
-    concept_ids = [
-        concept["id"]
-        for concept in concepts
-    ]
+    concept_ids = [concept["id"] for concept in concepts]
 
     remaining = set(concept_ids)
     ordered = []
@@ -48,9 +42,7 @@ def _topological_order(
         )
 
         if not ready:
-            raise ValueError(
-                "Hard prerequisite graph contains a cycle."
-            )
+            raise ValueError("Hard prerequisite graph contains a cycle.")
 
         ordered.extend(ready)
         remaining.difference_update(ready)
@@ -80,18 +72,11 @@ def generate_simulated_students(
     seed: int = 42,
 ) -> list[dict]:
     if count <= 0:
-        raise ValueError(
-            "count must be greater than zero."
-        )
+        raise ValueError("count must be greater than zero.")
 
-    prerequisites = _hard_prerequisites(
-        relationships
-    )
+    prerequisites = _hard_prerequisites(relationships)
 
-    concept_ids = [
-        concept["id"]
-        for concept in concepts
-    ]
+    concept_ids = [concept["id"] for concept in concepts]
 
     ordered_concepts = _topological_order(
         concepts,
@@ -122,10 +107,7 @@ def generate_simulated_students(
                 4,
             )
 
-        mastery = {
-            concept_id: mastery[concept_id]
-            for concept_id in concept_ids
-        }
+        mastery = {concept_id: mastery[concept_id] for concept_id in concept_ids}
 
         students.append(
             {

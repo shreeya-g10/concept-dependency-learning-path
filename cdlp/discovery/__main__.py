@@ -14,9 +14,7 @@ from cdlp.shared.io import read_json, read_jsonl, write_json
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Run discovery on concepts and chunks."
-    )
+    parser = argparse.ArgumentParser(description="Run discovery on concepts and chunks.")
 
     parser.add_argument(
         "--concepts",
@@ -43,15 +41,11 @@ def main() -> None:
         exist_ok=True,
     )
 
-    concepts_data = read_json(
-        args.concepts
-    )
+    concepts_data = read_json(args.concepts)
 
     concepts = concepts_data["concepts"]
 
-    chunks = read_jsonl(
-        args.chunks
-    )
+    chunks = read_jsonl(args.chunks)
 
     candidates = generate_candidates(
         concepts_data,
