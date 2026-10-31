@@ -1,0 +1,26 @@
+{
+  "num_students": 500,
+  "target_concept": "avl_tree",
+  "rq2_diagnosis": {
+    "adaptive": {
+      "avg_questions": 4.158,
+      "accuracy": 0.8260000000000007
+    },
+    "ask_all": {
+      "avg_questions": 5.0,
+      "accuracy": 0.7168000000000015
+    },
+    "random": {
+      "avg_questions": 3.744,
+      "accuracy": 0.7632000000000013
+    },
+    "question_reduction_pct": 16.84
+  },
+  "rq4_learning_path": {
+    "generic_avg_length": 5.0,
+    "personalized_avg_length": 1.7,
+    "path_length_reduction_pct": 66.0,
+    "avg_gap_coverage": 0.7453333333333335,
+    "total_order_mistakes": 0
+  }
+}
