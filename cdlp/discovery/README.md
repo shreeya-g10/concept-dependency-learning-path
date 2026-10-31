@@ -1,10 +1,10 @@
-# Discovery · owner: Sneha
+# Discovery · owner: Shreeya (`quiz.py`, `sim_students.py`: Vaidehi)
 
 Dependency discovery, plus quiz items and simulated students.
 
 **Question you answer:** *How might these concepts depend on each other?*
 
-**You own (only you edit):** `cdlp/discovery/`, `website/pages/2_Proposed_Dependencies.py`, `data/gold/annotations/annotator_b.csv`
+**Owners:** Shreeya owns `cdlp/discovery/` and `website/pages/2_Proposed_Dependencies.py`, except `cdlp/discovery/quiz.py` and `cdlp/discovery/sim_students.py`, which Vaidehi owns. Initial code by Sneha.
 
 | | File | Notes |
 |---|---|---|

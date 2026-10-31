@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "answers": [
+    {
+      "student_id": "student_a",
+      "item_id": "q_bst_1",
+      "concept_id": "binary_search_tree",
+      "answer": "None",
+      "correct": false
+    },
+    {
+      "student_id": "student_a",
+      "item_id": "q_bt_1",
+      "concept_id": "binary_tree",
+      "answer": "Unlimited",
+      "correct": false
+    },
+    {
+      "student_id": "student_a",
+      "item_id": "q_rec_1",
+      "concept_id": "recursion",
+      "answer": "A loop counter",
+      "correct": false
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_bst_1",
+      "concept_id": "binary_search_tree",
+      "answer": "8",
+      "correct": false
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_avl_1",
+      "concept_id": "avl_tree",
+      "answer": "10",
+      "correct": false
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_bt_1",
+      "concept_id": "binary_tree",
+      "answer": "2",
+      "correct": true
+    }
+  ]
+}

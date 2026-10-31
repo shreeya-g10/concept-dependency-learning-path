@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "traces": [
+    {
+      "student_id": "student_a",
+      "item_id": "q_bst_1",
+      "answer": "None",
+      "traced_concept": "binary_tree",
+      "candidates": [
+        {
+          "concept_id": "binary_tree",
+          "score": 0.55
+        },
+        {
+          "concept_id": "binary_search_tree",
+          "score": 0.35
+        },
+        {
+          "concept_id": "trees",
+          "score": 0.1
+        }
+      ],
+      "confidence": 0.55,
+      "explanation": "The student also missed q_bt_1, and binary_tree is a hard prerequisite of binary_search_tree, so the gap most likely starts at binary_tree."
+    },
+    {
+      "student_id": "student_a",
+      "item_id": "q_bt_1",
+      "answer": "Unlimited",
+      "traced_concept": "binary_tree",
+      "candidates": [
+        {
+          "concept_id": "binary_tree",
+          "score": 0.8
+        },
+        {
+          "concept_id": "trees",
+          "score": 0.15
+        },
+        {
+          "concept_id": "recursion",
+          "score": 0.05
+        }
+      ],
+      "confidence": 0.8,
+      "explanation": "Treats a binary tree like a general tree. Trees mastery is high, so the gap is binary_tree itself."
+    },
+    {
+      "student_id": "student_a",
+      "item_id": "q_rec_1",
+      "answer": "A loop counter",
+      "traced_concept": "recursion",
+      "candidates": [
+        {
+          "concept_id": "recursion",
+          "score": 1.0
+        }
+      ],
+      "confidence": 0.9,
+      "explanation": "Does not know that a base case ends recursion. Recursion has no prerequisites in the graph."
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_bst_1",
+      "answer": "8",
+      "traced_concept": "binary_search_tree",
+      "candidates": [
+        {
+          "concept_id": "binary_search_tree",
+          "score": 0.82
+        },
+        {
+          "concept_id": "binary_tree",
+          "score": 0.12
+        },
+        {
+          "concept_id": "trees",
+          "score": 0.06
+        }
+      ],
+      "confidence": 0.82,
+      "explanation": "Placed 8 left of 5, breaking the BST ordering rule (left < node < right). The student answered q_bt_1 correctly, so binary-tree structure is known and the gap is the ordering rule."
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_avl_1",
+      "answer": "10",
+      "traced_concept": "avl_tree",
+      "candidates": [
+        {
+          "concept_id": "avl_tree",
+          "score": 0.6
+        },
+        {
+          "concept_id": "binary_search_tree",
+          "score": 0.35
+        },
+        {
+          "concept_id": "binary_tree",
+          "score": 0.05
+        }
+      ],
+      "confidence": 0.6,
+      "explanation": "10 is the root of a plain BST built without rebalancing, so rotations are missing. The BST ordering error on q_bst_1 keeps binary_search_tree a close second."
+    }
+  ]
+}

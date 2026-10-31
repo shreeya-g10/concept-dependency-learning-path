@@ -18,16 +18,16 @@ Content extraction, plus the website shell and gold data.
 Format and example: `cdlp/shared/schemas/`, `cdlp/shared/examples/`.
 
 ## Tasks, in order
-- [ ] **Day 1:** collect the course PDFs into `data/raw/`. Label your share of gold edges in `data/gold/annotations/annotator_a.csv`
-- [ ] PDF extraction (PyMuPDF) and PPTX extraction (python-pptx), keeping page/slide numbers
-- [ ] Cleaning + chunking → `chunks.jsonl`
-- [ ] LLM concept extraction per chunk (`prompts/extract_v1.txt`, via `cdlp/shared/llm.py`)
-- [ ] Canonicalization: merge "BST" / "Binary Search Tree" (embeddings + LLM check), keep aliases
-- [ ] Granularity filter: drop too-fine ("Left Subtree") and too-broad ("Computer Science") concepts
-- [ ] **Day 5: hand off real `chunks.jsonl` + `concepts.json`** (post in the group when they're ready)
-- [ ] Merge everyone's annotation files into `data/gold/gold_edges.csv` + `gold_concepts.json`, and report Cohen's κ
-- [ ] Evaluation: concept precision / recall / F1 vs gold → `cdlp/extraction/results/`
-- [ ] Website shell: navigation, styling, course selector, page 1; deploy free on Streamlit Community Cloud
+- [x] **Day 1:** collect the course PDFs into `data/raw/`. Label your share of gold edges in `data/gold/annotations/annotator_a.csv`
+- [x] PDF extraction (PyMuPDF) and PPTX extraction (python-pptx), keeping page/slide numbers
+- [x] Cleaning + chunking → `chunks.jsonl`
+- [x] LLM concept extraction per chunk (`prompts/extract_v1.txt`, via `cdlp/shared/llm.py`)
+- [x] Canonicalization: merge "BST" / "Binary Search Tree" (embeddings + LLM check), keep aliases
+- [x] Granularity filter: drop too-fine ("Left Subtree") and too-broad ("Computer Science") concepts
+- [x] **Day 5: hand off real `chunks.jsonl` + `concepts.json`** (post in the group when they're ready)
+- [x] Merge everyone's annotation files into `data/gold/gold_edges.csv` + `gold_concepts.json`, and report Cohen's κ
+- [x] Evaluation: concept precision / recall / F1 vs gold → `cdlp/extraction/results/`
+- [x] Website shell: navigation, styling, course selector, page 1; deploy free on Streamlit Community Cloud
 
 ## Done when
 `python -m cdlp.extraction --input data/raw --out-dir outputs` writes both files from the real PDFs, the site is deployed, and `pytest cdlp/extraction` passes.

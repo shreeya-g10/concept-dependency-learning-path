@@ -80,22 +80,22 @@ Relevant theory to cite and build on: Knowledge Space Theory (Doignon & Falmagne
 
 Any experiment script must be reproducible: fixed seeds, configs in files, results written to the module's own `results/` folder with the config that produced them.
 
-## Team, modules and ownership (2-week sprint, 4 people)
+## Team, modules and ownership (20-day plan in 4 phases, 2 people)
 
 Each person owns specific paths (see `CONTRIBUTING.md`, `website/README.md` and `.github/CODEOWNERS`). **Only edit paths owned by the person you are working for.** If you don't know who that is, ask before editing. Never edit someone else's paths unless the user says the owner agreed.
 
 | Person | Owns | Builds | Writes |
 |---|---|---|---|
-| Vaidehi | `cdlp/extraction/`, `website/Home.py`, `website/common.py`, `website/requirements.txt`, `website/pages/1_*`, `data/raw/`, `data/gold/` | parsing, chunking, concept extraction, dedup; website shell + deployment; gold merge + kappa | `chunks.jsonl`, `concepts.json` |
-| Sneha | `cdlp/discovery/`, `website/pages/2_*` | candidate filter, LLM discovery (hard/soft); quiz items; simulated students | `relationships.json`, `quiz_items.json`, `sim_students.json` |
-| Shreeya (team lead) | `cdlp/validation/`, `website/pages/3_*`, `cdlp/shared/`, `pipeline.py`, root files, `docs/`, `.github/` | validation agent + simulated-learner necessity test, RQ1 ablations; contracts and integration | `validated_graph.json` |
-| Shrestha | `cdlp/learning_path/` (incl. `api.py`), `website/pages/4_*`, `website/pages/5_*` | graph, adaptive diagnosis, personalized path, RQ2 eval | `student_state.json`, `learning_path.json` |
+| Vaidehi | `cdlp/extraction/`, `cdlp/learning_path/` (incl. `api.py`), `cdlp/discovery/quiz.py`, `cdlp/discovery/sim_students.py`, `website/` except `pages/2_*` and `pages/3_*`, `data/raw/`, `data/gold/` | parsing, chunking, concept extraction, dedup; graph, adaptive diagnosis, personalized path, RQ2 eval; quiz items; simulated students; website shell + deployment; gold merge + kappa | `chunks.jsonl`, `concepts.json`, `quiz_items.json`, `sim_students.json`, `student_state.json`, `learning_path.json` |
+| Shreeya (team lead) | everything else: `cdlp/discovery/` (except the two files above), `cdlp/validation/`, `cdlp/root_cause/`, `cdlp/benchmarks/`, `website/pages/2_*`, `website/pages/3_*`, `cdlp/shared/`, `pipeline.py`, root files, `docs/`, `.github/` | candidate filter, LLM discovery (hard/soft); validation agent + simulated-learner necessity test, RQ1 ablations; root-cause tracing (`cdlp/root_cause/`); public datasets (`cdlp/benchmarks/`); contracts and integration | `relationships.json`, `validated_graph.json` |
 
-Each module's `README.md` (e.g. `cdlp/validation/README.md`) is its owner's task list. Annotators write only to their own `data/gold/annotations/annotator_<x>.csv` (a = Vaidehi, b = Sneha, c = Shreeya, d = Shrestha).
+Sneha and Shrestha contributed the initial discovery and learning-path code.
 
-The website is a multi-page Streamlit app in `website/`. Pages read contract files via `website/common.py` (falling back to `cdlp/shared/examples/`). The only module code a page may import is `cdlp/learning_path/api.py`; keep its function signatures stable.
+Each module's `README.md` (e.g. `cdlp/validation/README.md`) is its owner's task list. Annotators write only to their own `data/gold/annotations/annotator_<x>.csv` (a = Vaidehi, c = Shreeya; b and d hold the earlier labels from Sneha and Shrestha).
 
-Root-cause tracing (M8) is a stretch goal. The ML second domain and the real-student study are out of scope for the sprint.
+The website is a multi-page Streamlit app in `website/`. Pages read contract files via `website/common.py` (falling back to `cdlp/shared/examples/`). The only module code a page may import is `cdlp/learning_path/api.py` and `cdlp/root_cause/api.py`; keep their function signatures stable.
+
+Root-cause tracing lives in `cdlp/root_cause/` (Phase 2) and the real-student study is Phase 4. The ML second domain is out of scope.
 
 ### Integration rules
 
@@ -105,7 +105,7 @@ Root-cause tracing (M8) is a stretch goal. The ML second domain and the real-stu
 - Concept IDs are stable slugs (`binary_search_tree`), not positional IDs like `C001`.
 - `validated_graph.json` keeps every decision (ACCEPT / REJECT / HUMAN_REVIEW). Downstream code uses ACCEPT edges only.
 - All LLM calls go through `cdlp/shared/llm.py`, which caches responses and logs the model and prompt version. Prompts live as versioned files in the module's `prompts/` folder.
-- A module's dependencies go in its own `requirements.txt`; results go in its own `results/`. Module folders are named by function (`cdlp/extraction`, `cdlp/discovery`, `cdlp/validation`, `cdlp/learning_path`), never by person; branches are `<module>/<task>`.
+- A module's dependencies go in its own `requirements.txt`; results go in its own `results/`. Module folders are named by function (`cdlp/extraction`, `cdlp/discovery`, `cdlp/validation`, `cdlp/learning_path`, `cdlp/root_cause`, `cdlp/benchmarks`), never by person; branches are `<module>/<task>`.
 - Never commit `outputs/`, `.cache/`, `.env`, `.streamlit/secrets.toml` or notebook outputs. Keep `pytest` and `python pipeline.py` passing.
 
 ## Tech stack (free only)

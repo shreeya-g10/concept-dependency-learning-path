@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "student_answers.json",
+  "description": "Since 1.1. One row per quiz answer a student gave; the input for root-cause tracing.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "answers"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "item_id",
+          "concept_id",
+          "answer",
+          "correct"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string",
+            "description": "id of an item in quiz_items.json"
+          },
+          "concept_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "answer": {
+            "type": "string",
+            "description": "the option the student chose"
+          },
+          "correct": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

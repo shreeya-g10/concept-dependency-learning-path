@@ -27,6 +27,10 @@ FILE_SCHEMAS = {
     "sim_students.json": "sim_students",
     "student_state.json": "student_state",
     "learning_path.json": "learning_path",
+    # added in 1.1
+    "student_answers.json": "student_answers",
+    "root_cause.json": "root_cause",
+    "review_queue.json": "review_queue",
 }
 
 

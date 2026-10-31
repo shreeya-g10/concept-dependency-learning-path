@@ -1,1 +1,11 @@
 source,target,label,note
+trees,binary_tree,hard,binary tree is a constrained tree
+recursion,binary_tree,soft,recursive traversals
+binary_tree,binary_search_tree,hard,BST is a binary tree with ordering invariant
+binary_search_tree,avl_tree,hard,AVL is a self-balancing BST
+recursion,avl_tree,none,indirect dependency via binary tree
+trees,avl_tree,none,shortcut pair via binary_tree and bst
+graphs,avl_tree,none,unrelated data structures
+trees,graphs,soft,graph generalises tree structure
+recursion,binary_search_tree,soft,search and insert operations use recursion
+binary_tree,avl_tree,none,shortcut pair via binary_search_tree
