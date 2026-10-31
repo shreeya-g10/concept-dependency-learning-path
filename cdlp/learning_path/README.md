@@ -1,10 +1,10 @@
-# Learning path · owner: Shrestha
+# Learning path · owner: Vaidehi
 
 Graph, adaptive diagnosis and personalized path (novelty 2).
 
 **Question you answer:** *What should THIS student learn next?*
 
-**You own (only you edit):** `cdlp/learning_path/` (including `api.py`), `website/pages/4_Knowledge_Graph.py`, `website/pages/5_My_Learning_Path.py`, `data/gold/annotations/annotator_d.csv`
+**You own (only you edit):** `cdlp/learning_path/` (including `api.py`), `website/pages/4_Knowledge_Graph.py`, `website/pages/5_My_Learning_Path.py`. Initial code by Shrestha.
 
 | | File | Notes |
 |---|---|---|
