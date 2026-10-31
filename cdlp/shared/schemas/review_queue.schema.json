@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "review_queue.json",
+  "description": "Since 1.1. One row per HUMAN_REVIEW edge in validated_graph.json, ranked for a human reviewer.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "queue"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "edge_id",
+          "source",
+          "target",
+          "impact_score",
+          "paths_affected",
+          "reason"
+        ],
+        "properties": {
+          "edge_id": {
+            "type": "string",
+            "description": "id of the edge in validated_graph.json"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "impact_score": {
+            "type": "number",
+            "minimum": 0,
+            "description": "higher = review first"
+          },
+          "paths_affected": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "number of learning paths whose steps would change if the edge were accepted"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
