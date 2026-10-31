@@ -1,11 +1,1 @@
 source,target,label,note
-trees,binary_tree,hard,binary tree specializes tree
-recursion,binary_tree,soft,tree recursion
-binary_tree,binary_search_tree,hard,structural prerequisite
-binary_search_tree,avl_tree,hard,AVL is balanced BST
-recursion,avl_tree,none,
-trees,avl_tree,none,shortcut
-graphs,avl_tree,none,no link
-trees,graphs,soft,acyclic graph
-recursion,binary_search_tree,hard,essential for operations
-binary_tree,avl_tree,none,shortcut

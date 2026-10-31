@@ -1,11 +1,1 @@
 source,target,label,note
-trees,binary_tree,hard,tree concept required
-recursion,binary_tree,soft,traversals
-binary_tree,binary_search_tree,hard,binary structure needed
-binary_search_tree,avl_tree,hard,AVL builds on BST
-recursion,avl_tree,none,indirect
-trees,avl_tree,none,redundant
-graphs,avl_tree,none,no relation
-trees,graphs,soft,graph generalization
-recursion,binary_search_tree,soft,recursive methods
-binary_tree,avl_tree,none,shortcut

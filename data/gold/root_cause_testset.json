@@ -1,0 +1,407 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "testset_description": "Root-cause diagnostic benchmark testset: 40 realistic erroneous answers with expected missing prerequisite concepts.",
+  "answers": [
+    {
+      "student_id": "rc_student_01",
+      "item_id": "q_avl_01",
+      "concept_id": "avl_tree",
+      "question": "Insert keys 10, 20, 30 into an initially empty AVL tree. What is the right child of 20?",
+      "answer": "10",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Student placed 10 (smaller key) on the right of root 20, demonstrating failure of the BST ordering invariant."
+    },
+    {
+      "student_id": "rc_student_02",
+      "item_id": "q_avl_02",
+      "concept_id": "avl_tree",
+      "question": "In an AVL tree, after inserting into the right subtree of a right child, what single operation restores balance?",
+      "answer": "Binary search",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Confuses search procedure with tree rotation balancing mechanisms."
+    },
+    {
+      "student_id": "rc_student_03",
+      "item_id": "q_avl_03",
+      "concept_id": "avl_tree",
+      "question": "What is the maximum allowed difference in subtree heights for any node in an AVL tree?",
+      "answer": "2",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Unclear on binary tree height definition and AVL balance factor bounds."
+    },
+    {
+      "student_id": "rc_student_04",
+      "item_id": "q_bst_01",
+      "concept_id": "binary_search_tree",
+      "question": "Where is the minimum key located in any non-empty Binary Search Tree?",
+      "answer": "In the root node",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Confuses heap invariant with BST ordering."
+    },
+    {
+      "student_id": "rc_student_05",
+      "item_id": "q_bst_02",
+      "concept_id": "binary_search_tree",
+      "question": "What traversal of a Binary Search Tree produces keys in ascending sorted order?",
+      "answer": "Preorder traversal",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Lacks mastery of binary tree traversals (inorder vs preorder)."
+    },
+    {
+      "student_id": "rc_student_06",
+      "item_id": "q_bst_03",
+      "concept_id": "binary_search_tree",
+      "question": "How do you insert key 15 into a BST with root 20?",
+      "answer": "Overwrite the root",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Does not understand recursive descent to subtrees."
+    },
+    {
+      "student_id": "rc_student_07",
+      "item_id": "q_bt_01",
+      "concept_id": "binary_tree",
+      "question": "What is the maximum number of children a node can have in a binary tree?",
+      "answer": "Unlimited",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Confuses general tree structure with binary tree degree constraint."
+    },
+    {
+      "student_id": "rc_student_08",
+      "item_id": "q_bt_02",
+      "concept_id": "binary_tree",
+      "question": "In a postorder traversal of a binary tree, when is the root node visited?",
+      "answer": "First",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Lacks recursive traversal base step understanding."
+    },
+    {
+      "student_id": "rc_student_09",
+      "item_id": "q_bt_03",
+      "concept_id": "binary_tree",
+      "question": "Can a binary tree have cycles?",
+      "answer": "Yes",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Fails to recall that all trees are connected acyclic structures."
+    },
+    {
+      "student_id": "rc_student_10",
+      "item_id": "q_rec_01",
+      "concept_id": "recursion",
+      "question": "What happens if a recursive function does not define a base case?",
+      "answer": "It terminates immediately",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Fails to recognize stack overflow / infinite recursion condition."
+    },
+    {
+      "student_id": "rc_student_11",
+      "item_id": "q_rec_02",
+      "concept_id": "recursion",
+      "question": "What data structure does the runtime environment use to track recursive function invocations?",
+      "answer": "Queue",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Confuses call stack with FIFO queue."
+    },
+    {
+      "student_id": "rc_student_12",
+      "item_id": "q_graphs_01",
+      "concept_id": "graphs",
+      "question": "How does a general graph differ fundamentally from a tree?",
+      "answer": "Graphs must have a single root",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Inverts hierarchy property; trees have roots while graphs have no designated root."
+    },
+    {
+      "student_id": "rc_student_13",
+      "item_id": "q_graphs_02",
+      "concept_id": "graphs",
+      "question": "Can an undirected graph contain cycles?",
+      "answer": "No",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Transfers tree acyclic constraint mistakenly onto general graphs."
+    },
+    {
+      "student_id": "rc_student_14",
+      "item_id": "q_avl_04",
+      "concept_id": "avl_tree",
+      "question": "When an insertion into the left subtree of a left child causes an imbalance, which rotation is applied?",
+      "answer": "Left rotation",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Inverts direction of rotation needed to restore BST balance."
+    },
+    {
+      "student_id": "rc_student_15",
+      "item_id": "q_avl_05",
+      "concept_id": "avl_tree",
+      "question": "What is the worst-case lookup time complexity in an AVL tree with n nodes?",
+      "answer": "O(n)",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Assigns degenerate unbalanced BST complexity to self-balancing AVL."
+    },
+    {
+      "student_id": "rc_student_16",
+      "item_id": "q_bst_04",
+      "concept_id": "binary_search_tree",
+      "question": "If an in-order traversal of a tree yields [3, 7, 9, 12], can this be a BST?",
+      "answer": "No, because numbers must be in descending order",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Reverses the fundamental left < root < right ordering rule."
+    },
+    {
+      "student_id": "rc_student_17",
+      "item_id": "q_bst_05",
+      "concept_id": "binary_search_tree",
+      "question": "In a BST with root 50, which subtree could hold the key 35?",
+      "answer": "Right subtree",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Places smaller key into right subtree instead of left subtree."
+    },
+    {
+      "student_id": "rc_student_18",
+      "item_id": "q_bt_04",
+      "concept_id": "binary_tree",
+      "question": "What is the maximum number of nodes at level d (root at level 0) in a binary tree?",
+      "answer": "d",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Does not know exponential branching factor 2^d of binary trees."
+    },
+    {
+      "student_id": "rc_student_19",
+      "item_id": "q_trees_01",
+      "concept_id": "trees",
+      "question": "In a tree with n nodes, how many edges are present?",
+      "answer": "n",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Misses acyclic connectivity rule that tree edges = n - 1."
+    },
+    {
+      "student_id": "rc_student_20",
+      "item_id": "q_rec_03",
+      "concept_id": "recursion",
+      "question": "In computing factorial(n), what should be the base case condition?",
+      "answer": "n > 100",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Fails to grasp stopping condition reaching trivial instance n <= 1."
+    },
+    {
+      "student_id": "rc_student_21",
+      "item_id": "q_grad_01",
+      "concept_id": "gradient_descent",
+      "question": "In gradient descent, how are weights updated relative to the gradient of the loss?",
+      "answer": "Add the gradient directly",
+      "correct": false,
+      "expected_concept": "loss_function",
+      "rationale": "Ascends rather than descends the loss surface."
+    },
+    {
+      "student_id": "rc_student_22",
+      "item_id": "q_grad_02",
+      "concept_id": "gradient_descent",
+      "question": "What happens if the learning rate in gradient descent is excessively large?",
+      "answer": "Guaranteed convergence in 1 step",
+      "correct": false,
+      "expected_concept": "loss_function",
+      "rationale": "Fails to understand loss oscillation and divergence."
+    },
+    {
+      "student_id": "rc_student_23",
+      "item_id": "q_logreg_01",
+      "concept_id": "logistic_regression",
+      "question": "What activation function maps real-valued outputs to probabilities (0, 1) in logistic regression?",
+      "answer": "Linear identity",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Fails to distinguish unconstrained linear regression from logistic sigmoid."
+    },
+    {
+      "student_id": "rc_student_24",
+      "item_id": "q_logreg_02",
+      "concept_id": "logistic_regression",
+      "question": "Which loss function is minimized when training logistic regression?",
+      "answer": "Mean Squared Error",
+      "correct": false,
+      "expected_concept": "loss_function",
+      "rationale": "Applies standard regression MSE instead of cross-entropy log loss."
+    },
+    {
+      "student_id": "rc_student_25",
+      "item_id": "q_reg_01",
+      "concept_id": "regularization",
+      "question": "How does Ridge (L2) regularization modify the optimization objective?",
+      "answer": "Subtracts weights from predictions",
+      "correct": false,
+      "expected_concept": "loss_function",
+      "rationale": "Does not understand penalty addition to the loss function."
+    },
+    {
+      "student_id": "rc_student_26",
+      "item_id": "q_reg_02",
+      "concept_id": "regularization",
+      "question": "Why is regularization applied to machine learning models?",
+      "answer": "To force 100% training accuracy",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Confuses overfitting prevention with training set memorization."
+    },
+    {
+      "student_id": "rc_student_27",
+      "item_id": "q_nn_01",
+      "concept_id": "neural_networks",
+      "question": "What algorithm computes the gradients of network weights with respect to the loss function?",
+      "answer": "Forward propagation",
+      "correct": false,
+      "expected_concept": "gradient_descent",
+      "rationale": "Confuses inference pass with backward derivative chain rule (backpropagation)."
+    },
+    {
+      "student_id": "rc_student_28",
+      "item_id": "q_nn_02",
+      "concept_id": "neural_networks",
+      "question": "Why are non-linear activation functions necessary between layers of a neural network?",
+      "answer": "To speed up matrix multiplication",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Does not realize stacked linear layers collapse into a single linear regression model."
+    },
+    {
+      "student_id": "rc_student_29",
+      "item_id": "q_loss_01",
+      "concept_id": "loss_function",
+      "question": "In linear regression, what value do we aim to minimize?",
+      "answer": "Number of features",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Confuses dimensionality reduction with residual error minimization."
+    },
+    {
+      "student_id": "rc_student_30",
+      "item_id": "q_loss_02",
+      "concept_id": "loss_function",
+      "question": "Why is squared error used in MSE rather than absolute error?",
+      "answer": "Because negative numbers do not exist",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Fails to grasp differentiability and penalization of large outliers."
+    },
+    {
+      "student_id": "rc_student_31",
+      "item_id": "q_avl_06",
+      "concept_id": "avl_tree",
+      "question": "If an AVL node has left subtree height 4 and right subtree height 2, what is its balance factor?",
+      "answer": "0",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Does not know how to compute node height differential."
+    },
+    {
+      "student_id": "rc_student_32",
+      "item_id": "q_bst_06",
+      "concept_id": "binary_search_tree",
+      "question": "To find the maximum element in a BST, which path should you follow?",
+      "answer": "Always go left",
+      "correct": false,
+      "expected_concept": "binary_search_tree",
+      "rationale": "Inverts left vs right BST direction for finding extreme elements."
+    },
+    {
+      "student_id": "rc_student_33",
+      "item_id": "q_bt_05",
+      "concept_id": "binary_tree",
+      "question": "In a full binary tree, every node has either 0 or how many children?",
+      "answer": "3",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "rationale": "Violates fundamental binary degree definition (at most 2)."
+    },
+    {
+      "student_id": "rc_student_34",
+      "item_id": "q_rec_04",
+      "concept_id": "recursion",
+      "question": "What is the primary risk of deep recursion without tail call optimization?",
+      "answer": "Division by zero",
+      "correct": false,
+      "expected_concept": "recursion",
+      "rationale": "Does not connect deep recursion with call stack exhaustion."
+    },
+    {
+      "student_id": "rc_student_35",
+      "item_id": "q_trees_02",
+      "concept_id": "trees",
+      "question": "Can a tree have disconnected subgraphs?",
+      "answer": "Yes",
+      "correct": false,
+      "expected_concept": "trees",
+      "rationale": "Confuses a forest of trees with a single connected tree data structure."
+    },
+    {
+      "student_id": "rc_student_36",
+      "item_id": "q_grad_03",
+      "concept_id": "gradient_descent",
+      "question": "What is the value of the loss function gradient at a local minimum?",
+      "answer": "Infinity",
+      "correct": false,
+      "expected_concept": "loss_function",
+      "rationale": "Does not know stationarity condition: gradient equals zero at minimum."
+    },
+    {
+      "student_id": "rc_student_37",
+      "item_id": "q_logreg_03",
+      "concept_id": "logistic_regression",
+      "question": "What is the range of values produced by the logistic sigmoid function?",
+      "answer": "[-infinity, +infinity]",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Attributes unconstrained linear regression output domain to sigmoid activation."
+    },
+    {
+      "student_id": "rc_student_38",
+      "item_id": "q_nn_03",
+      "concept_id": "neural_networks",
+      "question": "What calculus theorem is the foundation of backpropagation?",
+      "answer": "Pythagorean theorem",
+      "correct": false,
+      "expected_concept": "gradient_descent",
+      "rationale": "Completely misses multivariable calculus chain rule for partial derivatives."
+    },
+    {
+      "student_id": "rc_student_39",
+      "item_id": "q_reg_03",
+      "concept_id": "regularization",
+      "question": "Which regularization technique tends to produce sparse weight vectors with exact zeros?",
+      "answer": "Unregularized gradient descent",
+      "correct": false,
+      "expected_concept": "regularization",
+      "rationale": "Does not identify L1 Lasso penalty properties."
+    },
+    {
+      "student_id": "rc_student_40",
+      "item_id": "q_linreg_01",
+      "concept_id": "linear_regression",
+      "question": "What is the closed-form analytical solution for Ordinary Least Squares called?",
+      "answer": "Breadth-first search",
+      "correct": false,
+      "expected_concept": "linear_regression",
+      "rationale": "Confuses graph search algorithms with normal equation linear algebra solution."
+    }
+  ]
+}
