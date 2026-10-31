@@ -47,8 +47,9 @@ git push -u origin validation/necessity-test  # open a PR, merge the same day
 5. **Your libraries go in your own `requirements.txt`.** Never edit the root one.
 6. **Never commit** `.env`, `outputs/`, `.cache/`, model files or notebook outputs (see `.gitignore`).
 7. **All LLM calls go through `cdlp/shared/llm.py`.** It's free (Ollama), caches every response, and logs the model and prompt version for the paper.
-8. **Prompts are files** in your `prompts/` folder (`discover_v1.txt`, `discover_v2.txt`), never long strings in code.
-9. **Results** go in your own module's `results/`: small CSV/JSON files plus the config that produced them.
+8. **Tests must never call a real LLM — mock it with `monkeypatch`.** CI has no Ollama; run `python pipeline.py` locally for a real end-to-end run.
+9. **Prompts are files** in your `prompts/` folder (`discover_v1.txt`, `discover_v2.txt`), never long strings in code.
+10. **Results** go in your own module's `results/`: small CSV/JSON files plus the config that produced them.
 
 ## Timeline (10 working days)
 

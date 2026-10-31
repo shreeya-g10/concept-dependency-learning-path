@@ -20,5 +20,4 @@ jobs:
         run: python -m cdlp.shared.validate cdlp/shared/examples/*
       - name: Every module's CLI still honours its contract
         run: pytest -q
-      - name: Pipeline runs end to end
-        run: python pipeline.py
+      # The full pipeline (`python pipeline.py`) runs locally with Ollama, not in CI.
