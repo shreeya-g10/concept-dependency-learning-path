@@ -73,7 +73,7 @@ Relevant theory to cite and build on: Knowledge Space Theory (Doignon & Falmagne
 ## Evaluation plan (must be supported by the code)
 
 - **Concept extraction:** P/R/F1 against a hand-annotated concept list.
-- **Dependency discovery and validation:** P/R/F1 against gold edges. Use public benchmarks where possible (e.g. AL-CPL, University Course dataset, LectureBank) plus our own annotated course with inter-annotator agreement (Cohen's κ).
+- **Dependency discovery and validation:** P/R/F1 against gold edges. Public benchmarks: AL-CPL and the University Course dataset (LectureBank is excluded: no licence stated; see `cdlp/benchmarks/README.md`) plus our own annotated course with inter-annotator agreement (Cohen's κ).
 - **Ablations:** discovery only, discovery + single LLM-judge, discovery + full validation agent, and the agent without each check (evidence / semantic / graph). Also report the HUMAN_REVIEW rate.
 - **Personalization:** simulated students with known ground-truth knowledge states (offline), measuring diagnosis accuracy, number of questions asked and path length reduction. Then a small real-student study if time allows (pre/post test).
 - **Learning paths:** order violations against the gold graph, plus educator ratings.
