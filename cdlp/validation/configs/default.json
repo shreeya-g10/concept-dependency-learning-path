@@ -1,7 +1,13 @@
 {
   "necessity": {
-    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold.",
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold.",
     "n_questions": 3,
+    "control_placeholder": {
+      "id": "control_placeholder",
+      "name": "Origami Folding",
+      "aliases": ["Paper Folding"],
+      "description": "Folding a single sheet of paper into shapes without cutting it."
+    },
     "model": null,
     "temperature": 0.0,
     "seed": 42,

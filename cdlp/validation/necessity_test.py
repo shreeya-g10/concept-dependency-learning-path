@@ -4,11 +4,18 @@ For an edge A -> B:
 1. Write n short questions on B from B's own chunks (with reference answers).
 2. A simulated learner who knows only the concepts taught before B, and has NEVER
    learned A, answers them ("without A").
-3. The same learner, now also knowing A, answers again ("with A").
-4. A separate grader prompt grades each run against the reference answers. The
+3. Control: the same learner, but KNOWING A (by name only, no description) and with an
+   unrelated concept C forbidden instead, using the same prompt. C is neither an
+   ancestor nor a descendant of B in the proposed edges (and is not A or B); if no
+   such concept exists, a neutral placeholder topic
+   from the config is used. The control absorbs the role-play penalty of being told
+   "you never learned X", which the first run showed lowers scores on its own.
+4. Diagnostic: the same learner also knowing A ("with A"). It is reported, not used
+   in the gap, because it also gets A's description (extra context).
+5. A separate grader prompt grades each run against the reference answers. The
    grader is blind to which run it is grading.
-5. necessity_gap = score with A - score without A, mapped to strong / medium / weak /
-   none with the thresholds in configs/default.json. A gap <= 0 is none.
+6. necessity_gap = control score - score without A, mapped to strong / medium /
+   weak / none with the thresholds in configs/default.json. A gap <= 0 is none.
 
 Leakage check: a "without A" answer that still uses A's name, an alias, or a
 stemmed form of them is flagged (B's own name is masked first, so "binary search
@@ -21,7 +28,8 @@ through cdlp.shared.llm at temperature 0 with a fixed seed, so they are cached.
 
     python -m cdlp.validation.necessity_test --relationships outputs/relationships.json \
         --concepts outputs/concepts.json --chunks outputs/chunks.jsonl \
-        --out outputs/necessity_test.json [--only r2 r4] [--config path.json]
+        --out outputs/necessity_test.json [--only r2 r4] [--config path.json] \
+        [--n-questions 3]
 """
 
 from __future__ import annotations
@@ -134,6 +142,43 @@ def known_before(target_id: str, forbidden_id: str, concepts: list[dict], chunks
     ]
 
 
+def related_to(target_id: str, relationships: list[dict]) -> set[str]:
+    """Ancestors and descendants of B along ALL proposed edges (any decision)."""
+    up, down = {}, {}
+    for r in relationships:
+        up.setdefault(r["target"], set()).add(r["source"])
+        down.setdefault(r["source"], set()).add(r["target"])
+
+    def walk(start: str, step: dict) -> set:
+        seen, stack = set(), list(step.get(start, ()))
+        while stack:
+            node = stack.pop()
+            if node not in seen:
+                seen.add(node)
+                stack.extend(step.get(node, ()))
+        return seen
+
+    return walk(target_id, up) | walk(target_id, down)
+
+
+def choose_control(
+    source: dict, target: dict, concept_list: list[dict], known: list[dict], relationships, cfg
+) -> tuple[dict, bool]:
+    """Pick C: not A, not B, neither ancestor nor descendant of B. Prefer a concept the
+    learner would not know anyway (taught after B), so the control and "without A"
+    runs list the same known concepts. Falls back to the config's placeholder topic.
+    Returns (concept, is_placeholder)."""
+    excluded = related_to(target["id"], relationships) | {source["id"], target["id"]}
+    known_ids = {c["id"] for c in known}
+    pool = sorted(
+        (c for c in concept_list if c["id"] not in excluded),
+        key=lambda c: (c["id"] in known_ids, c["id"]),
+    )
+    if pool:
+        return pool[0], False
+    return dict(cfg["control_placeholder"]), True
+
+
 def gap_grade(gap: float | None, thresholds: dict) -> str:
     if gap is None or gap <= 0:
         return "none"
@@ -241,6 +286,7 @@ def check_relationship(
     chunks: list[dict],
     cfg: dict,
     model: str,
+    relationships: list[dict] | None = None,
 ) -> dict:
     source, target = concepts[relationship["source"]], concepts[relationship["target"]]
     chunk_map = {c["chunk_id"]: c for c in chunks}
@@ -250,11 +296,25 @@ def check_relationship(
         if s.get("chunk_id") in chunk_map
     ]
     known = known_before(target["id"], source["id"], concept_list, chunks)
+    # the control learner knows A (by name only, so no extra context) and has C banned;
+    # it differs from "without A" only in which concept is banned and whether A is known
+    pos = course_positions(concept_list, chunks)
+    with_source = sorted([*known, source], key=lambda c: (pos[c["id"]], c["id"]))
+    control, placeholder = choose_control(
+        source, target, concept_list, with_source, relationships or [relationship], cfg
+    )
+    known_control = [c for c in with_source if c["id"] != control["id"]]
     result = {
         "relationship_id": relationship["id"],
         "source": source["id"],
         "target": target["id"],
         "known_without": [c["id"] for c in known],
+        "control_concept": {
+            "id": control["id"],
+            "name": control["name"],
+            "placeholder": placeholder,
+        },
+        "known_control": [c["id"] for c in known_control],
     }
     questions = make_questions(target, target_chunks, cfg, model) if target_chunks else []
     if not questions:
@@ -271,17 +331,18 @@ def check_relationship(
         else ""
     )
     common = {"known_concepts": _names(known), "target_name": target["name"], "lesson": lesson}
-    without = answer(
-        "learner_without",
-        {
+
+    def forbid(concept: dict, known_list: list[dict]) -> list[str]:
+        values = {
             **common,
-            "forbidden_name": source["name"],
-            "forbidden_aliases": ", ".join(source.get("aliases") or []) or "no other names",
-        },
-        questions,
-        cfg,
-        model,
-    )
+            "known_concepts": _names(known_list),
+            "forbidden_name": concept["name"],
+            "forbidden_aliases": ", ".join(concept.get("aliases") or []) or "no other names",
+        }
+        return answer("learner_without", values, questions, cfg, model)
+
+    without = forbid(source, known)
+    control_answers = forbid(control, known_control)
     with_a = answer(
         "learner_with",
         {
@@ -294,31 +355,41 @@ def check_relationship(
         model,
     )
     grades_without = grade(target, target_chunks, questions, without, cfg, model)
+    grades_control = grade(target, target_chunks, questions, control_answers, cfg, model)
     grades_with = grade(target, target_chunks, questions, with_a, cfg, model)
     score_without = _score(grades_without, cfg["points"])
+    score_control = _score(grades_control, cfg["points"])
     score_with = _score(grades_with, cfg["points"])
-    gap = round(score_with - score_without, 4)
+    gap = round(score_control - score_without, 4)
 
     leaked = [leaks(a, source, target) for a in without]
+    control_leaked = [leaks(a, control, target) for a in control_answers]
     question_leaks = [leaks(q["question"], source, target) for q in questions]
     return {
         **result,
         "status": "ok",
         "necessity": gap_grade(gap, cfg["thresholds"]),
         "necessity_gap": gap,
-        "score_with": round(score_with, 4),
+        "score_control": round(score_control, 4),
         "score_without": round(score_without, 4),
+        # diagnostic only: also gets A's description, so it mixes in extra context
+        "score_with": round(score_with, 4),
+        "gap_with_minus_without": round(score_with - score_without, 4),
         "leakage": {
             "flagged_answers": [i for i, terms in enumerate(leaked) if terms],
             "terms": leaked,
             "rate": round(sum(bool(t) for t in leaked) / len(leaked), 4),
             # a question that names A shows A to the "without" learner; reported, not fixed
             "questions_naming_source": [i for i, t in enumerate(question_leaks) if t],
+            # same check on the control run, against C
+            "control_flagged_answers": [i for i, t in enumerate(control_leaked) if t],
         },
         "questions": questions,
         "answers_without": without,
+        "answers_control": control_answers,
         "answers_with": with_a,
         "grades_without": grades_without,
+        "grades_control": grades_control,
         "grades_with": grades_with,
     }
 
@@ -336,7 +407,12 @@ def run(
     concept_list = concepts["concepts"]
     concept_map = {c["id"]: c for c in concept_list}
     edges = [r for r in relationships["relationships"] if not only or r["id"] in only]
-    results = [check_relationship(r, concept_map, concept_list, chunks, cfg, model) for r in edges]
+    results = [
+        check_relationship(
+            r, concept_map, concept_list, chunks, cfg, model, relationships["relationships"]
+        )
+        for r in edges
+    ]
     answered = [r for r in results if r["status"] == "ok"]
     flagged = sum(len(r["leakage"]["flagged_answers"]) for r in answered)
     total = sum(len(r["answers_without"]) for r in answered)
@@ -361,19 +437,26 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--only", nargs="*", help="relationship ids to test (default: all)")
+    parser.add_argument("--n-questions", type=int, help="override the config (default 3)")
     args = parser.parse_args()
 
+    cfg = load_config(args.config)
+    if args.n_questions:
+        cfg["n_questions"] = args.n_questions
     result = run(
         read_json(args.relationships),
         read_json(args.concepts),
         read_jsonl(args.chunks),
-        cfg=load_config(args.config),
+        cfg=cfg,
         only=args.only,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     for r in result["results"]:
-        print(f"{r['source']} -> {r['target']}: gap {r['necessity_gap']} ({r['necessity']})")
+        print(
+            f"{r['source']} -> {r['target']}: control {r.get('score_control')} "
+            f"without {r.get('score_without')} gap {r['necessity_gap']} ({r['necessity']})"
+        )
     print(f"leakage rate: {result['leakage_rate']} -> {args.out}")
 
 
