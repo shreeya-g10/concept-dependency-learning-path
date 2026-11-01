@@ -1,0 +1,16 @@
+# Limitations
+
+> Draft. Revisit once results are in; delete any item the final experiments resolve.
+
+- **Small own-course gold.** `ds101` and `ml101` are each annotated by two people over a limited number of pairs, so per-course precision and recall have wide uncertainty. Agreement on `ml101` was markedly lower than on `ds101` [RESULT: κ per course], which limits how strongly we can conclude on the second domain.
+- **The κ shortcut rule.** We report κ both raw and after a mechanical shortcut rule (Section 5.5). The rule is applied identically to both annotators, but it changes labels, so the higher number is not raw agreement. Both are reported.
+- **Benchmarks have no course text.** On AL-CPL and the University Course dataset, the evidence check cannot retrieve anything and the necessity test has no chunks to write questions from, so the full agent is not tested as designed there. Benchmark labels are also binary (no hard/soft distinction), and both benchmarks use Wikipedia concepts, not course concepts.
+- **Scoring convention.** For benchmarks whose positives include transitive pairs we score the closure of our predictions. This rewards correct chains, but it also turns one wrong edge into several wrong pairs. Numbers under the two conventions are not comparable.
+- **Simulated students are generated from the graph they evaluate.** Ground-truth knowledge states respect the validated graph by construction, and the diagnostic assumes the same graph. RQ2 and RQ4 therefore measure performance *given a correct graph*. They do not show that real students' knowledge follows the graph. A real-student study (pre/post test) is planned but may be small or absent [TODO].
+- **Mastery thresholds differ across components.** The review queue treats mastery > 0.8 as mastered, and the RQ2/RQ4 evaluation uses ≥ 0.7. [TODO: unify, or state both.]
+- **Necessity test validity.** A simulated learner told to "forget" a concept may still use it (we measure leakage, but cannot remove it), or may be penalized just for the role-play (the control run addresses this). The gap uses three questions with half-point grades, so it is coarse. The thresholds are uncalibrated until tuned on a held-out split. The question writer, learner and grader are all LLMs, possibly the same model.
+- **The root-cause test set is small and labelled by one person.** The expected concepts are one author's judgment, without a second annotator or κ. In the no-mastery RQ3 setting the nearest-prerequisite baseline is weak by design, which flatters any comparison against it, so the comparison with *blame the target* matters more.
+- **Small open models.** We use 7–8B open-weight models run locally (free-tools constraint). Results may differ, better or worse, with larger or proprietary models. We make no claim about them.
+- **Prompt development overlap.** The shared example edges used while developing prompts overlap with gold pairs. We tune only on an excluded dev split, but the prompts were written by people who had seen the gold.
+- **Prerequisite only.** Other relation types (related, sub-concept, application) are out of scope.
+- **Two courses, one language.** Both courses are English, university-level, technical subjects. Generalization to other subjects, levels or languages is untested.
