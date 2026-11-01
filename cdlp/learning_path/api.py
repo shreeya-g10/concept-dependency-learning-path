@@ -9,7 +9,13 @@ Keep the three public function signatures stable:
 
 from __future__ import annotations
 
-from cdlp.learning_path.graph import ancestors, generic_path, load_graph
+from cdlp.learning_path.graph import (
+    MASTERY_THRESHOLD,
+    ancestors,
+    generic_path,
+    is_mastered,
+    load_graph,
+)
 
 
 def prerequisite_order(graph: dict, target: str) -> list[str]:
@@ -37,7 +43,9 @@ def next_question(
     asked = set(mastery.get("__asked__", []))
     items = _quiz_items(quiz)
 
-    uncertain = [concept for concept in order if 0.2 <= mastery.get(concept, 0.5) <= 0.8]
+    uncertain = [
+        concept for concept in order if 0.2 <= mastery.get(concept, 0.5) <= MASTERY_THRESHOLD
+    ]
 
     available = [
         concept
@@ -87,7 +95,7 @@ def update_mastery(
         updated[concept_id] = 0.1
         if concept_id in G:
             for prerequisite in ancestors(G, concept_id):
-                if prerequisite not in updated or updated[prerequisite] > 0.8:
+                if prerequisite not in updated or is_mastered(updated[prerequisite]):
                     updated[prerequisite] = 0.5
 
     # Retain __asked__ tracker if present
@@ -105,7 +113,7 @@ def personalized_path(
     """Generate an ordered learning path excluding mastered concepts.
 
     1. All ancestors of target in DAG.
-    2. Remove concepts with mastery > 0.8.
+    2. Remove mastered concepts (mastery > MASTERY_THRESHOLD = 0.8).
     3. Topological ordering.
     4. Attach evidence citations (doc, page) and rationale.
     """
@@ -115,7 +123,7 @@ def personalized_path(
 
     for concept in order:
         # Skip concepts student already mastered
-        if mastery.get(concept, 0.5) > 0.8:
+        if is_mastered(mastery.get(concept, 0.5)):
             continue
 
         evidence = []
