@@ -154,7 +154,8 @@ def test_learners_get_the_right_knowledge(llm):
     assert 'NEVER learned "Endgames"' in head(control)
     assert '"How the King Moves", "How the Rook Moves"' in head(control)
     assert "A rook slides" not in head(control)  # no extra context from A's description
-    assert r["control_concept"] == {"id": "endgames", "name": "Endgames", "placeholder": False}
+    assert r["control_concept"] == {"id": "endgames", "name": "Endgames", "kind": "in_course"}
+    assert (r["question_format"], r["n_questions"]) == ("open", 3)
     assert r["known_control"] == ["king_moves", "rook_moves"]
 
 
@@ -237,18 +238,29 @@ def test_control_is_never_an_ancestor_or_descendant_of_b():
     control, placeholder = nt.choose_control(
         concepts[1], concepts[2], concepts, concepts[:2], rels, nt.load_config()
     )
-    assert (control["id"], placeholder) == ("x", False)
+    assert (control["id"], placeholder) == ("x", "in_course")
 
 
-def test_control_falls_back_to_the_placeholder_topic():
+def test_control_falls_back_to_the_other_course_then_the_placeholder():
     concepts = [_concept("a", "c1"), _concept("b", "c2")]
     rels = [{"id": "r1", "source": "a", "target": "b"}]
+    cfg = nt.load_config()
 
-    control, placeholder = nt.choose_control(
-        concepts[0], concepts[1], concepts, [], rels, nt.load_config()
-    )
-    assert placeholder is True
-    assert control["name"] == nt.load_config()["control_placeholder"]["name"]
+    control, kind = nt.choose_control(concepts[0], concepts[1], concepts, [], rels, cfg, "ds101")
+    assert kind == "cross_course"
+    assert control["id"] in {c["id"] for c in cfg["cross_course_concepts"]["ds101"]}
+    assert control["id"] == "gradient_descent"  # first ml101 concept by id
+
+    control, kind = nt.choose_control(concepts[0], concepts[1], concepts, [], rels, cfg, "xx")
+    assert kind == "placeholder"
+    assert control["name"] == cfg["control_placeholder"]["name"]
+
+
+def test_cross_course_pools_point_at_the_other_course():
+    pools = nt.load_config()["cross_course_concepts"]
+    assert {c["id"] for c in pools["ds101"]}.isdisjoint({c["id"] for c in pools["ml101"]})
+    assert "recursion" in {c["id"] for c in pools["ml101"]}
+    assert "gradient_descent" in {c["id"] for c in pools["ds101"]}
 
 
 def test_control_prefers_a_concept_the_learner_does_not_know():
@@ -307,3 +319,117 @@ def test_prompts_have_no_course_concepts():
     for text in [*texts, placeholder]:
         for term in terms:
             assert term not in text, term
+
+
+# --- multiple choice ---------------------------------------------------------
+
+MCQ = [
+    {"question": f"M{i}?", "options": [f"right {i}", "w1", "w2", "w3"], "correct": "A"}
+    for i in (1, 2, 3)
+]
+
+
+def mcq_cfg(**overrides):
+    cfg = nt.load_config()
+    cfg["question_format"] = "mcq"
+    cfg.update(overrides)
+    return cfg
+
+
+@pytest.fixture
+def mcq_llm(llm):
+    llm.replies["necessity_questions_mcq_v1"] = {"questions": MCQ}
+
+    def letters(prompt):  # pick the option whose text starts with "right" -> all correct
+        return [
+            re.search(r"([A-D])\) right", line).group(1)
+            for line in prompt.splitlines()
+            if re.match(r"\d+\. M\d\?", line)
+        ]
+
+    original = nt.chat_json
+
+    def fake(prompt, **kwargs):
+        version = kwargs["prompt_version"]
+        if version == "necessity_learner_without_mcq_v1":
+            llm.calls.append({"prompt": prompt, **kwargs})
+            right = letters(prompt)
+            banned = re.search(r'NEVER learned "(.+?)"', prompt).group(1)
+            # without A: always wrong ("W"); control: all right
+            return {"answers": ["W"] * 3 if banned == "How the Rook Moves" else right}
+        if version == "necessity_learner_with_mcq_v1":
+            llm.calls.append({"prompt": prompt, **kwargs})
+            return {"answers": letters(prompt)}
+        return original(prompt, **kwargs)
+
+    nt.chat_json = fake
+    yield llm
+    nt.chat_json = original
+
+
+def test_mcq_grades_by_exact_match_without_grader_calls(mcq_llm):
+    r = run(cfg=mcq_cfg())
+
+    versions = [c["prompt_version"] for c in mcq_llm.calls]
+    assert "necessity_grader_v1" not in versions
+    assert versions[0] == "necessity_questions_mcq_v1"
+    assert (r["score_control"], r["score_without"], r["necessity_gap"]) == (1.0, 0.0, 1.0)
+    assert r["necessity"] == "strong" and r["question_format"] == "mcq"
+
+
+def test_mcq_options_are_shuffled_deterministically(mcq_llm):
+    first = run(cfg=mcq_cfg())["questions"]
+    again = run(cfg=mcq_cfg())["questions"]
+
+    assert first == again  # same seed -> same order
+    assert {q["answer_letter"] for q in first} != {"A"}  # not always the first option
+    for q in first:
+        assert q["options"][nt.LETTERS.index(q["answer_letter"])].startswith("right")
+
+
+@pytest.mark.parametrize(
+    "answer, letter",
+    [
+        ("B", "B"),
+        ("(c)", "C"),
+        ("D) w3", "D"),
+        ("w2", "C"),  # exact option text
+        ("w9", None),
+        ("right 1", "A"),
+        ("", None),
+        ("Because", None),
+    ],
+)
+def test_chosen_letter(answer, letter):
+    assert nt.chosen_letter(answer, ["right 1", "w1", "w2", "w3"]) == letter
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"question": "Q?", "options": ["a", "b", "c"], "correct": "A"},  # 3 options
+        {"question": "Q?", "options": ["a", "a", "c", "d"], "correct": "A"},  # duplicate
+        {"question": "Q?", "options": ["a", "b", "c", "d"], "correct": "E"},  # bad key
+        {"question": "Q?", "options": ["a", "b", "c", "d"], "correct": "zzz"},
+    ],
+)
+def test_malformed_mcq_is_dropped(bad):
+    assert nt._mcq_question(bad, mcq_cfg(), "t", 0) is None
+
+
+def test_mcq_correct_may_be_given_as_option_text():
+    q = nt._mcq_question(
+        {"question": "Q?", "options": ["a", "b", "c", "d"], "correct": "c"}, mcq_cfg(), "t", 0
+    )
+    assert q["options"][nt.LETTERS.index(q["answer_letter"])] == "c"
+
+
+def test_with_a_diagnostic_can_be_skipped(llm):
+    cfg = nt.load_config()
+    cfg["with_a_diagnostic"] = False
+
+    r = run(cfg=cfg)
+
+    assert "necessity_learner_with_v1" not in [c["prompt_version"] for c in llm.calls]
+    assert r["score_with"] is None and r["answers_with"] == []
+    assert r["necessity_gap"] is not None
