@@ -1,7 +1,10 @@
-"""discovery: concepts + chunks -> relationships.json
+"""discovery: concepts + chunks -> relationships.json (+ relationships_baseline.json)
 
     python -m cdlp.discovery --concepts outputs/concepts.json \
-        --chunks outputs/chunks.jsonl --out-dir outputs
+        --chunks outputs/chunks.jsonl --out-dir outputs [--baseline]
+
+--baseline also writes relationships_baseline.json: one LLM call with the full
+concept list and no candidate filter (the RQ1 baseline), in the same format.
 
 Discovery writes only relationships.json. Quiz items and simulated students are
 built by the learning_path module (owner: Vaidehi).
@@ -11,6 +14,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
 from cdlp.discovery.candidates import candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
     PROMPT_VERSION,
@@ -21,6 +25,7 @@ from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
 RELATIONSHIPS_SCHEMA_VERSION = "1.2"
+BASELINE_SCHEMA_VERSION = "1.3"  # relationships_baseline.json is new in 1.3
 
 
 def main() -> None:
@@ -34,6 +39,12 @@ def main() -> None:
         help="leave out edges implied by a longer path (off: the validator handles redundancy)",
     )
     parser.add_argument("--prompt-version", default=PROMPT_VERSION)
+    parser.add_argument(
+        "--baseline",
+        action="store_true",
+        help="also write relationships_baseline.json (one call, full concept list, no filter)",
+    )
+    parser.add_argument("--baseline-prompt-version", default=BASELINE_PROMPT_VERSION)
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -67,6 +78,16 @@ def main() -> None:
             ),
         },
     )
+
+    if args.baseline:
+        write_json(
+            args.out_dir / "relationships_baseline.json",
+            {
+                "schema_version": BASELINE_SCHEMA_VERSION,
+                "course_id": course_id,
+                "relationships": discover_baseline(concepts, args.baseline_prompt_version),
+            },
+        )
 
 
 if __name__ == "__main__":

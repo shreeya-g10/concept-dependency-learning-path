@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 CONTENT_SIGNALS = ("same_chunk", "name_in_definition", "name_in_chunk", "embedding_similarity")
 
 
@@ -28,6 +29,49 @@ class Candidate:
 
 def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower()).strip()
+
+
+# Light stemming, no extra dependency. Two words match if they are equal, share a
+# stem after stripping one common English suffix, or share a prefix of at least
+# MIN_SHARED_PREFIX characters ("recursion" ~ "recursively" via "recursi").
+# Known cost: unrelated words with a long common prefix also match
+# ("computation" ~ "computer"); the LLM and the validator filter those out.
+MIN_SHARED_PREFIX = 6
+_SUFFIXES = ("ations", "ation", "ively", "ingly", "ings", "ing", "ions", "ion", "ies", "ive")
+_SUFFIXES += ("ed", "ly", "es", "s")
+_WORD = re.compile(r"[a-z0-9]+")
+
+
+def _stems(word: str) -> set:
+    """The word plus every form with one suffix stripped ("trees" -> tree, tre)."""
+    stems = {word}
+    for suffix in _SUFFIXES:
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            stems.add(word[: -len(suffix)] + ("y" if suffix == "ies" else ""))
+    return stems
+
+
+def _words_match(a: str, b: str) -> bool:
+    if _stems(a) & _stems(b):
+        return True
+    shared = 0
+    for x, y in zip(a, b, strict=False):  # words differ in length
+        if x != y:
+            break
+        shared += 1
+    return shared >= MIN_SHARED_PREFIX
+
+
+def _mentions(term: str, text: str) -> bool:
+    """True if every word of term matches consecutive words of text (light stemming)."""
+    term_words, text_words = _WORD.findall(term.lower()), _WORD.findall(text.lower())
+    if not term_words:
+        return False
+    span = len(term_words)
+    return any(
+        all(_words_match(t, w) for t, w in zip(term_words, text_words[i : i + span], strict=True))
+        for i in range(len(text_words) - span + 1)
+    )
 
 
 def _terms(concept: dict) -> list:
@@ -76,7 +120,7 @@ def _name_in_definition(concepts: list) -> set:
                 continue
             description = _normalise(target.get("description", ""))
             for term in source_terms:
-                if term and re.search(rf"\b{re.escape(term)}\b", description):
+                if _mentions(term, description):
                     candidates.add((source["id"], target["id"]))
                     break
     return candidates
@@ -97,11 +141,7 @@ def _name_in_source_chunk(concepts: list, chunks: list) -> set:
         for source in concepts:
             if source["id"] == target["id"]:
                 continue
-            if any(
-                term and re.search(rf"\b{re.escape(term)}\b", text)
-                for term in _terms(source)
-                for text in texts
-            ):
+            if any(_mentions(term, text) for term in _terms(source) for text in texts):
                 candidates.add((source["id"], target["id"]))
     return candidates
 
@@ -109,7 +149,7 @@ def _name_in_source_chunk(concepts: list, chunks: list) -> set:
 def _embedding_pairs(concepts: list, threshold: float = 0.55) -> set:
     from sentence_transformers import SentenceTransformer  # heavy; not installed in CI
 
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    model = SentenceTransformer(EMBEDDING_MODEL)
     texts = [f"{concept['name']}. {concept.get('description', '')}" for concept in concepts]
     embeddings = model.encode(texts, normalize_embeddings=True)
     similarities = np.matmul(embeddings, embeddings.T)

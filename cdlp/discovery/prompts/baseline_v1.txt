@@ -1,0 +1,32 @@
+You are an expert in educational prerequisite analysis.
+
+Below is the full list of concepts taught in one course. List every pair where one concept is a DIRECT prerequisite of another.
+
+CONCEPTS (id: name - description):
+{concepts}
+
+DEFINITIONS
+
+HARD: the target cannot reasonably be understood without the source, or the target is defined directly in terms of the source.
+SOFT: the source clearly helps a student learn the target, but the target can still be learned without it.
+
+WORKED EXAMPLE (from an unrelated cooking course, to show the format only)
+
+Concepts: making_a_roux, bechamel_sauce, mornay_sauce, knife_skills, stir_frying.
+Good answer: making_a_roux -> bechamel_sauce (HARD), bechamel_sauce -> mornay_sauce (HARD), knife_skills -> stir_frying (SOFT).
+Not listed: making_a_roux -> mornay_sauce, because it is only an indirect prerequisite through bechamel_sauce.
+
+RULES
+
+1. List DIRECT prerequisites only. Leave out a pair if the source matters to the target only through another listed concept.
+2. Use only the concept ids given above, exactly as written.
+3. Never list both directions of the same pair.
+4. Do not infer a prerequisite from the order of the list or from similarity alone.
+5. Return only valid JSON, with no text before or after it.
+
+Return one JSON object with a single field "relationships": a list of objects, each with these fields:
+
+source: the prerequisite concept id
+target: the concept id that depends on it
+strength: HARD or SOFT
+confidence: HIGH, MEDIUM, or LOW

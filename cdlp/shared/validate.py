@@ -31,6 +31,8 @@ FILE_SCHEMAS = {
     "student_answers.json": "student_answers",
     "root_cause.json": "root_cause",
     "review_queue.json": "review_queue",
+    # added in 1.3: the RQ1 baseline uses the relationships contract
+    "relationships_baseline.json": "relationships",
 }
 
 
