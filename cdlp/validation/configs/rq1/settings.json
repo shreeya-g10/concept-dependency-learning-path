@@ -1,0 +1,90 @@
+{
+  "_comment": "RQ1 settings shared by every dataset config in this folder. Each setting names the file it reads in the course's run_dir and the file <name>.stats.json ({\"llm_calls\": n}) that gives its LLM calls. adds_calls_of: validator settings also pay for discovery. 'produce' says how the predictions file is made; settings marked PENDING (the --skip-check ablations) do not exist yet in cdlp/validation/__main__.py. Cost per edge = (llm_calls + cache_hits) / edges; real calls are reported separately (evaluate.py).",
+  "models": {
+    "discovery": "qwen2.5:7b-instruct",
+    "validator": "llama3.1:8b"
+  },
+  "prompt_versions": {
+    "discovery": "discover_v2",
+    "baseline": "baseline_v1",
+    "evidence": "evidence_v1",
+    "semantic": "semantic_v1",
+    "necessity": "necessity_*_v1",
+    "single_judge": "semantic_v2",
+    "self_consistency": "semantic_v2"
+  },
+  "temperature": 0.0,
+  "seed": 42,
+  "settings": [
+    {
+      "name": "discovery_only",
+      "kind": "relationships",
+      "predictions": "relationships.json",
+      "description": "Candidate filter + per-pair LLM discovery, no validation.",
+      "produce": "python -m cdlp.discovery --concepts ... --chunks ... --out-dir <run_dir>"
+    },
+    {
+      "name": "baseline_prompt",
+      "kind": "relationships",
+      "predictions": "relationships_baseline.json",
+      "description": "One 'list all prerequisites' call with the full concept list, no filter.",
+      "produce": "python -m cdlp.discovery --baseline-only --concepts ... --chunks ... --out-dir <run_dir>"
+    },
+    {
+      "name": "single_judge",
+      "kind": "validated",
+      "predictions": "validated_single_judge.json",
+      "adds_calls_of": "discovery_only",
+      "description": "The semantic check alone (prompt semantic_v2), one validator call per proposed edge at temperature 0, seed 42: ACCEPT if strong or medium, else REJECT. No retrieval, no other check.",
+      "produce": "python -m cdlp.validation.single_judge --relationships <run_dir>/relationships.json --concepts <concepts.json> --out <run_dir>/validated_single_judge.json"
+    },
+    {
+      "name": "self_consistency",
+      "kind": "validated",
+      "predictions": "validated_self_consistency.json",
+      "adds_calls_of": "discovery_only",
+      "description": "The single judge sampled 3 times (seeds 42, 43, 44, temperature 0.7), majority vote; confidence = vote share. Spends several calls per edge like the agent but adds no independent evidence, so it separates 'more calls' from 'independent checks'.",
+      "produce": "python -m cdlp.validation.self_consistency --relationships <run_dir>/relationships.json --concepts <concepts.json> --out <run_dir>/validated_self_consistency.json"
+    },
+    {
+      "name": "full_agent",
+      "kind": "validated",
+      "predictions": "validated_graph.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Validation agent with all four checks: evidence, semantic, necessity, graph.",
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json ... --out <run_dir>/validated_graph.json"
+    },
+    {
+      "name": "minus_evidence",
+      "kind": "validated",
+      "predictions": "validated_minus_evidence.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent without the evidence check.",
+      "produce": "PENDING: python -m cdlp.validation --skip-check evidence ..."
+    },
+    {
+      "name": "minus_semantic",
+      "kind": "validated",
+      "predictions": "validated_minus_semantic.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent without the semantic check.",
+      "produce": "PENDING: python -m cdlp.validation --skip-check semantic ..."
+    },
+    {
+      "name": "minus_necessity",
+      "kind": "validated",
+      "predictions": "validated_minus_necessity.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent without the simulated-learner necessity test.",
+      "produce": "PENDING: python -m cdlp.validation --skip-check necessity ..."
+    },
+    {
+      "name": "minus_graph",
+      "kind": "validated",
+      "predictions": "validated_minus_graph.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent without the graph-consistency check (no LLM calls saved; tests cycles / redundancy).",
+      "produce": "PENDING: python -m cdlp.validation --skip-check graph ..."
+    }
+  ]
+}

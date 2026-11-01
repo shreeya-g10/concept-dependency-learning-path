@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "review_queue.json",
-  "description": "Since 1.1. One row per HUMAN_REVIEW edge in validated_graph.json, ranked for a human reviewer.",
+  "description": "Since 1.1. One row per HUMAN_REVIEW edge in validated_graph.json, ranked for a human reviewer. Blocking edges (1.4) come first, then the rest by impact_score.",
   "type": "object",
   "required": [
     "schema_version",
@@ -43,19 +43,67 @@
             "description": "stable slug, e.g. binary_search_tree"
           },
           "impact_score": {
-            "type": "number",
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0,
-            "description": "higher = review first"
+            "description": "higher = review first. null (since 1.4) only for a blocking edge, whose impact cannot be computed"
           },
           "paths_affected": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 0,
-            "description": "number of learning paths whose steps would change if the edge were accepted"
+            "description": "number of learning paths whose steps would change if the edge were accepted. null (since 1.4) only for a blocking edge"
           },
           "reason": {
             "type": "string"
+          },
+          "blocking": {
+            "type": "boolean",
+            "description": "added in 1.4: accepting the edge as it is would break the graph (it closes a cycle with ACCEPT edges). Every review strategy shows blocking edges first, before the impact-ranked ones. Absent means false."
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "impact_score": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "impact_score"
+                  ]
+                },
+                {
+                  "properties": {
+                    "paths_affected": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "paths_affected"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "blocking"
+              ],
+              "properties": {
+                "blocking": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

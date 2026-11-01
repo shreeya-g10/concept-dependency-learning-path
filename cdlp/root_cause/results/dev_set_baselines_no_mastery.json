@@ -1,0 +1,314 @@
+{
+  "config": {
+    "dataset": "cdlp/root_cause/tests/fixtures/dev_set.json",
+    "graph": "cdlp/shared/examples/validated_graph.json",
+    "quiz": "cdlp/shared/examples/quiz_items.json",
+    "state": null,
+    "methods": [
+      "target",
+      "nearest"
+    ],
+    "use_mastery": false,
+    "llm": {
+      "model": "qwen2.5:7b-instruct",
+      "prompt_version": "trace_v1",
+      "temperature": 0.0,
+      "seed": 42
+    },
+    "created": "2026-11-01T19:12:35+00:00"
+  },
+  "results": [
+    {
+      "method": "target",
+      "n": 10,
+      "top1_accuracy": 0.5,
+      "top3_accuracy": 0.8,
+      "llm_fallbacks": null,
+      "rows": [
+        {
+          "student_id": "dev_01",
+          "item_id": "q_avl_1",
+          "expected": "avl_tree",
+          "ranked": [
+            "avl_tree",
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept avl_tree."
+        },
+        {
+          "student_id": "dev_02",
+          "item_id": "q_avl_1",
+          "expected": "binary_search_tree",
+          "ranked": [
+            "avl_tree",
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept avl_tree."
+        },
+        {
+          "student_id": "dev_03",
+          "item_id": "q_avl_1",
+          "expected": "trees",
+          "ranked": [
+            "avl_tree",
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": false,
+          "explanation": "Baseline: blames the item's own concept avl_tree."
+        },
+        {
+          "student_id": "dev_04",
+          "item_id": "q_bst_1",
+          "expected": "binary_search_tree",
+          "ranked": [
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept binary_search_tree."
+        },
+        {
+          "student_id": "dev_05",
+          "item_id": "q_bst_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept binary_search_tree."
+        },
+        {
+          "student_id": "dev_06",
+          "item_id": "q_bst_1",
+          "expected": "trees",
+          "ranked": [
+            "binary_search_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": false,
+          "explanation": "Baseline: blames the item's own concept binary_search_tree."
+        },
+        {
+          "student_id": "dev_07",
+          "item_id": "q_bt_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept binary_tree."
+        },
+        {
+          "student_id": "dev_08",
+          "item_id": "q_bt_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept binary_tree."
+        },
+        {
+          "student_id": "dev_09",
+          "item_id": "q_bt_1",
+          "expected": "trees",
+          "ranked": [
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept binary_tree."
+        },
+        {
+          "student_id": "dev_10",
+          "item_id": "q_rec_1",
+          "expected": "recursion",
+          "ranked": [
+            "recursion"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames the item's own concept recursion."
+        }
+      ]
+    },
+    {
+      "method": "nearest",
+      "n": 10,
+      "top1_accuracy": 0.4,
+      "top3_accuracy": 0.8,
+      "llm_fallbacks": null,
+      "rows": [
+        {
+          "student_id": "dev_01",
+          "item_id": "q_avl_1",
+          "expected": "avl_tree",
+          "ranked": [
+            "binary_search_tree",
+            "avl_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames binary_search_tree, the direct prerequisite of avl_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_02",
+          "item_id": "q_avl_1",
+          "expected": "binary_search_tree",
+          "ranked": [
+            "binary_search_tree",
+            "avl_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames binary_search_tree, the direct prerequisite of avl_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_03",
+          "item_id": "q_avl_1",
+          "expected": "trees",
+          "ranked": [
+            "binary_search_tree",
+            "avl_tree",
+            "binary_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": false,
+          "explanation": "Baseline: blames binary_search_tree, the direct prerequisite of avl_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_04",
+          "item_id": "q_bst_1",
+          "expected": "binary_search_tree",
+          "ranked": [
+            "binary_tree",
+            "binary_search_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames binary_tree, the direct prerequisite of binary_search_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_05",
+          "item_id": "q_bst_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "binary_tree",
+            "binary_search_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames binary_tree, the direct prerequisite of binary_search_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_06",
+          "item_id": "q_bst_1",
+          "expected": "trees",
+          "ranked": [
+            "binary_tree",
+            "binary_search_tree",
+            "recursion",
+            "trees"
+          ],
+          "top1": false,
+          "top3": false,
+          "explanation": "Baseline: blames binary_tree, the direct prerequisite of binary_search_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_07",
+          "item_id": "q_bt_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "trees",
+            "recursion",
+            "binary_tree"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_08",
+          "item_id": "q_bt_1",
+          "expected": "binary_tree",
+          "ranked": [
+            "trees",
+            "recursion",
+            "binary_tree"
+          ],
+          "top1": false,
+          "top3": true,
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_09",
+          "item_id": "q_bt_1",
+          "expected": "trees",
+          "ranked": [
+            "trees",
+            "recursion",
+            "binary_tree"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
+        },
+        {
+          "student_id": "dev_10",
+          "item_id": "q_rec_1",
+          "expected": "recursion",
+          "ranked": [
+            "recursion"
+          ],
+          "top1": true,
+          "top3": true,
+          "explanation": "Baseline: recursion has no prerequisites, so it blames recursion."
+        }
+      ]
+    }
+  ]
+}

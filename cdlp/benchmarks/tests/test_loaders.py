@@ -100,3 +100,20 @@ def test_lecturebank_bad_rows_fail_loudly(tmp_path, annotation, error):
 
     with pytest.raises(ValueError, match=error):
         lecturebank.load(tmp_path)
+
+
+def test_transitive_closure_and_implied_pairs():
+    from cdlp.benchmarks.common import implied_pairs, transitive_closure
+
+    chain = {("a", "b"), ("b", "c"), ("c", "d")}
+    assert transitive_closure(chain) == chain | {("a", "c"), ("a", "d"), ("b", "d")}
+    assert implied_pairs(chain) == set()
+    assert implied_pairs(chain | {("a", "d")}) == {("a", "d")}
+
+
+def test_stats_count_transitive_positives():
+    (geo,) = al_cpl.load(FIXTURES / "al_cpl", domains=("geometry",))
+    (lb,) = lecturebank.load(FIXTURES / "lecturebank")
+
+    assert geo.stats()["transitive_positives"] == 0
+    assert lb.stats()["transitive_positives"] == 0  # 1->2, 2->3 but no 1->3 positive

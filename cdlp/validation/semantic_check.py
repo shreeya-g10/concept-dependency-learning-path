@@ -29,8 +29,10 @@ from cdlp.shared.llm import DEFAULT_SEED, chat_json
 
 load_dotenv()
 
-PROMPT_VERSION = "semantic_v1"
-PROMPT_FILE = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt"
+# v2 grades "B is a kind / specialisation of A" as strong; v1 under-graded those
+# edges (see results/README.md). v1 stays selectable with --prompt-version.
+PROMPT_VERSION = "semantic_v2"
+PROMPT_DIR = Path(__file__).parent / "prompts"
 LEVELS = ("strong", "medium", "weak", "none")
 TEMPERATURE = 0.0
 # Single-judge baseline rule: these grades ACCEPT, everything else REJECTs.
@@ -41,7 +43,11 @@ def validator_model() -> str:
     return os.getenv("LLM_VALIDATOR_MODEL", "llama3.1:8b")
 
 
-def build_prompt(relationship: dict, concepts: dict) -> str:
+def prompt_file(version: str = PROMPT_VERSION) -> Path:
+    return PROMPT_DIR / f"{version}.txt"
+
+
+def build_prompt(relationship: dict, concepts: dict, prompt_version: str = PROMPT_VERSION) -> str:
     src, tgt = concepts[relationship["source"]], concepts[relationship["target"]]
     replacements = {
         "{source_name}": src["name"],
@@ -51,7 +57,7 @@ def build_prompt(relationship: dict, concepts: dict) -> str:
         "{target_aliases}": ", ".join(tgt.get("aliases") or []) or "no aliases",
         "{target_description}": tgt.get("description") or "(no description)",
     }
-    prompt = PROMPT_FILE.read_text()
+    prompt = prompt_file(prompt_version).read_text()
     for placeholder, value in replacements.items():
         prompt = prompt.replace(placeholder, value)
     return prompt
@@ -61,13 +67,15 @@ def judge_decision(grade: str) -> str:
     return "ACCEPT" if grade in JUDGE_ACCEPT else "REJECT"
 
 
-def check_relationship(relationship: dict, concepts: dict, *, model: str) -> dict:
+def check_relationship(
+    relationship: dict, concepts: dict, *, model: str, prompt_version: str = PROMPT_VERSION
+) -> dict:
     try:
         response = chat_json(
-            build_prompt(relationship, concepts),
+            build_prompt(relationship, concepts, prompt_version),
             model=model,
             temperature=TEMPERATURE,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=prompt_version,
         )
     except ValueError:  # the model returned text that is not JSON
         response = {}
@@ -85,19 +93,26 @@ def check_relationship(relationship: dict, concepts: dict, *, model: str) -> dic
     }
 
 
-def run(relationships: dict, concepts: dict, *, model: str | None = None) -> dict:
+def run(
+    relationships: dict,
+    concepts: dict,
+    *,
+    model: str | None = None,
+    prompt_version: str = PROMPT_VERSION,
+) -> dict:
     model = model or validator_model()
     concept_map = {c["id"]: c for c in concepts["concepts"]}
     return {
         "course_id": relationships["course_id"],
         "model": model,
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": prompt_version,
         "temperature": TEMPERATURE,
         "seed": DEFAULT_SEED,
         "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "judge_rule": f"ACCEPT if semantic in {sorted(JUDGE_ACCEPT)}, else REJECT",
         "results": [
-            check_relationship(r, concept_map, model=model) for r in relationships["relationships"]
+            check_relationship(r, concept_map, model=model, prompt_version=prompt_version)
+            for r in relationships["relationships"]
         ],
     }
 
@@ -108,9 +123,15 @@ def main() -> None:
     parser.add_argument("--concepts", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", default=None, help="default: LLM_VALIDATOR_MODEL")
+    parser.add_argument("--prompt-version", default=PROMPT_VERSION)
     args = parser.parse_args()
 
-    result = run(read_json(args.relationships), read_json(args.concepts), model=args.model)
+    result = run(
+        read_json(args.relationships),
+        read_json(args.concepts),
+        model=args.model,
+        prompt_version=args.prompt_version,
+    )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     decisions = [r["judge_decision"] for r in result["results"]]

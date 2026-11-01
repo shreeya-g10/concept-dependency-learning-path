@@ -99,7 +99,13 @@ class Course:
             "positive": sum(label != "none" for label in labels),
             "none": labels.count("none"),
             "slug_collisions": len(self.slug.collisions),
+            # positives already implied by a path of other positives: > 0 means the
+            # dataset labels shortcut pairs as prerequisites (see README conventions)
+            "transitive_positives": len(implied_pairs(self.positive_pairs())),
         }
+
+    def positive_pairs(self) -> set[tuple[str, str]]:
+        return {k for k, r in self.rows.items() if r["label"] != "none"}
 
     def write(self, out_dir: Path) -> Path:
         from cdlp.shared.io import write_json
@@ -115,6 +121,38 @@ class Course:
         )
         write_gold_edges(folder / "gold_edges.csv", sorted(self.rows.values(), key=_row_key))
         return folder
+
+
+def _successors(pairs) -> dict[str, set]:
+    succ: dict[str, set] = {}
+    for u, v in pairs:
+        succ.setdefault(u, set()).add(v)
+    return succ
+
+
+def _reachable(succ: dict, start: str, skip: tuple | None = None) -> set:
+    seen, stack = set(), [w for w in succ.get(start, ()) if (start, w) != skip]
+    while stack:
+        node = stack.pop()
+        if node not in seen:
+            seen.add(node)
+            stack.extend(succ.get(node, ()))
+    return seen
+
+
+def transitive_closure(pairs) -> set[tuple[str, str]]:
+    """All (u, w) with a directed path u -> ... -> w. Used to score our predicted edges
+    against benchmarks whose positives include transitive pairs (README conventions)."""
+    pairs = set(pairs)
+    succ = _successors(pairs)
+    return {(u, w) for u in succ for w in _reachable(succ, u) if u != w}
+
+
+def implied_pairs(pairs) -> set[tuple[str, str]]:
+    """Pairs that are also reachable through a path of the OTHER pairs (length >= 2)."""
+    pairs = set(pairs)
+    succ = _successors(pairs)
+    return {(u, v) for u, v in pairs if v in _reachable(succ, u, skip=(u, v))}
 
 
 def _row_key(row: dict) -> tuple:

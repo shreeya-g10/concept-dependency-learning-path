@@ -1,0 +1,18 @@
+{
+  "_comment": "RQ1 on the University Course dataset (CC BY-NC-SA 4.0). Whether positives include transitive pairs is not stated, so scoring is auto: closure if some gold positive is implied by other positives (the count is recorded in gold_summary). Only labelled pairs are scored. Benchmarks have no course text, so the evidence check has nothing to retrieve: the agent reported on this dataset is minus_evidence (decided 2026-11-02; cdlp/validation/README.md, Notes for the paper). full_agent is still scored but not reported.",
+  "dataset": "university_course",
+  "settings_file": "settings.json",
+  "reported_agent": "minus_evidence",
+  "scoring": "auto",
+  "unlabelled_pairs": "ignore",
+  "bidirectional": "both",
+  "exclude_pairs": null,
+  "courses": [
+    {
+      "course_id": "university_course",
+      "concepts": "outputs/benchmarks/university_course/concepts.json",
+      "gold": "outputs/benchmarks/university_course/gold_edges.csv",
+      "run_dir": "outputs/rq1/university_course"
+    }
+  ]
+}
