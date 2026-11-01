@@ -8,7 +8,14 @@ item of quiz_items.json). `mastery` maps concept id -> probability the student k
 from cdlp.root_cause.tracer import llm_trace
 
 
-def trace(graph: dict, quiz_item: dict, answer: str, mastery: dict[str, float]) -> dict:
+def trace(
+    graph: dict,
+    quiz_item: dict,
+    answer: str,
+    mastery: dict[str, float],
+    *,
+    allow_fallback: bool = False,
+) -> dict:
     """Return the most likely concept behind a wrong answer.
 
     Shape matches one entry of root_cause.json without `student_id`:
@@ -16,5 +23,9 @@ def trace(graph: dict, quiz_item: dict, answer: str, mastery: dict[str, float]) 
 
     LLM tracing over the item concept's prerequisite chain (ACCEPT edges); see
     tracer.py. Baselines for RQ3 are in baselines.py.
+
+    allow_fallback (keyword only, default False): if True and the LLM is unreachable,
+    return the nearest-prerequisite baseline with "[fallback: offline estimate]" in the
+    explanation instead of raising. For the website; experiments keep the strict default.
     """
-    return llm_trace(graph, quiz_item, answer, mastery)
+    return llm_trace(graph, quiz_item, answer, mastery, allow_fallback=allow_fallback)

@@ -9,8 +9,10 @@ keep their first score, scores are clamped to [0, 1] and normalised to sum 1, an
 concepts the LLM left out are appended with score 0 (nearest first) so top-k is always
 defined. If nothing usable comes back, the trace falls back to the nearest-prerequisite
 baseline and the explanation starts with FALLBACK_PREFIX, so evaluation can count it.
-Connection errors are not caught: a run with no LLM must fail loudly, not silently
-turn into a baseline.
+If the LLM is unreachable (connection refused or timed out) the error propagates by
+default: a run with no LLM must fail loudly, not silently turn into a baseline. With
+allow_fallback=True (the website, which may have no LLM) it instead returns the
+nearest-prerequisite baseline marked with OFFLINE_PREFIX. Experiments never set it.
 
 A chain with a single concept (no prerequisites) needs no LLM call.
 """
@@ -21,6 +23,8 @@ import json
 import os
 from pathlib import Path
 
+import requests
+
 from cdlp.root_cause.baselines import blame_nearest
 from cdlp.root_cause.chain import prerequisite_chain
 from cdlp.shared import llm
@@ -29,6 +33,10 @@ PROMPT_VERSION = "trace_v1"
 PROMPT_FILE = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.txt"
 TEMPERATURE = 0.0
 FALLBACK_PREFIX = "[fallback: nearest prerequisite]"
+OFFLINE_PREFIX = "[fallback: offline estimate]"
+# What "the LLM is unreachable" means: no answer at all. HTTP errors (e.g. an unknown
+# model) are configuration bugs and always propagate.
+UNREACHABLE = (requests.ConnectionError, requests.Timeout, ConnectionError, TimeoutError)
 
 
 def model_id() -> str:
@@ -88,7 +96,14 @@ def parse_candidates(raw: dict, chain_ids: list[str]) -> list[dict]:
     return out
 
 
-def llm_trace(graph: dict, quiz_item: dict, answer: str, mastery: dict[str, float]) -> dict:
+def llm_trace(
+    graph: dict,
+    quiz_item: dict,
+    answer: str,
+    mastery: dict[str, float],
+    *,
+    allow_fallback: bool = False,
+) -> dict:
     target = quiz_item["concept_id"]
     chain = prerequisite_chain(graph, target)
     chain_ids = [c["concept_id"] for c in chain]
@@ -113,6 +128,12 @@ def llm_trace(graph: dict, quiz_item: dict, answer: str, mastery: dict[str, floa
         )
     except json.JSONDecodeError:
         raw = {}
+    except UNREACHABLE:
+        if not allow_fallback:
+            raise
+        offline = blame_nearest(graph, quiz_item, answer, mastery)
+        offline["explanation"] = f"{OFFLINE_PREFIX} {offline['explanation']}"
+        return offline
     candidates = parse_candidates(raw if isinstance(raw, dict) else {}, chain_ids)
     if not candidates:
         fallback = blame_nearest(graph, quiz_item, answer, mastery)

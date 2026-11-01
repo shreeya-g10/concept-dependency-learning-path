@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
 from cdlp.root_cause import __main__ as cli
 from cdlp.root_cause import api, evaluate, tracer
@@ -84,12 +85,19 @@ def test_blame_nearest_picks_lowest_mastery_direct_prerequisite():
     assert check(wrap(r), "root_cause") == []
 
 
-def test_blame_nearest_tie_prefers_hard_and_unknown_is_half():
-    # both unknown (0.5): trees -> binary_tree is hard, recursion -> binary_tree is soft
-    assert blame_nearest(GRAPH, ITEMS["q_bt_1"], "3", {})["traced_concept"] == "trees"
-    # recursion known low, trees unknown (0.5)
-    r = blame_nearest(GRAPH, ITEMS["q_bt_1"], "3", {"recursion": 0.4})
-    assert r["traced_concept"] == "recursion"
+def test_blame_nearest_with_no_mastery_breaks_ties_by_distance_then_id():
+    # RQ3 setting: no mastery. trees and recursion are both distance 1 from binary_tree
+    r = blame_nearest(GRAPH, ITEMS["q_bt_1"], "3", {})
+    assert [c["concept_id"] for c in r["candidates"]] == ["recursion", "trees", "binary_tree"]
+    # deeper chain: the direct prerequisite first, then target, then by distance, then id
+    r = blame_nearest(GRAPH, ITEMS["q_avl_1"], "30", {})
+    ids = [c["concept_id"] for c in r["candidates"]]
+    assert ids == ["binary_search_tree", "avl_tree", "binary_tree", "recursion", "trees"]
+
+
+def test_blame_nearest_known_mastery_beats_unknown():
+    r = blame_nearest(GRAPH, ITEMS["q_bt_1"], "3", {"trees": 0.4})  # recursion unknown (0.5)
+    assert r["traced_concept"] == "trees"
 
 
 def test_blame_nearest_without_prerequisites_blames_target():
@@ -227,3 +235,74 @@ def test_evaluate_llm_counts_fallbacks(monkeypatch):
     dev, quiz = read_json(DEV_SET), read_json(EXAMPLES / "quiz_items.json")
     r = evaluate.evaluate(GRAPH, quiz, dev, {}, "llm")
     assert r["llm_fallbacks"] == 9  # every row except the no-prerequisite one
+
+
+# allow_fallback -----------------------------------------------------------------------
+
+
+def test_trace_signature_keeps_existing_parameters():
+    import inspect
+
+    params = inspect.signature(api.trace).parameters
+    assert list(params)[:4] == ["graph", "quiz_item", "answer", "mastery"]
+    assert params["allow_fallback"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert params["allow_fallback"].default is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests.ConnectionError("refused"),
+        requests.Timeout("slow"),
+        ConnectionRefusedError("refused"),
+    ],
+)
+def test_unreachable_llm_is_strict_by_default(monkeypatch, error):
+    fake_llm(monkeypatch, error)
+    with pytest.raises(type(error)):
+        api.trace(GRAPH, ITEMS["q_avl_1"], "30", {})
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        requests.ConnectionError("refused"),
+        requests.Timeout("slow"),
+        ConnectionRefusedError("refused"),
+    ],
+)
+def test_unreachable_llm_with_allow_fallback_returns_offline_estimate(monkeypatch, error):
+    fake_llm(monkeypatch, error)
+    mastery = {"binary_search_tree": 0.15}
+    r = api.trace(GRAPH, ITEMS["q_avl_1"], "30", mastery, allow_fallback=True)
+    expected = blame_nearest(GRAPH, ITEMS["q_avl_1"], "30", mastery)
+    assert r["explanation"] == f"{tracer.OFFLINE_PREFIX} {expected['explanation']}"
+    assert r["explanation"].startswith("[fallback: offline estimate]")
+    assert r["candidates"] == expected["candidates"]
+    assert r["traced_concept"] == "binary_search_tree"
+    assert check(wrap(r), "root_cause") == []
+
+
+def test_allow_fallback_does_not_hide_http_errors(monkeypatch):
+    fake_llm(monkeypatch, requests.HTTPError("404 model not found"))
+    with pytest.raises(requests.HTTPError):
+        api.trace(GRAPH, ITEMS["q_avl_1"], "30", {}, allow_fallback=True)
+
+
+def test_allow_fallback_still_uses_a_reachable_llm(monkeypatch):
+    reply = {"candidates": [{"concept_id": "avl_tree", "score": 1}], "explanation": "No rotation."}
+    calls = fake_llm(monkeypatch, reply)
+    r = api.trace(GRAPH, ITEMS["q_avl_1"], "10", {}, allow_fallback=True)
+    assert len(calls) == 1 and r["traced_concept"] == "avl_tree"
+    assert r["explanation"] == "No rotation."
+
+
+def test_evaluate_without_mastery_ignores_row_mastery():
+    dev, quiz = read_json(DEV_SET), read_json(EXAMPLES / "quiz_items.json")
+    no_m = evaluate.evaluate(GRAPH, quiz, dev, {}, "nearest", use_mastery=False)
+    # dev_08 (q_bt_1): no mastery -> trees and recursion tie -> recursion by id
+    row = next(r for r in no_m["rows"] if r["student_id"] == "dev_08")
+    assert row["ranked"][0] == "recursion"
+    with_m = evaluate.evaluate(GRAPH, quiz, dev, {}, "nearest")
+    row = next(r for r in with_m["rows"] if r["student_id"] == "dev_08")
+    assert row["ranked"][0] == "recursion"  # recursion mastery 0.1 < trees 0.9

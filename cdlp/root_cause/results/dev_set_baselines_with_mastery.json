@@ -8,13 +8,14 @@
       "target",
       "nearest"
     ],
+    "use_mastery": true,
     "llm": {
       "model": "qwen2.5:7b-instruct",
       "prompt_version": "trace_v1",
       "temperature": 0.0,
       "seed": 42
     },
-    "created": "2026-11-01T19:02:22+00:00"
+    "created": "2026-11-01T19:07:33+00:00"
   },
   "results": [
     {

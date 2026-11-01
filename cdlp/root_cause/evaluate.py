@@ -3,6 +3,8 @@
 The dataset has the root_cause_testset.json shape (student_answers rows plus
 `expected_concept`). Mastery comes from a `mastery` field on each row if present
 (the dev set has one), otherwise from --state by student_id, otherwise unknown.
+--no-mastery ignores both: this is the RQ3 setting (see README), so dev-set numbers
+meant to be compared with RQ3 must use it.
 
     # baselines, no LLM
     python -m cdlp.root_cause.evaluate --dataset cdlp/root_cause/tests/fixtures/dev_set.json \
@@ -30,13 +32,20 @@ from cdlp.shared.llm import DEFAULT_SEED
 RESULTS = Path(__file__).parent / "results"
 
 
-def evaluate(graph: dict, quiz: dict, dataset: dict, state: dict, method: str) -> dict:
+def evaluate(
+    graph: dict,
+    quiz: dict,
+    dataset: dict,
+    state: dict,
+    method: str,
+    use_mastery: bool = True,
+) -> dict:
     items = {i["id"]: i for i in quiz["items"]}
     trace = pick_tracer(method)
     rows, top1, top3, fallbacks = [], 0, 0, 0
     wrong = [r for r in dataset["answers"] if not r["correct"]]
     for r in wrong:
-        mastery = r.get("mastery") or state.get(r["student_id"], {})
+        mastery = (r.get("mastery") or state.get(r["student_id"], {})) if use_mastery else {}
         result = trace(graph, items[r["item_id"]], r["answer"], mastery)
         ranked = [c["concept_id"] for c in result["candidates"]]
         hit1 = ranked[:1] == [r["expected_concept"]]
@@ -73,6 +82,7 @@ def main() -> None:
     parser.add_argument("--quiz", type=Path, required=True)
     parser.add_argument("--state", type=Path)
     parser.add_argument("--methods", nargs="+", choices=["llm", *METHODS], default=["llm"])
+    parser.add_argument("--no-mastery", action="store_true", help="RQ3 setting: mastery unknown")
     parser.add_argument("--name", help="results file name (default: <dataset stem>)")
     args = parser.parse_args()
 
@@ -84,6 +94,7 @@ def main() -> None:
         "quiz": str(args.quiz),
         "state": str(args.state) if args.state else None,
         "methods": args.methods,
+        "use_mastery": not args.no_mastery,
         "llm": {
             "model": tracer.model_id(),
             "prompt_version": tracer.PROMPT_VERSION,
@@ -92,7 +103,10 @@ def main() -> None:
         },
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
-    results = [evaluate(graph, quiz, dataset, state, m) for m in args.methods]
+    results = [
+        evaluate(graph, quiz, dataset, state, m, use_mastery=not args.no_mastery)
+        for m in args.methods
+    ]
     out = RESULTS / f"{args.name or args.dataset.stem}.json"
     RESULTS.mkdir(exist_ok=True)
     out.write_text(json.dumps({"config": config, "results": results}, indent=2) + "\n")
