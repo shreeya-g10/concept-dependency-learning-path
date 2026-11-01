@@ -213,12 +213,12 @@ def _prompt(version: str, values: dict) -> str:
     return text
 
 
-def _ask(prompt: str, version: str, cfg: dict, model: str) -> dict:
+def _ask(prompt: str, version: str, cfg: dict, model: str, temperature=None) -> dict:
     try:
         reply = chat_json(
             prompt,
             model=model,
-            temperature=cfg["temperature"],
+            temperature=cfg["temperature"] if temperature is None else temperature,
             seed=cfg["seed"],
             prompt_version=version,
         )
@@ -281,7 +281,15 @@ def make_questions(target: dict, chunks: list[dict], cfg: dict, model: str) -> l
         "chunks": _chunk_block(chunks),
         "n_questions": str(cfg["n_questions"]),
     }
-    reply = _ask(_prompt(version, values), version, cfg, model)
+    # question writing may sample (question_temperature) so seeds give different question
+    # sets; learners and grader always use cfg["temperature"]
+    reply = _ask(
+        _prompt(version, values),
+        version,
+        cfg,
+        model,
+        temperature=cfg.get("question_temperature", cfg["temperature"]),
+    )
     questions = []
     raw = reply.get("questions") if isinstance(reply.get("questions"), list) else []
     for q in raw:
@@ -557,6 +565,7 @@ def main() -> None:
     parser.add_argument("--question-format", choices=["open", "mcq"], help="override the config")
     parser.add_argument("--seed", type=int, help="override the config seed")
     parser.add_argument("--no-with-a", action="store_true", help="skip the 'with A' diagnostic")
+    parser.add_argument("--question-temperature", type=float, help="override the config")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -568,6 +577,8 @@ def main() -> None:
         cfg["seed"] = args.seed
     if args.no_with_a:
         cfg["with_a_diagnostic"] = False
+    if args.question_temperature is not None:
+        cfg["question_temperature"] = args.question_temperature
     result = run(
         read_json(args.relationships),
         read_json(args.concepts),

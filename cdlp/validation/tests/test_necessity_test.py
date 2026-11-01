@@ -448,3 +448,19 @@ def test_result_fields_fit_the_validated_graph_contract(llm):
 
     assert check(graph, "validated_graph") == []
     assert r["necessity_gap"] == pytest.approx(r["score_control"] - r["score_without"], abs=1e-4)
+
+
+def test_question_temperature_applies_to_question_writing_only(llm):
+    cfg = nt.load_config()
+    cfg["question_temperature"] = 0.7
+
+    run(cfg=cfg)
+
+    by_role = {c["prompt_version"]: c["temperature"] for c in llm.calls}
+    assert by_role["necessity_questions_v1"] == 0.7
+    assert by_role["necessity_learner_without_v1"] == 0.0
+    assert by_role["necessity_grader_v1"] == 0.0
+
+
+def test_question_temperature_defaults_to_zero():
+    assert nt.load_config()["question_temperature"] == 0.0

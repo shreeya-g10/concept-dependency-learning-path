@@ -119,12 +119,19 @@ def main() -> None:
     parser.add_argument(
         "--resume", action="store_true", help="reuse runs already saved in --out-dir"
     )
+    parser.add_argument(
+        "--question-temperature",
+        type=float,
+        help="temperature for writing questions only (learner and grader stay at the config's)",
+    )
     args = parser.parse_args()
 
     relationships = read_json(args.relationships)
     concepts = read_json(args.concepts)
     chunks = read_jsonl(args.chunks)
     base = nt.load_config(args.config)
+    if args.question_temperature is not None:
+        base["question_temperature"] = args.question_temperature
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     budget, spent = args.budget_minutes * 60, 0.0
