@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "answers": [
+    {
+      "student_id": "dev_01", "item_id": "q_avl_1", "concept_id": "avl_tree",
+      "answer": "10", "correct": false, "expected_concept": "avl_tree",
+      "mastery": {"recursion": 0.8, "trees": 0.9, "binary_tree": 0.9, "binary_search_tree": 0.9, "avl_tree": 0.1},
+      "note": "10 is the root of the plain BST built from 10, 20, 30: BST insertion is right, the rotation is missing."
+    },
+    {
+      "student_id": "dev_02", "item_id": "q_avl_1", "concept_id": "avl_tree",
+      "answer": "30", "correct": false, "expected_concept": "binary_search_tree",
+      "mastery": {"recursion": 0.7, "trees": 0.85, "binary_tree": 0.8, "binary_search_tree": 0.15, "avl_tree": 0.1},
+      "note": "No BST or AVL insertion of 10, 20, 30 puts 30 at the root; the ordering rule itself is missing and BST mastery is low."
+    },
+    {
+      "student_id": "dev_03", "item_id": "q_avl_1", "concept_id": "avl_tree",
+      "answer": "None", "correct": false, "expected_concept": "trees",
+      "mastery": {"recursion": 0.6, "trees": 0.15, "binary_tree": 0.3, "binary_search_tree": 0.3, "avl_tree": 0.1},
+      "note": "Thinks a tree with three nodes has no root: the notion of a root is missing, and trees mastery is the lowest in the chain."
+    },
+    {
+      "student_id": "dev_04", "item_id": "q_bst_1", "concept_id": "binary_search_tree",
+      "answer": "8", "correct": false, "expected_concept": "binary_search_tree",
+      "mastery": {"recursion": 0.85, "trees": 0.9, "binary_tree": 0.88, "binary_search_tree": 0.15, "avl_tree": 0.05},
+      "note": "Put the larger key on the left: the BST ordering rule is wrong while binary-tree structure is known."
+    },
+    {
+      "student_id": "dev_05", "item_id": "q_bst_1", "concept_id": "binary_search_tree",
+      "answer": "None", "correct": false, "expected_concept": "binary_tree",
+      "mastery": {"recursion": 0.15, "trees": 0.85, "binary_tree": 0.15, "binary_search_tree": 0.1, "avl_tree": 0.05},
+      "note": "Does not attach 3 as a left child at all: the left/right child structure of a binary tree is missing."
+    },
+    {
+      "student_id": "dev_06", "item_id": "q_bst_1", "concept_id": "binary_search_tree",
+      "answer": "5", "correct": false, "expected_concept": "trees",
+      "mastery": {"recursion": 0.5, "trees": 0.1, "binary_tree": 0.3, "binary_search_tree": 0.2, "avl_tree": 0.05},
+      "note": "Names the node itself as its own child: parent/child in a tree is not understood, and trees mastery is lowest."
+    },
+    {
+      "student_id": "dev_07", "item_id": "q_bt_1", "concept_id": "binary_tree",
+      "answer": "Unlimited", "correct": false, "expected_concept": "binary_tree",
+      "mastery": {"recursion": 0.7, "trees": 0.9, "binary_tree": 0.2, "binary_search_tree": 0.1, "avl_tree": 0.05},
+      "note": "Treats a binary tree like a general tree; trees mastery is high, so the gap is binary_tree itself."
+    },
+    {
+      "student_id": "dev_08", "item_id": "q_bt_1", "concept_id": "binary_tree",
+      "answer": "3", "correct": false, "expected_concept": "binary_tree",
+      "mastery": {"recursion": 0.1, "trees": 0.9, "binary_tree": 0.25, "binary_search_tree": 0.1, "avl_tree": 0.05},
+      "note": "Wrong child limit for a binary tree. Recursion (soft prerequisite) is low but unrelated to this mistake: a distractor for blame-nearest."
+    },
+    {
+      "student_id": "dev_09", "item_id": "q_bt_1", "concept_id": "binary_tree",
+      "answer": "1", "correct": false, "expected_concept": "trees",
+      "mastery": {"recursion": 0.8, "trees": 0.15, "binary_tree": 0.3, "binary_search_tree": 0.1, "avl_tree": 0.05},
+      "note": "Thinks a node has one child, like a list: branching in a tree is missing, and trees mastery is low."
+    },
+    {
+      "student_id": "dev_10", "item_id": "q_rec_1", "concept_id": "recursion",
+      "answer": "A loop counter", "correct": false, "expected_concept": "recursion",
+      "mastery": {"recursion": 0.15, "trees": 0.85, "binary_tree": 0.6, "binary_search_tree": 0.4, "avl_tree": 0.1},
+      "note": "Recursion has no prerequisites in the graph; the tracer must not call the LLM here."
+    }
+  ]
+}
