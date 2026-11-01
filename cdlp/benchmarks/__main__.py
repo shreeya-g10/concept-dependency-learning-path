@@ -2,7 +2,7 @@
 
     python -m cdlp.benchmarks --dataset al_cpl            # raw: data/benchmarks/al_cpl/
     python -m cdlp.benchmarks --dataset university_course
-    python -m cdlp.benchmarks --dataset lecturebank
+    python -m cdlp.benchmarks --dataset lecturebank       # converts, but NOT used in evaluation
 
 Writes <out-dir>/<course_id>/concepts.json and gold_edges.csv for every graph in the
 dataset (AL-CPL has four domains, the others one). Default out-dir is
@@ -25,6 +25,8 @@ LOADERS = {
     "lecturebank": lecturebank.load,
 }
 DATASETS = list(LOADERS)
+# Converted for completeness only; excluded from every experiment (README).
+NOT_FOR_EVALUATION = {"lecturebank": "licence not stated"}
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -36,6 +38,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--out-dir", type=Path, default=Path("outputs/benchmarks"))
     args = parser.parse_args(argv)
 
+    if args.dataset in NOT_FOR_EVALUATION:
+        print(
+            f"warning: {args.dataset} is not used in evaluation: "
+            f"{NOT_FOR_EVALUATION[args.dataset]} (cdlp/benchmarks/README.md)",
+            file=sys.stderr,
+        )
     raw = args.raw or Path("data/benchmarks") / args.dataset
     for course in LOADERS[args.dataset](raw):
         folder = course.write(args.out_dir)
@@ -43,6 +51,7 @@ def main(argv: list[str] | None = None) -> None:
         print(
             f"{s['course_id']}: {s['concepts']} concepts, {s['pairs']} pairs "
             f"({s['positive']} positive, {s['none']} none), "
+            f"{s['transitive_positives']} positives implied by other positives, "
             f"{s['slug_collisions']} slug collisions -> {folder}",
             file=sys.stderr,
         )
