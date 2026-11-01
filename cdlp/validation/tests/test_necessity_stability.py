@@ -48,3 +48,19 @@ def test_missing_gap_breaks_the_order():
 def test_estimates_grow_with_n_and_mcq_is_cheaper():
     assert ns.estimate_seconds("open", 5, 3) > ns.estimate_seconds("open", 3, 3)
     assert ns.estimate_seconds("mcq", 3, 3) < ns.estimate_seconds("open", 3, 3)
+
+
+def test_record_reads_a_saved_run():
+    saved = {
+        "seconds": 12.5,
+        "config": {"thresholds": THRESHOLDS},
+        "results": [
+            {"relationship_id": "r2", "source": "a", "target": "b", "necessity_gap": 0.5},
+            {"relationship_id": "r4", "source": "c", "target": "d", "necessity_gap": None},
+        ],
+    }
+
+    rec = ns._record(saved, "mcq", 3, 42, ["r2", "r4"])
+
+    assert rec["gaps"] == {"r2": 0.5, "r4": None}
+    assert rec["edges"]["r2"] == "a -> b" and rec["seconds"] == 12.5

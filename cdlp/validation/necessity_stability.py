@@ -26,6 +26,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
+
 from cdlp.shared.io import read_json, read_jsonl
 from cdlp.validation import necessity_test as nt
 
@@ -42,6 +44,19 @@ def estimate_seconds(fmt: str, n: int, edges: int) -> float:
     else:
         per_edge = (12 + 12 * n) + 2 * 18  # MCQ questions (4 options each), 2 letter replies
     return per_edge * edges
+
+
+def _record(result: dict, fmt: str, n: int, seed: int, only: list[str]) -> dict:
+    by_id = {r["relationship_id"]: r for r in result["results"]}
+    return {
+        "question_format": fmt,
+        "n_questions": n,
+        "seed": seed,
+        "seconds": result.get("seconds", 0.0),
+        "thresholds": result["config"]["thresholds"],
+        "gaps": {rid: by_id[rid]["necessity_gap"] for rid in only},
+        "edges": {rid: f"{by_id[rid]['source']} -> {by_id[rid]['target']}" for rid in only},
+    }
 
 
 def _order_holds(gaps: list[float | None], weak: float) -> bool:
@@ -101,6 +116,9 @@ def main() -> None:
     parser.add_argument("--budget-minutes", type=float, default=60)
     parser.add_argument("--config", type=Path, default=nt.DEFAULT_CONFIG)
     parser.add_argument("--out-dir", type=Path, default=RESULTS)
+    parser.add_argument(
+        "--resume", action="store_true", help="reuse runs already saved in --out-dir"
+    )
     args = parser.parse_args()
 
     relationships = read_json(args.relationships)
@@ -111,12 +129,17 @@ def main() -> None:
 
     budget, spent = args.budget_minutes * 60, 0.0
     measured: dict[tuple, list[float]] = {}
-    runs, skipped = [], []
+    runs, skipped, failed = [], [], []
     for item in args.plan:
         fmt, n = item.split(":")
         n = int(n)
         for seed in args.seeds:
             key = (fmt, n)
+            out = args.out_dir / f"{fmt}_n{n}_seed{seed}.json"
+            if args.resume and out.exists():
+                runs.append(_record(json.loads(out.read_text()), fmt, n, seed, args.only))
+                print(f"reuse {fmt} n={n} seed={seed} from {out.name}", flush=True)
+                continue
             predicted = (
                 statistics.mean(measured[key])
                 if measured.get(key)
@@ -144,28 +167,28 @@ def main() -> None:
                 "with_a_diagnostic": False,
             }
             start = time.monotonic()
-            result = nt.run(relationships, concepts, chunks, cfg=cfg, only=args.only)
+            try:
+                result = nt.run(relationships, concepts, chunks, cfg=cfg, only=args.only)
+            except requests.RequestException as error:  # e.g. an Ollama read timeout
+                seconds = time.monotonic() - start
+                spent += seconds
+                failed.append(
+                    {
+                        "question_format": fmt,
+                        "n_questions": n,
+                        "seed": seed,
+                        "error": f"{type(error).__name__}: {error}"[:300],
+                    }
+                )
+                print(f"FAILED {fmt} n={n} seed={seed} after {seconds:.0f}s: {error}", flush=True)
+                continue
             seconds = time.monotonic() - start
             spent += seconds
             measured.setdefault(key, []).append(seconds)
             result["seconds"] = round(seconds, 1)
-            out = args.out_dir / f"{fmt}_n{n}_seed{seed}.json"
             out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
             by_id = {r["relationship_id"]: r for r in result["results"]}
-            runs.append(
-                {
-                    "question_format": fmt,
-                    "n_questions": n,
-                    "seed": seed,
-                    "seconds": seconds,
-                    "thresholds": cfg["thresholds"],
-                    "gaps": {rid: by_id[rid]["necessity_gap"] for rid in args.only},
-                    "edges": {
-                        rid: f"{by_id[rid]['source']} -> {by_id[rid]['target']}"
-                        for rid in args.only
-                    },
-                }
-            )
+            runs.append(_record(result, fmt, n, seed, args.only))
             print(
                 f"done {fmt} n={n} seed={seed} in {seconds:.0f}s: "
                 f"{[by_id[rid]['necessity_gap'] for rid in args.only]} "
@@ -190,6 +213,7 @@ def main() -> None:
         "expected_order": "gap(edge 1) > gap(edge 2) > gap(edge 3), |gap(edge 3)| < weak",
         "settings": summarise(runs, args.only, base["thresholds"]["weak"]),
         "skipped": skipped,
+        "failed": failed,
     }
     (args.out_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(f"summary -> {args.out_dir / 'summary.json'}", flush=True)

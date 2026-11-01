@@ -433,3 +433,18 @@ def test_with_a_diagnostic_can_be_skipped(llm):
     assert "necessity_learner_with_v1" not in [c["prompt_version"] for c in llm.calls]
     assert r["score_with"] is None and r["answers_with"] == []
     assert r["necessity_gap"] is not None
+
+
+def test_result_fields_fit_the_validated_graph_contract(llm):
+    from cdlp.shared.io import EXAMPLES, read_json
+    from cdlp.shared.validate import check
+
+    r = run()
+    graph = read_json(EXAMPLES / "validated_graph.json")
+    edge = graph["edges"][1]
+    for field in ("score_control", "score_without", "n_questions", "question_format"):
+        edge[field] = r[field]
+    edge["necessity_gap"] = r["necessity_gap"]
+
+    assert check(graph, "validated_graph") == []
+    assert r["necessity_gap"] == pytest.approx(r["score_control"] - r["score_without"], abs=1e-4)

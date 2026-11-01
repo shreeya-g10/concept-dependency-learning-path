@@ -8,6 +8,11 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.4
+
+- `validated_graph.json` edges may carry four new optional fields from the necessity test (`cdlp/validation/necessity_test.py`): `score_control` (control learner: knows A, an unrelated concept C banned), `score_without` (A banned), `n_questions` and `question_format` (`open` or `mcq`). `necessity_gap` = `score_control` − `score_without`. The necessity test writes all four per edge. Example: edge `r1` in `examples/validated_graph.json`.
+- No field renamed, removed or made required; 1.0–1.3 files stay valid.
+
 ## 1.3
 
 - New `relationships_baseline.json` (example in `examples/`): the RQ1 baseline written by `python -m cdlp.discovery --baseline` (one LLM call with the full concept list, no candidate filter). It uses the `relationships` schema unchanged; `evidence` is always empty because the baseline sees no chunks. Registered in `FILE_SCHEMAS`.

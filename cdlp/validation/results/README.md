@@ -35,3 +35,22 @@ The gap is now **control score − score without A**. The control learner gets t
 3. Leakage is 0 everywhere, so the learner obeys the bans; that is not the problem.
 
 The necessity grade is **not usable as evidence yet**. The next steps are a stability study (n = 2 vs 3, more questions, several seeds) and a better fallback control before any threshold is set.
+
+## Necessity stability study (2026-11-02)
+
+`necessity_stability/`: one file per (format, n, seed) plus `summary.json` (config, timing, skipped and failed runs). Same 3 edges, `llama3.1:8b`, temperature 0, seeds 42 / 43 / 44, "with A" diagnostic off, thresholds unchanged. Control C: Graphs (in-course) for the first two edges, Gradient Descent (cross-course, ml101) for `graphs → avl_tree`. About 55 of the approved 60 minutes were used: 40.0 min of finished runs, ~10 min lost when one Ollama call hung until its 600 s read timeout (another process was using the GPU), and 5.3 min to redo that run with `--resume`. `summary.json`'s `spent_minutes` counts only the resumed invocation. **Open n = 5 was not run**: it did not fit in the budget.
+
+Mean gap ± SD across seeds (expected order: BT→BST > rec→BT > graphs→AVL ≈ 0):
+
+| Format | n | binary_tree → BST | recursion → binary_tree | graphs → avl_tree | Order holds (means / per seed) |
+|---|---|---|---|---|---|
+| open | 3 | 0.167 ± 0.000 | 0.167 ± 0.000 | 0.167 ± 0.000 | no / 0 of 3 |
+| mcq | 3 | 0.000 ± 0.000 | 0.333 ± 0.000 | 0.000 ± 0.000 | no / 0 of 3 |
+| mcq | 5 | 0.000 ± 0.000 | 0.267 ± 0.231 | 0.000 ± 0.000 | no / 0 of 3 |
+| mcq | 8 | 0.000 ± 0.000 | 0.167 ± 0.289 | 0.000 ± 0.000 | no / 0 of 3 |
+
+**Findings:**
+1. **At temperature 0 the seed is nearly irrelevant.** Decoding is greedy, so open n = 3 gave identical questions, answers and grades for all three seeds: SD 0 means repetition, not stability. The MCQ runs did vary with the seed. This study therefore does not measure question-set variance; that needs a non-zero temperature for question writing.
+2. **MCQ is insensitive to the ban.** In most MCQ runs the control and "without A" learners scored exactly the same (e.g. both 1.00 on `binary_tree → BST` at n = 3, both 0.25 at n = 8). That correctly gives `graphs → avl_tree` ≈ 0, but also gives 0 for the hard edge. The learner chooses between options by elimination, whether or not A is banned.
+3. **Open n = 3 responds to the ban, but too little to rank.** Every edge got exactly one half-step (0.167), the smallest non-zero gap possible, so it cannot separate a hard prerequisite from an unrelated one.
+4. No setting reproduces the expected order, in the means or in any single seed. No thresholds were tuned.
