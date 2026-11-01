@@ -1,0 +1,26 @@
+You are grading a student's quiz answers on "{target_name}" against reference answers.
+
+Course material the questions came from:
+{chunks}
+
+Questions, reference answers and the student's answers:
+{items}
+
+Grade each answer on its own:
+- "correct": it states the key point of the reference answer (wording may differ).
+- "partial": it gets part of the key point, or is vague but on the right track.
+- "incorrect": it is wrong, missing, or says the student does not know.
+Judge only the content. Do not reward length, confidence, or extra facts that the question did not ask for.
+
+Worked example (from an unrelated chess course, to show the grading only):
+Question: "Which two pieces move when a player castles?" Reference: "The king and one rook."
+- Answer "The king and a rook." -> correct
+- Answer "The king, and some other piece I'm not sure of." -> partial
+- Answer "I don't know." -> incorrect
+
+Return ONLY a JSON object with this exact format, one grade per question, in order:
+{
+  "grades": [
+    {"grade": "correct" | "partial" | "incorrect", "reason": "<a few words>"}
+  ]
+}

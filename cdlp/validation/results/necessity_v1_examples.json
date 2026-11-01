@@ -1,0 +1,278 @@
+{
+  "course_id": "ds101",
+  "model": "llama3.1:8b",
+  "prompt_versions": {
+    "questions": "necessity_questions_v1",
+    "learner_without": "necessity_learner_without_v1",
+    "learner_with": "necessity_learner_with_v1",
+    "grader": "necessity_grader_v1"
+  },
+  "temperature": 0.0,
+  "seed": 42,
+  "config": {
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold.",
+    "n_questions": 3,
+    "model": null,
+    "temperature": 0.0,
+    "seed": 42,
+    "learner_sees_lesson": false,
+    "prompt_versions": {
+      "questions": "necessity_questions_v1",
+      "learner_without": "necessity_learner_without_v1",
+      "learner_with": "necessity_learner_with_v1",
+      "grader": "necessity_grader_v1"
+    },
+    "points": {
+      "correct": 1.0,
+      "partial": 0.5,
+      "incorrect": 0.0
+    },
+    "thresholds": {
+      "strong": 0.5,
+      "medium": 0.3,
+      "weak": 0.15
+    }
+  },
+  "date": "2026-11-01T18:35:28+00:00",
+  "leakage_rate": 0.0,
+  "results": [
+    {
+      "relationship_id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "known_without": [
+        "recursion",
+        "trees"
+      ],
+      "status": "ok",
+      "necessity": "strong",
+      "necessity_gap": 0.5,
+      "score_with": 1.0,
+      "score_without": 0.5,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": []
+      },
+      "questions": [
+        {
+          "question": "What is a binary search tree?",
+          "reference_answer": "A binary tree",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How are values stored in the left and right subtrees of a binary search tree?",
+          "reference_answer": "Values smaller than the root are stored in the left subtree and larger values in the right subtree",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What is the characteristic that defines a binary search tree?",
+          "reference_answer": "Values smaller than the root are stored in the left subtree and larger values in the right subtree",
+          "chunk_id": "ch_l7_p18"
+        }
+      ],
+      "answers_without": [
+        "A binary search tree is a type of tree data structure where each node has a value and its left and right subtrees contain values less than and greater than the node's value, respectively.",
+        "I'm not entirely sure, but I think values in the left subtree are less than the node's value and values in the right subtree are greater than the node's value.",
+        "I don't know, but I think it has something to do with the way values are arranged in the tree, possibly with the left subtree having smaller values and the right subtree having larger values."
+      ],
+      "answers_with": [
+        "A binary search tree is a type of binary tree where each node has a value and its left and right subtrees contain values less than and greater than the node's value, respectively.",
+        "In a binary search tree, values stored in the left subtree of a node are less than the node's value, and values stored in the right subtree are greater than the node's value.",
+        "The characteristic that defines a binary search tree is that for each node, all values in its left subtree are less than the node's value, and all values in its right subtree are greater than the node's value."
+      ],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "accurately describes BST"
+        },
+        {
+          "grade": "partial",
+          "reason": "gets part of the key point, but not entirely sure"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "states the opposite of the reference answer"
+        }
+      ],
+      "grades_with": [
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "correct",
+          "reason": "correctly describes left and right subtrees"
+        },
+        {
+          "grade": "correct",
+          "reason": "states key characteristic"
+        }
+      ]
+    },
+    {
+      "relationship_id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "known_without": [
+        "trees"
+      ],
+      "status": "ok",
+      "necessity": "weak",
+      "necessity_gap": 0.1667,
+      "score_with": 0.8333,
+      "score_without": 0.6667,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": []
+      },
+      "questions": [
+        {
+          "question": "What is a binary tree?",
+          "reference_answer": "A tree in which each node has at most two children.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are traversals defined in a binary tree?",
+          "reference_answer": "Traversals are defined recursively.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How many children can a node in a binary tree have at most?",
+          "reference_answer": "At most two children.",
+          "chunk_id": "ch_l6_p11"
+        }
+      ],
+      "answers_without": [
+        "A binary tree is a tree where each node has at most two children.",
+        "I don't know how traversals are defined in a binary tree.",
+        "A node in a binary tree can have at most two children."
+      ],
+      "answers_with": [
+        "A binary tree is like a tree with branches, but each node has at most two children.",
+        "Traversals in a binary tree are like recursion, where you visit each node and then visit its children.",
+        "A node in a binary tree can have at most two children, like how a tree branch can split into two smaller branches."
+      ],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "same wording"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "student doesn't know"
+        },
+        {
+          "grade": "correct",
+          "reason": "same wording"
+        }
+      ],
+      "grades_with": [
+        {
+          "grade": "correct",
+          "reason": "states key point"
+        },
+        {
+          "grade": "partial",
+          "reason": "vague but on right track"
+        },
+        {
+          "grade": "correct",
+          "reason": "states key point"
+        }
+      ]
+    },
+    {
+      "relationship_id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "known_without": [
+        "recursion",
+        "trees",
+        "binary_tree",
+        "binary_search_tree"
+      ],
+      "status": "ok",
+      "necessity": "strong",
+      "necessity_gap": 0.5,
+      "score_with": 0.8333,
+      "score_without": 0.3333,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": []
+      },
+      "questions": [
+        {
+          "question": "What is an AVL tree?",
+          "reference_answer": "An AVL tree is a self-balancing binary search tree.",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "How does an AVL tree maintain balance after an insert?",
+          "reference_answer": "Rotations restore the height balance while preserving the BST ordering.",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the purpose of rotations in an AVL tree?",
+          "reference_answer": "Rotations restore the height balance while preserving the BST ordering.",
+          "chunk_id": "ch_l9_p04"
+        }
+      ],
+      "answers_without": [
+        "I think an AVL tree is a type of binary search tree that has some rules to keep the height of the tree balanced, but I'm not entirely sure.",
+        "I don't know how an AVL tree maintains balance after an insert, but I know it has something to do with adjusting the tree's structure.",
+        "I think the purpose of rotations in an AVL tree is to balance the tree by moving nodes up or down, but I'm not really sure how it works."
+      ],
+      "answers_with": [
+        "An AVL tree is a type of self-balancing binary search tree that maintains balance by ensuring the height of the left and right subtrees of every node differs by at most one.",
+        "An AVL tree maintains balance after an insert by checking the balance factor of the affected nodes and performing rotations as needed to restore balance.",
+        "The purpose of rotations in an AVL tree is to rebalance the tree by rotating nodes to ensure the height of the left and right subtrees of every node differs by at most one."
+      ],
+      "grades_without": [
+        {
+          "grade": "partial",
+          "reason": "mentions balance and rules"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "lacks key point about rotations"
+        },
+        {
+          "grade": "partial",
+          "reason": "mentions balancing and moving nodes"
+        }
+      ],
+      "grades_with": [
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "partial",
+          "reason": "misses rotations, but mentions balance"
+        },
+        {
+          "grade": "correct",
+          "reason": "mentions rotations and balance"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "necessity": {
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold.",
+    "n_questions": 3,
+    "model": null,
+    "temperature": 0.0,
+    "seed": 42,
+    "learner_sees_lesson": false,
+    "prompt_versions": {
+      "questions": "necessity_questions_v1",
+      "learner_without": "necessity_learner_without_v1",
+      "learner_with": "necessity_learner_with_v1",
+      "grader": "necessity_grader_v1"
+    },
+    "points": {"correct": 1.0, "partial": 0.5, "incorrect": 0.0},
+    "thresholds": {"strong": 0.5, "medium": 0.3, "weak": 0.15}
+  }
+}
