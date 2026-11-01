@@ -22,6 +22,14 @@ def run(module: str, *args: str) -> None:
     subprocess.run([sys.executable, "-m", module, *args], check=True)
 
 
+def produced_or_example(out: Path, name: str) -> Path:
+    """out/<name> if a module wrote it, else the shared example (with a note)."""
+    if (out / name).exists():
+        return out / name
+    print(f"note: no {out / name}, using {EXAMPLES / name}")
+    return EXAMPLES / name
+
+
 def course_input(course: str) -> Path:
     """data/raw/<course>/, or data/raw/ while the course files still sit there."""
     folder = Path("data/raw") / course
@@ -63,18 +71,16 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
     )
-    # discovery no longer writes sim_students.json; until learning_path builds simulated
-    # students from the validated graph, fall back to the shared example students
-    sim_students = out / "sim_students.json"
-    if not sim_students.exists():
-        sim_students = EXAMPLES / "sim_students.json"
-        print(f"note: no {out / 'sim_students.json'}, using {sim_students}")
+    # discovery no longer writes quiz_items.json or sim_students.json; until
+    # learning_path builds them, fall back to the shared examples
+    quiz_items = produced_or_example(out, "quiz_items.json")
+    sim_students = produced_or_example(out, "sim_students.json")
     run(
         "cdlp.learning_path",
         "--graph",
         str(out / "validated_graph.json"),
         "--quiz",
-        str(out / "quiz_items.json"),
+        str(quiz_items),
         "--students",
         str(sim_students),
         "--target",
@@ -88,7 +94,7 @@ def main() -> None:
             "--graph",
             str(out / "validated_graph.json"),
             "--quiz",
-            str(out / "quiz_items.json"),
+            str(quiz_items),
             "--answers",
             str(out / "student_answers.json"),
             "--out",

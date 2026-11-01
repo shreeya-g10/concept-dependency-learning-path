@@ -26,6 +26,8 @@ BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "qwen2.5:7b-instruct")
 API_KEY = os.getenv("LLM_API_KEY", "")
 CACHE_DIR = Path(os.getenv("LLM_CACHE_DIR", ".cache/llm"))
+# Sent as options.seed (Ollama) / seed (OpenAI-compatible) and part of the cache key.
+DEFAULT_SEED = 42
 
 
 def chat(
@@ -36,12 +38,13 @@ def chat(
     temperature: float = 0.0,
     prompt_version: str = "unversioned",
     json_mode: bool = False,
+    seed: int = DEFAULT_SEED,
 ) -> str:
     model = model or DEFAULT_MODEL
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": prompt}
     ]
-    key = json.dumps([PROVIDER, model, temperature, json_mode, messages], sort_keys=True)
+    key = json.dumps([PROVIDER, model, temperature, seed, json_mode, messages], sort_keys=True)
     cache_file = CACHE_DIR / f"{hashlib.sha256(key.encode()).hexdigest()}.json"
     if cache_file.exists():
         return json.loads(cache_file.read_text())["response"]
@@ -51,7 +54,7 @@ def chat(
             "model": model,
             "messages": messages,
             "stream": False,
-            "options": {"temperature": temperature},
+            "options": {"temperature": temperature, "seed": seed},
         }
         if json_mode:
             body["format"] = "json"
@@ -59,7 +62,7 @@ def chat(
         resp.raise_for_status()
         text = resp.json()["message"]["content"]
     elif PROVIDER == "openai_compatible":
-        body = {"model": model, "messages": messages, "temperature": temperature}
+        body = {"model": model, "messages": messages, "temperature": temperature, "seed": seed}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         resp = requests.post(
@@ -80,6 +83,7 @@ def chat(
                 "provider": PROVIDER,
                 "model": model,
                 "temperature": temperature,
+                "seed": seed,
                 "prompt_version": prompt_version,
                 "messages": messages,
                 "response": text,

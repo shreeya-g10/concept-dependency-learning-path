@@ -124,3 +124,26 @@ def test_candidate_stats_counts_both_directions_for_ties():
         "tied": 1,
         "llm_calls": 3,
     }
+
+
+def test_name_in_source_chunk():
+    concepts = [
+        _concept("roux", "Flour cooked in butter.", "c1"),
+        _concept("sauce", "A thick liquid.", "c2"),
+    ]
+    chunks = [
+        {"chunk_id": "c1", "text": "Cook flour in butter."},
+        {"chunk_id": "c2", "text": "Whisk milk into the Roux until it thickens."},
+    ]
+
+    assert candidates._name_in_source_chunk(concepts, chunks) == {("roux", "sauce")}
+
+
+def test_name_in_chunk_makes_a_candidate(no_embeddings):
+    concepts = [_concept("roux", "", "c1"), _concept("sauce", "", "c2")]
+    chunks = [{"chunk_id": "c1", "text": ""}, {"chunk_id": "c2", "text": "add the roux"}]
+
+    (candidate,) = generate_candidates(concepts, chunks)
+
+    assert (candidate.source, candidate.target) == ("roux", "sauce")
+    assert candidate.reasons == ["course_order", "name_in_chunk"]

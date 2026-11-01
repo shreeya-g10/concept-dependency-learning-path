@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.2",
   "course_id": "ds101",
   "relationships": [
     {
@@ -85,7 +85,10 @@
           "quote": "A graph generalises a tree"
         }
       ],
-      "method": "llm_discovery_v0"
+      "method": "llm_discovery_v0",
+      "bidirectional": true,
+      "reverse_strength": "soft",
+      "reverse_confidence": 0.58
     },
     {
       "id": "r6",

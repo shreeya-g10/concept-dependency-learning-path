@@ -77,7 +77,7 @@ def evaluate(relationships: list[dict], gold: list[dict]) -> dict:
 def main() -> None:
     from cdlp.discovery.llm_discovery import PROMPT_VERSION, TEMPERATURE
     from cdlp.shared.io import read_json
-    from cdlp.shared.llm import DEFAULT_MODEL, PROVIDER
+    from cdlp.shared.llm import DEFAULT_MODEL, DEFAULT_SEED, PROVIDER
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--relationships", type=Path, required=True)
@@ -87,7 +87,7 @@ def main() -> None:
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="model that produced the edges")
     parser.add_argument("--prompt-version", default=PROMPT_VERSION)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="LLM seed used")
     args = parser.parse_args()
 
     data = read_json(args.relationships)

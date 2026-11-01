@@ -1,5 +1,6 @@
 # Light install used by CI (no ML models). Do not edit.
 -r cdlp/shared/requirements.txt
+networkx  # pure Python; needed by cdlp/validation/graph_checks.py tests
 pytest
 ruff
 streamlit

@@ -11,7 +11,9 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 ## 1.2
 
 - `relationships.json` edges may carry three new optional fields: `bidirectional` (true when the LLM said DIRECT in both directions for two concepts at the same course position), `reverse_strength` and `reverse_confidence` (the LLM's answer for target -> source). Discovery keeps one edge for such a pair, never two opposite edges; the validator decides the direction or sends it to HUMAN_REVIEW.
-- Discovery no longer writes `sim_students.json`; it will be built from validated edges by `cdlp/learning_path`. Until then `pipeline.py` falls back to `cdlp/shared/examples/sim_students.json`.
+- Discovery no longer writes `sim_students.json` or `quiz_items.json`; both will be built by `cdlp/learning_path`. Until then `pipeline.py` falls back to the files in `cdlp/shared/examples/`.
+- Example: `examples/relationships.json` is at 1.2, and edge `r5` (`trees -> graphs`) shows the bidirectional fields.
+- Not a contract change: `cdlp/shared/llm.py` takes a `seed` (default 42), sends it as `options.seed` to Ollama and `seed` to OpenAI-compatible endpoints, and stores it in the cache key and cache record. Because the key changed, responses cached before this version are not reused.
 - No field renamed, removed or made required; 1.0 and 1.1 files stay valid.
 
 ## 1.1
