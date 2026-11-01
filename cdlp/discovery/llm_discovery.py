@@ -115,16 +115,30 @@ def _merge_both_directions(forward: dict, backward: dict) -> dict:
 
 
 def transitive_edges(relationships: list[dict]) -> set:
-    """DIRECT edges implied by a longer path of other DIRECT edges (any length)."""
-    import networkx as nx
+    """DIRECT edges implied by a longer path of other DIRECT edges (any length).
 
-    graph = nx.DiGraph()
-    graph.add_edges_from(
-        (r["source"], r["target"]) for r in relationships if r.get("relationship") == "DIRECT"
-    )
-    if not nx.is_directed_acyclic_graph(graph):
-        return set()  # redundancy is undefined on a cyclic graph; leave it to the validator
-    return set(graph.edges) - set(nx.transitive_reduction(graph).edges)
+    Pure Python (CI has no networkx). An edge u -> v is redundant if v is still
+    reachable from u without that edge. Only used behind --remove-transitive.
+    """
+    edges = {(r["source"], r["target"]) for r in relationships if r.get("relationship") == "DIRECT"}
+    successors: dict[str, set] = {}
+    for u, v in edges:
+        successors.setdefault(u, set()).add(v)
+
+    def reachable_without(u: str, v: str) -> bool:
+        stack, seen = [w for w in successors.get(u, ()) if w != v], set()
+        while stack:
+            node = stack.pop()
+            if node == v:
+                return True
+            if node not in seen:
+                seen.add(node)
+                stack.extend(successors.get(node, ()))
+        return False
+
+    if any(reachable_without(v, u) or (v, u) in edges for u, v in edges):
+        return set()  # cyclic: redundancy is undefined; leave it to the validator
+    return {(u, v) for u, v in edges if reachable_without(u, v)}
 
 
 def discover_candidates(

@@ -158,3 +158,17 @@ def test_v1_prompt_is_kept_and_v2_has_no_course_concepts():
     assert "binary tree" in v1.lower()  # kept for the record
     for term in ["tree", "recursion", "graph", "avl", "vector", "matri", "regression", "gradient"]:
         assert term not in v2
+
+
+def _direct(*pairs):
+    return [{"source": s, "target": t, "relationship": "DIRECT"} for s, t in pairs]
+
+
+def test_transitive_edges_any_path_length():
+    rels = _direct(("a", "b"), ("b", "c"), ("c", "d"), ("a", "d"), ("a", "c"))
+
+    assert llm_discovery.transitive_edges(rels) == {("a", "d"), ("a", "c")}
+
+
+def test_transitive_edges_skips_cyclic_graphs():
+    assert llm_discovery.transitive_edges(_direct(("a", "b"), ("b", "c"), ("c", "a"))) == set()
