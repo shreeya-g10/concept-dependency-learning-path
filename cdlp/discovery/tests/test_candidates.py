@@ -147,3 +147,35 @@ def test_name_in_chunk_makes_a_candidate(no_embeddings):
 
     assert (candidate.source, candidate.target) == ("roux", "sauce")
     assert candidate.reasons == ["course_order", "name_in_chunk"]
+
+
+@pytest.mark.parametrize(
+    "term, text, expected",
+    [
+        ("recursion", "Traversals are defined recursively.", True),  # shared 6+ prefix
+        ("trees", "a tree", True),  # plural -> singular
+        ("binary tree", "binary trees", True),
+        ("query", "queries", True),  # -ies -> -y
+        ("graph", "paragraphs", False),  # whole words only
+        ("tree", "street", False),
+        ("recursion", "recurrence", False),  # only 5 shared letters
+        ("binary tree", "binary search tree", False),  # words must be consecutive
+        ("", "anything", False),
+    ],
+)
+def test_mentions_light_stemming(term, text, expected):
+    assert candidates._mentions(term, text) is expected
+
+
+def test_stemming_makes_recursively_a_name_in_chunk_signal(no_embeddings):
+    concepts = [_concept("recursion", "", "c1"), _concept("binary_tree", "", "c2")]
+    concepts[0]["name"] = "Recursion"
+    chunks = [
+        {"chunk_id": "c1", "text": ""},
+        {"chunk_id": "c2", "text": "Traversals are defined recursively."},
+    ]
+
+    (candidate,) = generate_candidates(concepts, chunks)
+
+    assert (candidate.source, candidate.target) == ("recursion", "binary_tree")
+    assert "name_in_chunk" in candidate.reasons

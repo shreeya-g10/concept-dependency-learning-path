@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.3",
+  "course_id": "ds101",
+  "relationships": [
+    {
+      "id": "b1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.9,
+      "evidence": [],
+      "method": "llm_baseline_v1"
+    },
+    {
+      "id": "b2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.9,
+      "evidence": [],
+      "method": "llm_baseline_v1"
+    },
+    {
+      "id": "b3",
+      "source": "trees",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "soft",
+      "confidence": 0.7,
+      "evidence": [],
+      "method": "llm_baseline_v1"
+    }
+  ]
+}

@@ -8,6 +8,11 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.3
+
+- New `relationships_baseline.json` (example in `examples/`): the RQ1 baseline written by `python -m cdlp.discovery --baseline` (one LLM call with the full concept list, no candidate filter). It uses the `relationships` schema unchanged; `evidence` is always empty because the baseline sees no chunks. Registered in `FILE_SCHEMAS`.
+- No existing schema changed; 1.0-1.2 files stay valid.
+
 ## 1.2
 
 - `relationships.json` edges may carry three new optional fields: `bidirectional` (true when the LLM said DIRECT in both directions for two concepts at the same course position), `reverse_strength` and `reverse_confidence` (the LLM's answer for target -> source). Discovery keeps one edge for such a pair, never two opposite edges; the validator decides the direction or sends it to HUMAN_REVIEW.

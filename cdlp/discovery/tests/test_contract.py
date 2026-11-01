@@ -7,7 +7,7 @@ import sys
 import pytest
 
 from cdlp.discovery import __main__ as cli
-from cdlp.discovery import candidates, llm_discovery
+from cdlp.discovery import baseline, candidates, llm_discovery
 from cdlp.shared import llm
 from cdlp.shared.io import read_json
 from cdlp.shared.validate import check_file
@@ -33,6 +33,17 @@ def mocked_models(monkeypatch):
             "strength": "HARD",
             "confidence": "HIGH",
             "evidence_chunk_ids": [prompt.split("Chunk ID: ")[1].split("\n")[0]],
+        },
+    )
+    # baseline: one call that lists a chain over the example concepts
+    monkeypatch.setattr(
+        baseline,
+        "chat_json",
+        lambda prompt, **kwargs: {
+            "relationships": [
+                {"source": "trees", "target": "binary_tree", "strength": "HARD"},
+                {"source": "binary_tree", "target": "binary_search_tree", "strength": "HARD"},
+            ]
         },
     )
 
@@ -73,3 +84,19 @@ def test_examples_do_not_send_every_pair(tmp_path, monkeypatch, capsys):
     edges = read_json(tmp_path / "relationships.json")["relationships"]
     assert len(edges) < n * (n - 1) // 2
     assert "candidates:" in capsys.readouterr().err
+
+
+def test_baseline_flag_writes_baseline_file(tmp_path, monkeypatch):
+    run_cli(monkeypatch, tmp_path, "--baseline")
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "relationships.json",
+        "relationships_baseline.json",
+    ]
+    assert check_file(tmp_path / "relationships_baseline.json") == []
+    edges = read_json(tmp_path / "relationships_baseline.json")["relationships"]
+    assert [(e["source"], e["target"]) for e in edges] == [
+        ("trees", "binary_tree"),
+        ("binary_tree", "binary_search_tree"),
+    ]
+    assert all(e["method"] == f"llm_{baseline.BASELINE_PROMPT_VERSION}" for e in edges)
