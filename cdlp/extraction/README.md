@@ -1,10 +1,10 @@
-# Extraction · owner: Vaidehi
+# Extraction · maintainer: Shreeya (initial code: Vaidehi)
 
 Content extraction, plus the website shell and gold data.
 
 **Question you answer:** *What concepts are in this course, and where?*
 
-**You own (only you edit):**
+**Files:**
 - `cdlp/extraction/`
 - `website/Home.py`, `website/common.py`, `website/requirements.txt`, `website/pages/1_Course_Material.py`
 - `data/raw/`, `data/gold/` (merged gold files)
