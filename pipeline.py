@@ -1,4 +1,4 @@
-"""Run the whole pipeline end to end. Owner: Shreeya (lead) — do not edit.
+"""Run the whole pipeline end to end.
 
     python pipeline.py --course ds101 [--target avl_tree]
 
@@ -104,7 +104,8 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
     )
-    # learning_path generates sim_students.json from the validated graph itself.
+    # learning_path (cdlp/learning_path/sim_students.py) generates sim_students.json from
+    # the validated graph itself.
     # It does not generate quiz_items.json yet, so fall back to the shared example
     # (ds101 items) until it does.
     quiz_items = produced_or_example(out, "quiz_items.json")
