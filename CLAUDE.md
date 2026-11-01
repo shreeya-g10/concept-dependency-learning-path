@@ -86,7 +86,7 @@ Each person owns specific paths (see `CONTRIBUTING.md`, `website/README.md` and 
 
 | Person | Owns | Builds | Writes |
 |---|---|---|---|
-| Vaidehi | `cdlp/extraction/`, `cdlp/learning_path/` (incl. `api.py`), `cdlp/discovery/quiz.py`, `cdlp/discovery/sim_students.py`, `website/` except `pages/2_*` and `pages/3_*`, `data/raw/`, `data/gold/` | parsing, chunking, concept extraction, dedup; graph, adaptive diagnosis, personalized path, RQ2 eval; quiz items; simulated students; website shell + deployment; gold merge + kappa | `chunks.jsonl`, `concepts.json`, `quiz_items.json`, `sim_students.json`, `student_state.json`, `learning_path.json` |
+| Vaidehi | `cdlp/extraction/`, `cdlp/learning_path/` (incl. `api.py`), `cdlp/discovery/quiz.py`, `cdlp/discovery/sim_students.py` (and their tests), `website/` except `pages/2_*` and `pages/3_*`, `data/raw/`, `data/gold/` | parsing, chunking, concept extraction, dedup; graph, adaptive diagnosis, personalized path, RQ2 eval; quiz items; simulated students; website shell + deployment; gold merge + kappa | `chunks.jsonl`, `concepts.json`, `quiz_items.json`, `sim_students.json`, `student_state.json`, `learning_path.json` |
 | Shreeya (team lead) | everything else: `cdlp/discovery/` (except the two files above), `cdlp/validation/`, `cdlp/root_cause/`, `cdlp/benchmarks/`, `website/pages/2_*`, `website/pages/3_*`, `cdlp/shared/`, `pipeline.py`, root files, `docs/`, `.github/` | candidate filter, LLM discovery (hard/soft); validation agent + simulated-learner necessity test, RQ1 ablations; root-cause tracing (`cdlp/root_cause/`); public datasets (`cdlp/benchmarks/`); contracts and integration | `relationships.json`, `validated_graph.json` |
 
 Sneha and Shrestha contributed the initial discovery and learning-path code.
@@ -95,7 +95,7 @@ Each module's `README.md` (e.g. `cdlp/validation/README.md`) is its owner's task
 
 The website is a multi-page Streamlit app in `website/`. Pages read contract files via `website/common.py` (falling back to `cdlp/shared/examples/`). The only module code a page may import is `cdlp/learning_path/api.py` and `cdlp/root_cause/api.py`; keep their function signatures stable.
 
-Root-cause tracing lives in `cdlp/root_cause/` (Phase 2) and the real-student study is Phase 4. The ML second domain is out of scope.
+Root-cause tracing lives in `cdlp/root_cause/` (Phase 2) and the real-student study is Phase 4. The ML second domain is in scope: it is the second course, `ml101` (`data/raw/ml101/`), used to show the pipeline generalises.
 
 ### Integration rules
 
