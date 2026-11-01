@@ -1,1 +1,21 @@
 source,target,label,note
+trees,binary_tree,hard,
+recursion,binary_tree,soft,
+binary_tree,binary_search_tree,hard,
+binary_search_tree,avl_tree,hard,
+recursion,avl_tree,none,"shortcut via binary_tree, binary_search_tree"
+trees,avl_tree,none,"shortcut via binary_tree, binary_search_tree"
+graphs,avl_tree,none,
+trees,graphs,soft,
+recursion,binary_search_tree,none,shortcut via binary_tree
+binary_tree,avl_tree,none,shortcut via binary_search_tree
+linear_regression,loss_function,soft,
+loss_function,gradient_descent,soft,
+gradient_descent,logistic_regression,soft,
+linear_regression,logistic_regression,none,"shortcut via loss_function, gradient_descent"
+loss_function,regularization,soft,
+gradient_descent,neural_networks,soft,
+loss_function,neural_networks,none,shortcut via gradient_descent
+regularization,neural_networks,soft,
+linear_regression,neural_networks,none,"shortcut via loss_function, gradient_descent"
+loss_function,logistic_regression,none,shortcut via gradient_descent
