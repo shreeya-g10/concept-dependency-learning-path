@@ -11,9 +11,11 @@ proposed edge and combines them into ACCEPT / REJECT / HUMAN_REVIEW with the dec
 rule and thresholds in configs/default.json ("decision"). Every edge is kept, with
 all four checks, its confidence, evidence quotes and a reason.
 
-Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is not used in
-the decision; because the contract has no "skipped" value, it is written as "none"
-(LLM checks) or "ok" (graph), listed under "skipped_checks", and named in each reason.
+Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is written as
+"skipped" (contract 1.5), listed under "skipped_checks", named in each reason, and
+never blocks ACCEPT. A check with weight 0 in the config is report-only: it runs and is
+recorded on every edge, but takes no part in the score, the vetoes or the decision.
+Necessity is report-only by default (weight 0; --necessity-weight overrides it).
 The run's LLM call counts go to <out dir>/<setting>.stats.json (write_stats), where
 setting is full_agent, minus_<check> or minus_<a>_<b>... (or --setting).
 """
@@ -34,7 +36,8 @@ from cdlp.validation import evidence_check, graph_checks, necessity_test, semant
 CHECKS = ("evidence", "semantic", "necessity", "graph")
 LLM_CHECKS = ("evidence", "semantic", "necessity")
 DEFAULT_CONFIG = Path(__file__).parent / "configs" / "default.json"
-SCHEMA_VERSION = "1.4"
+SCHEMA_VERSION = "1.5"
+SKIPPED = "skipped"
 STRUCTURAL_REJECT = {graph_checks.SELF_LOOP: "self-loop", graph_checks.DUPLICATE: "duplicate"}
 
 
@@ -61,9 +64,14 @@ def implied_by(relationship: dict, relationships: list[dict], labels: dict[str, 
     return path if len(path) > 2 else []
 
 
+def deciding(grades: dict[str, str | None], cfg: dict) -> dict[str, str]:
+    """The checks that take part in the decision: ran (not None) and weight > 0."""
+    return {c: g for c, g in grades.items() if g is not None and cfg["weights"].get(c, 0) > 0}
+
+
 def score(grades: dict[str, str], cfg: dict) -> float | None:
-    """Weighted mean of the active checks' grade points (None if no check ran)."""
-    active = {c: g for c, g in grades.items() if g is not None}
+    """Weighted mean of the deciding checks' grade points (None if none decides)."""
+    active = deciding(grades, cfg)
     total = sum(cfg["weights"][c] for c in active)
     if not total:
         return None
@@ -90,8 +98,15 @@ def decide(
         return "REJECT", 1.0, f"Redundant: implied by {path}." if path else "Redundant."
 
     s = score(grades, cfg)
-    ran = {c: g for c, g in grades.items() if g is not None}
-    summary = ", ".join(f"{c} {g}" for c, g in ran.items()) or "no check ran"
+    ran = deciding(grades, cfg)
+    summary = (
+        ", ".join(
+            f"{c} {g}" + ("" if c in ran else " (report-only)")
+            for c, g in grades.items()
+            if g is not None
+        )
+        or "no check ran"
+    )
     unsupported = (
         cfg.get("reject_if_unsupported")
         and ran.get("evidence") in ("weak", "none")
@@ -127,8 +142,11 @@ def validate(
     skip: set[str] = frozenset(),
     config_path: Path | str = DEFAULT_CONFIG,
     embed=None,
+    necessity_weight: float | None = None,
 ) -> dict:
     cfg = load_decision_config(config_path)
+    if necessity_weight is not None:
+        cfg["weights"] = {**cfg["weights"], "necessity": necessity_weight}
     rels = relationships["relationships"]
     labels = (
         graph_checks.graph_labels_by_id(rels)
@@ -188,10 +206,13 @@ def validate(
                 "decision": decision,
                 "confidence": confidence,
                 "checks": {
-                    "evidence": grades["evidence"] or "none",
-                    "semantic": grades["semantic"] or "none",
-                    "necessity": grades["necessity"] or "none",
-                    "graph": labels[r["id"]],
+                    "evidence": SKIPPED if "evidence" in skip else grades["evidence"],
+                    "semantic": SKIPPED if "semantic" in skip else grades["semantic"],
+                    # necessity that could not run (no course text for B) is skipped too
+                    "necessity": SKIPPED
+                    if "necessity" in skip or grades["necessity"] is None
+                    else grades["necessity"],
+                    "graph": SKIPPED if "graph" in skip else labels[r["id"]],
                 },
                 "necessity_gap": ne.get("necessity_gap") if ne else None,
                 "score_control": ne.get("score_control") if ne else None,
@@ -227,6 +248,11 @@ def main(argv: list[str] | None = None) -> dict:
     parser.add_argument("--students", type=Path, help="sim_students.json (for --review-queue)")
     parser.add_argument("--setting", help="name for the stats file (default from the skips)")
     parser.add_argument("--stats", type=Path, help="default: <out dir>/<setting>.stats.json")
+    parser.add_argument(
+        "--necessity-weight",
+        type=float,
+        help="override the config's necessity weight (0 = report-only, the default)",
+    )
     args = parser.parse_args(argv)
     if args.review_queue and not args.students:
         parser.error("--review-queue needs --students (sim_students.json)")
@@ -238,6 +264,7 @@ def main(argv: list[str] | None = None) -> dict:
         read_jsonl(args.chunks),
         skip=skip,
         config_path=args.config,
+        necessity_weight=args.necessity_weight,
     )
     write_json(args.out, result)
     if args.review_queue:

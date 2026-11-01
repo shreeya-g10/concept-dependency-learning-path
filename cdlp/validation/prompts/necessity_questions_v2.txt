@@ -1,0 +1,24 @@
+You are writing a short quiz for students who have just studied the topic "{target_name}".
+
+Course material on "{target_name}" (each excerpt starts with its chunk id):
+{chunks}
+
+Write exactly {n_questions} short questions that check whether a student understands "{target_name}".
+- Each question must be answerable from the excerpts above, in one or two sentences.
+- Ask about what the topic is and how it works, not about trivia such as dates or names of authors.
+- Never use these words or names, or any form of them, in a question: {avoid_terms}. A student who has never heard of them must be able to read every question.
+{retry_note}- Give a reference answer for each question, taken from the excerpts, and the chunk id it comes from.
+
+Worked example (from an unrelated chess course, to show the format only):
+Excerpt [c7]: "Castling moves the king two squares towards a rook, and that rook jumps to the square the king crossed. Neither piece may have moved before."
+Good questions:
+1. "Which two pieces move when a player castles?" Reference: "The king and one rook." Chunk: c7.
+2. "How far does the king move when castling?" Reference: "Two squares towards the rook." Chunk: c7.
+3. "When is castling not allowed?" Reference: "When the king or that rook has already moved." Chunk: c7.
+
+Return ONLY a JSON object with this exact format:
+{
+  "questions": [
+    {"question": "<question>", "reference_answer": "<answer from the excerpts>", "chunk_id": "<chunk id>"}
+  ]
+}

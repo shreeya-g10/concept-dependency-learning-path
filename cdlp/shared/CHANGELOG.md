@@ -8,6 +8,12 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.5
+
+- `validated_graph.json`: every check (`evidence`, `semantic`, `necessity`, `graph`) may now be `skipped`, meaning the check was not run (an RQ1 ablation such as `--skip-evidence`, or a benchmark without course text). A skipped check never blocks ACCEPT and is left out of the decision score.
+- New optional top-level `skipped_checks`: the list of checks the run skipped. Example: `examples/minus_evidence_validated_graph.json`.
+- **Exception to the additive rule, approved by the lead (2026-11-02):** adding `skipped` widens four enums. Every older file stays valid, but a reader that maps check values (e.g. website page 3) must handle `skipped`.
+
 ## 1.4
 
 - `review_queue.json` rows may carry a new optional `blocking` (boolean, absent = false): accepting the edge as it is would close a cycle with ACCEPT edges (or it is a self-loop). **Every review strategy handles blocking edges first**, before any impact-ranked edge; the file lists them first.

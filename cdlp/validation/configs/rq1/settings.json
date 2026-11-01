@@ -9,7 +9,7 @@
     "baseline": "baseline_v1",
     "evidence": "evidence_v1",
     "semantic": "semantic_v2",
-    "necessity": "necessity_*_v1",
+    "necessity": "necessity_questions_v2 + necessity_{learner_without,learner_with,grader}_v1",
     "single_judge": "semantic_v2",
     "self_consistency": "semantic_v2"
   },
@@ -51,8 +51,16 @@
       "kind": "validated",
       "predictions": "validated_graph.json",
       "adds_calls_of": "discovery_only",
-      "description": "Validation agent with all four checks: evidence, semantic, necessity, graph.",
+      "description": "Validation agent: evidence, semantic (semantic_v2) and graph checks decide; the necessity test runs and is recorded on every edge but is report-only (weight 0), because it was unstable across runs.",
       "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --out <run_dir>/validated_graph.json"
+    },
+    {
+      "name": "full_agent_plus_necessity",
+      "kind": "validated",
+      "predictions": "validated_plus_necessity.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent with the necessity test deciding at its normal weight (1, like evidence and semantic). Run after full_agent: the necessity calls come from the cache.",
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --necessity-weight 1 --setting full_agent_plus_necessity --out <run_dir>/validated_plus_necessity.json"
     },
     {
       "name": "minus_evidence",
@@ -75,7 +83,7 @@
       "kind": "validated",
       "predictions": "validated_minus_necessity.json",
       "adds_calls_of": "discovery_only",
-      "description": "Full agent without the simulated-learner necessity test.",
+      "description": "Full agent without running the necessity test. Since necessity is report-only, the decisions equal full_agent's; this setting measures the calls the test costs. Its effect on decisions is full_agent_plus_necessity vs full_agent.",
       "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --skip-necessity --out <run_dir>/validated_minus_necessity.json"
     },
     {

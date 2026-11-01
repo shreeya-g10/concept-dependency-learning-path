@@ -26,7 +26,14 @@ page_header("Validation Agent", "Shreeya", "validated_graph.json")
 RESULTS = ROOT / "cdlp" / "validation" / "results"
 DECISIONS = ["ACCEPT", "REJECT", "HUMAN_REVIEW"]
 CHECKS = ["evidence", "semantic", "necessity", "graph"]
-GRADE_ICON = {"strong": "🟢", "medium": "🟡", "weak": "🟠", "none": "⚪", "ok": "🟢"}
+GRADE_ICON = {
+    "strong": "🟢",
+    "medium": "🟡",
+    "weak": "🟠",
+    "none": "⚪",
+    "ok": "🟢",
+    "skipped": "➖",
+}
 
 course = get_active_course()
 names = concept_names()

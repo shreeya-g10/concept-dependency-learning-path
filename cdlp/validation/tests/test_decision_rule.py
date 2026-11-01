@@ -6,6 +6,7 @@ from cdlp.validation import __main__ as cli
 from cdlp.validation import graph_checks as g
 
 CFG = cli.load_decision_config()
+PLUS = {**CFG, "weights": {**CFG["weights"], "necessity": 1.0}}  # full_agent_plus_necessity
 
 
 def decide(label=g.OK, evidence="strong", semantic="strong", necessity="strong", **kw):
@@ -42,13 +43,22 @@ def test_cycle_is_never_accepted():
 
 
 def test_no_support_from_evidence_and_semantic_is_rejected():
-    # necessity alone (unreliable so far) cannot rescue an edge nobody else supports
-    decision, _, reason = decide(evidence="none", semantic="weak", necessity="strong")
+    # even at full weight, necessity cannot rescue an edge nobody else supports
+    grades = {"evidence": "none", "semantic": "weak", "necessity": "strong"}
+    decision, _, reason = cli.decide(g.OK, grades, PLUS)
     assert decision == "REJECT" and "neither the material" in reason
 
 
-def test_a_none_grade_blocks_accept():
-    assert decide(evidence="strong", semantic="strong", necessity="none")[0] == "HUMAN_REVIEW"
+def test_necessity_is_report_only_by_default():
+    assert CFG["weights"]["necessity"] == 0
+    decision, _, reason = decide(evidence="strong", semantic="strong", necessity="none")
+    assert decision == "ACCEPT"  # a report-only none does not block
+    assert "necessity none (report-only)" in reason
+
+
+def test_a_none_grade_blocks_accept_when_necessity_decides():
+    grades = {"evidence": "strong", "semantic": "strong", "necessity": "none"}
+    assert cli.decide(g.OK, grades, PLUS)[0] == "HUMAN_REVIEW"  # score 0.67, but a none
 
 
 def test_middling_score_goes_to_review():
@@ -56,7 +66,7 @@ def test_middling_score_goes_to_review():
 
 
 def test_low_score_is_rejected():
-    assert decide(evidence="weak", semantic="medium", necessity="none")[0] == "REJECT"
+    assert decide(evidence="none", semantic="medium", necessity="strong")[0] == "REJECT"
 
 
 def test_skipped_checks_are_left_out_of_the_score():
@@ -91,3 +101,17 @@ def test_implied_by_uses_other_acyclic_edges():
 
     assert labels["r3"] == g.REDUNDANT
     assert cli.implied_by(rels[2], rels, labels) == ["a", "b", "c"]
+
+
+def test_skipped_never_blocks_accept():
+    # a skipped check is passed as None: out of the score and both vetoes
+    for skipped in ("evidence", "semantic"):
+        grades = {"evidence": "strong", "semantic": "strong", "necessity": "none"}
+        grades[skipped] = None
+        assert cli.decide(g.OK, grades, CFG)[0] == "ACCEPT", skipped
+
+
+def test_necessity_weight_changes_the_score():
+    grades = {"evidence": "strong", "semantic": "strong", "necessity": "weak"}
+    assert cli.score(grades, CFG) == 1.0
+    assert cli.score(grades, PLUS) == pytest.approx((1 + 1 + 0.33) / 3)

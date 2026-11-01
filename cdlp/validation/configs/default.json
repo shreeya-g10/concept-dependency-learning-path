@@ -1,7 +1,8 @@
 {
   "necessity": {
-    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold. Control C: an unrelated in-course concept, else a concept from the other course (cross_course_concepts, keyed by the course being tested), else control_placeholder. question_format 'mcq' grades by exact match with no grader call. with_a_diagnostic adds the 'with A' run (not part of the gap). question_temperature applies only to writing the questions (sampling > 0 makes seeds give different question sets); learners and grader use temperature.",
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold. Control C: an unrelated in-course concept, else a concept from the other course (cross_course_concepts, keyed by the course being tested), else control_placeholder. question_format 'mcq' grades by exact match with no grader call. with_a_diagnostic adds the 'with A' run (not part of the gap). question_temperature applies only to writing the questions (sampling > 0 makes seeds give different question sets); learners and grader use temperature. Questions must not name A: a question with A's name, an alias or a stem (leakage matcher) is dropped and the writer asked again, up to question_regenerations times (v2 question prompts list the forbidden terms).",
     "n_questions": 3,
+    "question_regenerations": 2,
     "question_format": "open",
     "with_a_diagnostic": true,
     "control_placeholder": {
@@ -73,11 +74,11 @@
     "seed": 42,
     "learner_sees_lesson": false,
     "prompt_versions": {
-      "questions": "necessity_questions_v1",
+      "questions": "necessity_questions_v2",
       "learner_without": "necessity_learner_without_v1",
       "learner_with": "necessity_learner_with_v1",
       "grader": "necessity_grader_v1",
-      "questions_mcq": "necessity_questions_mcq_v1",
+      "questions_mcq": "necessity_questions_mcq_v2",
       "learner_without_mcq": "necessity_learner_without_mcq_v1",
       "learner_with_mcq": "necessity_learner_with_mcq_v1"
     },
@@ -93,7 +94,7 @@
     }
   },
   "decision": {
-    "_comment": "Decision rule (cdlp/validation/__main__.py). Structural rules first: self-loop and duplicate -> REJECT; bidirectional (discovery flag) or contradiction -> HUMAN_REVIEW; cycle -> never ACCEPT (REJECT if the score says so, else HUMAN_REVIEW); redundant -> REJECT 'implied by ...'. Otherwise score = weighted mean of the active checks' grade points. ACCEPT needs score >= accept_min and no active check graded none; REJECT if score < reject_below, or if evidence and semantic both ran and are both weak/none (no support from either independent source); else HUMAN_REVIEW. Values are a first, uncalibrated choice; calibrate on a held-out split, never on the evaluation gold.",
+    "_comment": "Decision rule (cdlp/validation/__main__.py). Structural rules first: self-loop and duplicate -> REJECT; bidirectional (discovery flag) or contradiction -> HUMAN_REVIEW; cycle -> never ACCEPT (REJECT if the score says so, else HUMAN_REVIEW); redundant -> REJECT 'implied by ...'. Otherwise score = weighted mean of the active checks' grade points. ACCEPT needs score >= accept_min and no active check graded none; REJECT if score < reject_below, or if evidence and semantic both ran and are both weak/none (no support from either independent source); else HUMAN_REVIEW. Values are a first, uncalibrated choice; calibrate on a held-out split, never on the evaluation gold. Necessity is report-only by default (weight 0): it is recorded on every edge but never changes a decision, because it was unstable across runs (cdlp/validation/results/README.md, necessity sections); the RQ1 setting full_agent_plus_necessity runs it at weight 1. A check with weight 0, or one that was skipped, is left out of the score and of both vetoes.",
     "grade_points": {
       "strong": 1.0,
       "medium": 0.67,
@@ -103,7 +104,7 @@
     "weights": {
       "evidence": 1.0,
       "semantic": 1.0,
-      "necessity": 1.0
+      "necessity": 0.0
     },
     "accept_min": 0.6,
     "reject_below": 0.35,

@@ -102,24 +102,30 @@
                   "strong",
                   "medium",
                   "weak",
-                  "none"
-                ]
+                  "none",
+                  "skipped"
+                ],
+                "description": "'skipped' (added in 1.5): the check was not run (an ablation, or no course text); it never blocks ACCEPT."
               },
               "semantic": {
                 "enum": [
                   "strong",
                   "medium",
                   "weak",
-                  "none"
-                ]
+                  "none",
+                  "skipped"
+                ],
+                "description": "'skipped' (added in 1.5): the check was not run (an ablation, or no course text); it never blocks ACCEPT."
               },
               "necessity": {
                 "enum": [
                   "strong",
                   "medium",
                   "weak",
-                  "none"
-                ]
+                  "none",
+                  "skipped"
+                ],
+                "description": "'skipped' (added in 1.5): the check was not run (an ablation, or no course text); it never blocks ACCEPT."
               },
               "graph": {
                 "enum": [
@@ -128,8 +134,10 @@
                   "duplicate",
                   "redundant",
                   "self_loop",
-                  "contradiction"
-                ]
+                  "contradiction",
+                  "skipped"
+                ],
+                "description": "'skipped' (added in 1.5): the check was not run (an ablation, or no course text); it never blocks ACCEPT."
               }
             }
           },
@@ -198,6 +206,19 @@
           }
         }
       }
+    },
+    "skipped_checks": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "evidence",
+          "semantic",
+          "necessity",
+          "graph"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "added in 1.5: checks this run skipped; each is written as 'skipped' on every edge."
     }
   }
 }

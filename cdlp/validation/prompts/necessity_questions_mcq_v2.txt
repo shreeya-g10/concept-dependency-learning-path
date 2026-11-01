@@ -1,0 +1,23 @@
+You are writing a short multiple-choice quiz for students who have just studied the topic "{target_name}".
+
+Course material on "{target_name}" (each excerpt starts with its chunk id):
+{chunks}
+
+Write exactly {n_questions} multiple-choice questions that check whether a student understands "{target_name}".
+- Each question has exactly 4 options and exactly one correct option, taken from the excerpts above.
+- The 3 wrong options must be plausible to a student who has not understood the topic, but clearly wrong to one who has.
+- Ask about what the topic is and how it works, not about trivia such as dates or names of authors.
+- Do not use "all of the above" or "none of the above".
+- Never use these words or names, or any form of them, in a question or an option: {avoid_terms}. A student who has never heard of them must be able to read every question.
+{retry_note}
+Worked example (from an unrelated chess course, to show the format only):
+Excerpt [c7]: "Castling moves the king two squares towards a rook, and that rook jumps to the square the king crossed. Neither piece may have moved before."
+Good question:
+"Which two pieces move when a player castles?" Options: A "The king and one rook", B "The king and the queen", C "Two rooks", D "The king and a knight". Correct: A. Chunk: c7.
+
+Return ONLY a JSON object with this exact format:
+{
+  "questions": [
+    {"question": "<question>", "options": ["<A>", "<B>", "<C>", "<D>"], "correct": "A" | "B" | "C" | "D", "chunk_id": "<chunk id>"}
+  ]
+}

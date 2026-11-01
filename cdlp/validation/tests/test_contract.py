@@ -154,6 +154,7 @@ def test_each_skip_flag_drops_its_check(tmp_path, monkeypatch, check):
 
     assert graph["skipped_checks"] == [check]
     assert all(f"skipped: {check}" in e["reason"] for e in graph["edges"])
+    assert all(e["checks"][check] == "skipped" for e in graph["edges"])
     assert check_file(tmp_path / "validated_graph.json") == []
 
 
@@ -172,3 +173,28 @@ def test_review_queue_is_written(tmp_path):
 def test_review_queue_needs_students(tmp_path):
     with pytest.raises(SystemExit):
         run_cli(tmp_path, "--review-queue", str(tmp_path / "review_queue.json"))
+
+
+def test_necessity_is_recorded_but_report_only(tmp_path):
+    graph = run_cli(tmp_path)
+
+    for edge in graph["edges"]:
+        assert edge["checks"]["necessity"] not in ("skipped", None)
+        assert edge["necessity_gap"] is not None
+        if "score" in edge["reason"]:  # decided by the score, not a structural rule
+            assert f"necessity {edge['checks']['necessity']} (report-only)" in edge["reason"]
+
+
+def test_plus_necessity_setting_lets_necessity_decide(tmp_path):
+    base = {(e["source"], e["target"]): e for e in run_cli(tmp_path)["edges"]}
+    plus = run_cli(tmp_path, "--necessity-weight", "1", "--setting", "full_agent_plus_necessity")
+
+    assert (tmp_path / "full_agent_plus_necessity.stats.json").exists()
+    changed = [
+        e
+        for e in plus["edges"]
+        if e["confidence"] != base[(e["source"], e["target"])]["confidence"]
+    ]
+    assert changed, "with weight 1 the necessity grades must move some scores"
+    by_pair = {(e["source"], e["target"]): e for e in plus["edges"]}
+    assert by_pair[("graphs", "avl_tree")]["decision"] == "REJECT"
