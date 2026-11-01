@@ -1,3 +1,5 @@
+import pytest
+
 from cdlp.discovery.candidates import (
     _name_in_definition,
     _same_chunk_pairs,
@@ -60,6 +62,7 @@ def test_same_chunk_pairs():
 
 
 def test_generate_candidates_uses_course_order():
+    pytest.importorskip("sentence_transformers")  # embedding model; skipped in light CI
     concepts = [
         {
             "id": "first",

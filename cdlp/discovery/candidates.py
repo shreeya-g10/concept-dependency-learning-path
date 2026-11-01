@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 
 @dataclass
@@ -94,6 +93,8 @@ def _embedding_pairs(
     concepts: list,
     threshold: float = 0.55,
 ) -> set:
+    from sentence_transformers import SentenceTransformer  # heavy; not installed in CI
+
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
     texts = [f"{concept['name']}. {concept.get('description', '')}" for concept in concepts]
