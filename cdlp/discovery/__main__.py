@@ -1,10 +1,12 @@
 """discovery: concepts + chunks -> relationships.json (+ relationships_baseline.json)
 
     python -m cdlp.discovery --concepts outputs/concepts.json \
-        --chunks outputs/chunks.jsonl --out-dir outputs [--baseline]
+        --chunks outputs/chunks.jsonl --out-dir outputs [--baseline | --baseline-only]
 
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
+--baseline-only writes just relationships_baseline.json and skips the candidate
+filter and every per-pair call (cheap ablation runs).
 
 Discovery writes only relationships.json. Quiz items and simulated students are
 built by the learning_path module (owner: Vaidehi).
@@ -39,10 +41,16 @@ def main() -> None:
         help="leave out edges implied by a longer path (off: the validator handles redundancy)",
     )
     parser.add_argument("--prompt-version", default=PROMPT_VERSION)
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--baseline",
         action="store_true",
         help="also write relationships_baseline.json (one call, full concept list, no filter)",
+    )
+    mode.add_argument(
+        "--baseline-only",
+        action="store_true",
+        help="write only relationships_baseline.json; no candidates, no per-pair calls",
     )
     parser.add_argument("--baseline-prompt-version", default=BASELINE_PROMPT_VERSION)
     args = parser.parse_args()
@@ -52,6 +60,10 @@ def main() -> None:
     course_id = concepts_data["course_id"]
     concepts = concepts_data["concepts"]
     chunks = read_jsonl(args.chunks)
+
+    if args.baseline_only:
+        write_baseline(args.out_dir, course_id, concepts, args.baseline_prompt_version)
+        return
 
     candidates = generate_candidates(concepts_data, chunks)
     stats = candidate_stats(candidates, len(concepts))
@@ -80,14 +92,18 @@ def main() -> None:
     )
 
     if args.baseline:
-        write_json(
-            args.out_dir / "relationships_baseline.json",
-            {
-                "schema_version": BASELINE_SCHEMA_VERSION,
-                "course_id": course_id,
-                "relationships": discover_baseline(concepts, args.baseline_prompt_version),
-            },
-        )
+        write_baseline(args.out_dir, course_id, concepts, args.baseline_prompt_version)
+
+
+def write_baseline(out_dir: Path, course_id: str, concepts: list, prompt_version: str) -> None:
+    write_json(
+        out_dir / "relationships_baseline.json",
+        {
+            "schema_version": BASELINE_SCHEMA_VERSION,
+            "course_id": course_id,
+            "relationships": discover_baseline(concepts, prompt_version),
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -100,3 +100,21 @@ def test_baseline_flag_writes_baseline_file(tmp_path, monkeypatch):
         ("binary_tree", "binary_search_tree"),
     ]
     assert all(e["method"] == f"llm_{baseline.BASELINE_PROMPT_VERSION}" for e in edges)
+
+
+def test_baseline_only_skips_candidates_and_per_pair_calls(tmp_path, monkeypatch):
+    def must_not_run(*args, **kwargs):
+        raise AssertionError("--baseline-only must not build candidates or ask per pair")
+
+    monkeypatch.setattr(cli, "generate_candidates", must_not_run)
+    monkeypatch.setattr(cli, "discover_candidates", must_not_run)
+
+    run_cli(monkeypatch, tmp_path, "--baseline-only")
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["relationships_baseline.json"]
+    assert check_file(tmp_path / "relationships_baseline.json") == []
+
+
+def test_baseline_flags_are_exclusive(tmp_path, monkeypatch):
+    with pytest.raises(SystemExit):
+        run_cli(monkeypatch, tmp_path, "--baseline", "--baseline-only")
