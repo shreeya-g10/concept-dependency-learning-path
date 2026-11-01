@@ -241,11 +241,17 @@ else:
                 "F1": r.get("f1"),
                 "human review rate": r.get("human_review_rate"),
                 "LLM calls / edge": r.get("llm_calls_per_edge"),
+                "real calls / edge": r.get("real_llm_calls_per_edge"),
             }
             for r in rows
         ],
         width="stretch",
         hide_index=True,
+    )
+    st.caption(
+        "LLM calls / edge = (real calls + cache hits) / edges: the calls a setting needs, "
+        "the same on a cached re-run. Real calls / edge counts only requests the model "
+        "answered in that run. Both include discovery's calls for validator settings."
     )
     with st.expander("Config"):
         st.json(config)
