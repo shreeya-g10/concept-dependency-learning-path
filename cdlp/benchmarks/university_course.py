@@ -5,6 +5,10 @@ Files in <raw>/:
                         3 annotators per pair, empty cells otherwise. Labels:
                         1 = B is a prerequisite of A, 2 = A is a prerequisite of B,
                         3 = no prerequisite relation.
+                        The released file also holds label 4 (99 votes), which the
+                        dataset README does not define. Those votes are DROPPED: they
+                        count neither for nor against a direction, and are left out of
+                        the k/n agreement shares. Any other unknown label is an error.
     cs_preqs.csv        the authors' majority-vote positives "A,B" (B is a prerequisite of A)
 
 cs_preqs.csv is the official gold: each pair in it becomes B -> A, hard, with
@@ -22,6 +26,7 @@ from cdlp.benchmarks.common import Course, read_rows, require
 
 COURSE_ID = "university_course"
 LABEL_B_BEFORE_A, LABEL_A_BEFORE_B, LABEL_NONE = "1", "2", "3"
+LABEL_UNDEFINED = "4"  # in the data, not in the dataset README: dropped
 
 
 def load(raw: Path) -> list[Course]:
@@ -40,7 +45,7 @@ def load(raw: Path) -> list[Course]:
         if not any(row):
             continue
         a, b, *labels = row
-        labels = [label for label in labels if label]
+        labels = [label for label in labels if label and label != LABEL_UNDEFINED]
         bad = set(labels) - {LABEL_B_BEFORE_A, LABEL_A_BEFORE_B, LABEL_NONE}
         if bad:
             raise ValueError(f"{annotations_file.name} line {line}: unknown labels {sorted(bad)}")

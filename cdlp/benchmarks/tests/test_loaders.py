@@ -68,6 +68,19 @@ def test_university_course_majority_direction_and_agreement():
     }
 
 
+def test_university_course_drops_undefined_label_4(tmp_path):
+    # label 4 occurs in the released data but is not defined by the dataset README
+    (tmp_path / "cs_annotations.tsv").write_text(
+        "Concept_A\tConcept_B\tAnnotator_1\tAnnotator_2\tAnnotator_3\n"
+        "A\tB\t1\t4\t1\n"
+        "C\tD\t3\t4\t1\n"
+    )
+    (tmp_path / "cs_preqs.csv").write_text("A,B\n")
+    (uc,) = university_course.load(tmp_path)
+
+    assert gold(uc) == {("b", "a"): ("hard", "2/2"), ("d", "c"): ("none", "1/2")}
+
+
 def test_university_course_rejects_unknown_labels(tmp_path):
     (tmp_path / "cs_annotations.tsv").write_text("Concept_A\tConcept_B\tAnnotator_1\nA\tB\t7\n")
     (tmp_path / "cs_preqs.csv").write_text("")

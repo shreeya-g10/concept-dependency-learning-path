@@ -61,7 +61,7 @@ def test_grades_rationale_and_judge_decisions(llm):
     assert (r2["semantic"], r2["judge_decision"]) == ("none", "REJECT")
     assert {"model", "prompt_version", "temperature", "seed", "date"} <= result.keys()
     assert all(c["model"] == "judge-model" for c in llm.calls)
-    assert all(c["prompt_version"] == "semantic_v1" for c in llm.calls)
+    assert all(c["prompt_version"] == "semantic_v2" for c in llm.calls)
 
 
 @pytest.mark.parametrize(
@@ -100,10 +100,25 @@ def test_prompt_shows_names_aliases_and_descriptions_but_no_chunks():
     assert "chunk" not in prompt.lower()
 
 
-def test_prompt_examples_have_no_course_concepts():
-    text = semantic_check.PROMPT_FILE.read_text().lower()
+@pytest.mark.parametrize("version", ["semantic_v1", "semantic_v2"])
+def test_prompt_examples_have_no_course_concepts(version):
+    text = semantic_check.prompt_file(version).read_text().lower()
     for term in ["tree", "recursion", "graph", "avl", "vector", "matri", "regression", "gradient"]:
         assert term not in text, term
+
+
+def test_v2_grades_specialisation_as_strong_and_v1_is_kept():
+    v2 = semantic_check.prompt_file("semantic_v2").read_text()
+
+    assert "kind of" in v2 and "specialisation" in v2
+    assert semantic_check.prompt_file("semantic_v1").exists()
+
+
+def test_prompt_version_is_selectable(llm):
+    result = semantic_check.run(RELATIONSHIPS, CONCEPTS, prompt_version="semantic_v1")
+
+    assert result["prompt_version"] == "semantic_v1"
+    assert all(c["prompt_version"] == "semantic_v1" for c in llm.calls)
 
 
 def test_cli_writes_results(llm, tmp_path, monkeypatch):

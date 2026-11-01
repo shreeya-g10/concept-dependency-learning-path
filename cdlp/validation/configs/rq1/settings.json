@@ -76,6 +76,14 @@
       "produce": "PENDING: python -m cdlp.validation --skip-check necessity ..."
     },
     {
+      "name": "minus_evidence_necessity",
+      "kind": "validated",
+      "predictions": "validated_minus_evidence_necessity.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Agent with the semantic and graph checks only (evidence and necessity off). The reported agent on benchmarks, which have no course text for either check.",
+      "produce": "PENDING: python -m cdlp.validation --skip-check evidence --skip-check necessity ..."
+    },
+    {
       "name": "minus_graph",
       "kind": "validated",
       "predictions": "validated_minus_graph.json",

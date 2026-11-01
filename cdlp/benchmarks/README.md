@@ -105,6 +105,7 @@ None of the three datasets distinguishes hard from soft prerequisites, so **ever
 | AL-CPL | `A,B` in `.pairs` only | `B → A, none` | empty |
 | University Course | `A,B` in `cs_preqs.csv` (majority vote; B is a prerequisite of A) | `B → A, hard` | votes for that direction / annotators of the pair, e.g. `2/3` |
 | University Course | annotated pair not in `cs_preqs.csv` | `B → A, none` | "no relation" (label 3) votes / annotators |
+| University Course | label `4` vote (undefined in the dataset README) | dropped | not counted in either share |
 | LectureBank | `S,T,1` | `S → T, hard` | `2/2` (both annotators) |
 | LectureBank | `S,T,0` | `S → T, none` | empty: 0 also covers pairs where one annotator said yes |
 
@@ -134,7 +135,7 @@ The converter's sanity line reports `positives implied by other positives` for e
 
 AL-CPL counts match the dataset README. No slug collisions. AL-CPL positives have no cycles. **University Course positives contain one cycle:** a strongly connected component of 12 concepts (21 positives inside it). Outside it, 542 of 986 positives are still implied, so closure scoring does not depend on the cycle.
 
-**Open: University Course label `4`.** `cs_annotations.tsv` contains 99 votes with label `4`, which the dataset README does not define (it lists 1–3), and `university_course.py` rejects them (`line 150: unknown labels ['4']`). The numbers above come from a scratch copy with those votes blanked. That cannot change the positives, negatives or shortcut count (positives come only from `cs_preqs.csv`), only the `agreement` vote shares. The converter must handle `4` before RQ1 runs on this dataset.
+**University Course label `4`: dropped.** `cs_annotations.tsv` contains 99 votes with label `4`, which the dataset README does not define (it lists 1–3). The converter drops them: they count neither for nor against a direction and are left out of the `k/n` agreement shares. No pair has only label-4 votes. This cannot change the positives, negatives or shortcut count (positives come only from `cs_preqs.csv`); the counts above come from the converter with this rule. Any other unknown label is still an error.
 
 ### Caveats for evaluation (read before using these numbers in the paper)
 - **AL-CPL and University Course positives include transitive pairs** (see the convention above). Say in the paper which convention each number uses.

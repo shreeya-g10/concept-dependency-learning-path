@@ -170,20 +170,33 @@ else:
     queue = load("review_queue.json")["queue"]
     if not queue:
         st.success("Nothing waits for review.")
+    blocking = [q for q in queue if q.get("blocking")]
+    if blocking:
+        st.error(
+            f"{len(blocking)} blocking edge(s): accepting them as they are would close a "
+            "cycle. Resolve these first, before any impact-ranked edge."
+        )
     st.dataframe(
         [
             {
                 "edge": f"{label(q['source'])} → {label(q['target'])}",
+                "blocking": bool(q.get("blocking")),
                 "impact": q.get("impact_score"),
                 "paths affected": q.get("paths_affected"),
                 "reason": q.get("reason", ""),
             }
-            for q in sorted(queue, key=lambda q: -(q.get("impact_score") or 0))
+            for q in sorted(
+                queue,
+                key=lambda q: (not q.get("blocking"), -(q.get("impact_score") or 0)),
+            )
         ],
         width="stretch",
         hide_index=True,
     )
-    st.caption("Highest impact first: how many simulated students' paths change if the edge flips.")
+    st.caption(
+        "Blocking edges first, then highest impact: how many simulated students' paths "
+        "change if the edge is accepted. A blocking edge has no impact (null)."
+    )
 
 # ---- RQ1 results ------------------------------------------------------------
 rq1 = {
