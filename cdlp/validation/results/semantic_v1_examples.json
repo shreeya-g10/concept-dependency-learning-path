@@ -1,0 +1,59 @@
+{
+  "course_id": "ds101",
+  "model": "llama3.1:8b",
+  "prompt_version": "semantic_v1",
+  "temperature": 0.0,
+  "seed": 42,
+  "date": "2026-11-01T17:23:23+00:00",
+  "judge_rule": "ACCEPT if semantic in ['medium', 'strong'], else REJECT",
+  "results": [
+    {
+      "relationship_id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "semantic": "weak",
+      "rationale": "Understanding the concept of a tree is not essential to understanding a binary tree, as a binary tree is a specific type of tree with a more restrictive definition.",
+      "judge_decision": "REJECT"
+    },
+    {
+      "relationship_id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "semantic": "weak",
+      "rationale": "While binary trees are a prerequisite for binary search trees in the sense that a binary search tree is a specific type of binary tree, the concepts of binary trees and binary search trees are distinct and can be understood independently, with binary search trees building on the properties of binary trees but not requiring a deep understanding of the tree data structure itself.",
+      "judge_decision": "REJECT"
+    },
+    {
+      "relationship_id": "r3",
+      "source": "binary_search_tree",
+      "target": "avl_tree",
+      "semantic": "strong",
+      "rationale": "AVL Trees are a specific type of self-balancing Binary Search Tree, so understanding the basic properties and operations of Binary Search Trees is essential for grasping AVL Trees.",
+      "judge_decision": "ACCEPT"
+    },
+    {
+      "relationship_id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "semantic": "weak",
+      "rationale": "Understanding Binary Trees does not necessarily require prior knowledge of Recursion, as Binary Trees can be introduced as a data structure with its own set of operations and properties, without necessarily relying on recursive functions.",
+      "judge_decision": "REJECT"
+    },
+    {
+      "relationship_id": "r5",
+      "source": "trees",
+      "target": "graphs",
+      "semantic": "weak",
+      "rationale": "Understanding graphs does not necessarily require prior knowledge of trees, as graphs can be introduced as a more general concept that includes trees as a special case.",
+      "judge_decision": "REJECT"
+    },
+    {
+      "relationship_id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "semantic": "weak",
+      "rationale": "AVL Trees are a type of self-balancing binary search tree, which is a data structure that can be understood without prior knowledge of general graphs.",
+      "judge_decision": "REJECT"
+    }
+  ]
+}
