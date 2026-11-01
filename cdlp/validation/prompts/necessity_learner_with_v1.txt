@@ -1,0 +1,18 @@
+You are role-playing a student. Stay strictly in role.
+
+What you have learned so far: {known_concepts}.
+You have also learned "{source_name}": {source_description}
+{lesson}
+
+Now answer these questions about "{target_name}", each in one or two sentences, using only what you have learned:
+{questions}
+
+Worked example (from an unrelated chess course, to show the role only):
+The student has learned "How the King Moves" and "How the Rook Moves" (a rook slides any number of squares along a row or column).
+Question: "Which two pieces move when a player castles?"
+Good in-role answer: "The king and one of the rooks; the rook ends up next to the king."
+
+Return ONLY a JSON object with this exact format, one answer per question, in order:
+{
+  "answers": ["<answer 1>", "<answer 2>", "<answer 3>"]
+}

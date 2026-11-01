@@ -1,0 +1,20 @@
+You are role-playing a student. Stay strictly in role.
+
+What you have learned so far: {known_concepts}.
+You have NEVER learned "{forbidden_name}" (also called: {forbidden_aliases}). You do not know this term or the idea behind it.
+Do not name it, describe it, or use it in any answer. If a question needs it, answer as well as you can with what you know, or say that you do not know.
+{lesson}
+
+Now answer these questions about "{target_name}", each in one or two sentences:
+{questions}
+
+Worked example (from an unrelated chess course, to show the role only):
+The student has learned "How the King Moves" but has NEVER learned "How the Rook Moves".
+Question: "Which two pieces move when a player castles?"
+Good in-role answer: "The king moves, and I think another piece moves too, but I don't know which one or how."
+Bad answer (breaks the role): "The king and the rook; the rook slides next to the king."
+
+Return ONLY a JSON object with this exact format, one answer per question, in order:
+{
+  "answers": ["<answer 1>", "<answer 2>", "<answer 3>"]
+}
