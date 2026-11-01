@@ -15,7 +15,7 @@
       "temperature": 0.0,
       "seed": 42
     },
-    "created": "2026-11-01T19:07:33+00:00"
+    "created": "2026-11-01T19:12:35+00:00"
   },
   "results": [
     {
@@ -167,7 +167,7 @@
     {
       "method": "nearest",
       "n": 10,
-      "top1_accuracy": 0.3,
+      "top1_accuracy": 0.4,
       "top3_accuracy": 0.8,
       "llm_fallbacks": null,
       "rows": [
@@ -263,39 +263,39 @@
           "item_id": "q_bt_1",
           "expected": "binary_tree",
           "ranked": [
-            "recursion",
             "trees",
+            "recursion",
             "binary_tree"
           ],
           "top1": false,
           "top3": true,
-          "explanation": "Baseline: blames recursion, the direct prerequisite of binary_tree with the lowest mastery."
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
         },
         {
           "student_id": "dev_08",
           "item_id": "q_bt_1",
           "expected": "binary_tree",
           "ranked": [
-            "recursion",
             "trees",
+            "recursion",
             "binary_tree"
           ],
           "top1": false,
           "top3": true,
-          "explanation": "Baseline: blames recursion, the direct prerequisite of binary_tree with the lowest mastery."
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
         },
         {
           "student_id": "dev_09",
           "item_id": "q_bt_1",
           "expected": "trees",
           "ranked": [
-            "recursion",
             "trees",
+            "recursion",
             "binary_tree"
           ],
-          "top1": false,
+          "top1": true,
           "top3": true,
-          "explanation": "Baseline: blames recursion, the direct prerequisite of binary_tree with the lowest mastery."
+          "explanation": "Baseline: blames trees, the direct prerequisite of binary_tree with the lowest mastery."
         },
         {
           "student_id": "dev_10",

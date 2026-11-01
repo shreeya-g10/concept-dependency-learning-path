@@ -4,7 +4,7 @@
 - blame_nearest: the direct ACCEPT prerequisite with the lowest mastery, then the other
   direct prerequisites, then the target, then the rest of the chain. With no prerequisites
   it falls back to the target. Unknown mastery counts as 0.5, so with no mastery at all
-  (the RQ3 setting) every candidate ties and ties break by graph distance, then concept id.
+  (the RQ3 setting) every candidate ties, and ties break hard before soft, then concept id.
 
 Both rank the whole chain so top-3 accuracy is defined. Scores are rank-based
 (1/rank, normalised to sum 1) and only encode the order; confidence is the top score.
@@ -45,8 +45,12 @@ def blame_nearest(graph: dict, quiz_item: dict, answer: str, mastery: dict[str, 
     target = quiz_item["concept_id"]
     chain = prerequisite_chain(graph, target)
 
+    strength_rank = {"hard": 0, "soft": 1}
+
     def direct_key(c: dict) -> tuple:
-        return (mastery.get(c["concept_id"], UNKNOWN_MASTERY), c["distance"], c["concept_id"])
+        strength = next(p["strength"] for p in c["prerequisite_of"] if p["concept_id"] == target)
+        m = mastery.get(c["concept_id"], UNKNOWN_MASTERY)
+        return (m, strength_rank.get(strength, 2), c["concept_id"])
 
     direct = sorted((c for c in chain if c["distance"] == 1), key=direct_key)
     rest = [c for c in chain if c["distance"] > 1]

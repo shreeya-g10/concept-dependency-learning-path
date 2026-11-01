@@ -85,10 +85,23 @@ def test_blame_nearest_picks_lowest_mastery_direct_prerequisite():
     assert check(wrap(r), "root_cause") == []
 
 
-def test_blame_nearest_with_no_mastery_breaks_ties_by_distance_then_id():
-    # RQ3 setting: no mastery. trees and recursion are both distance 1 from binary_tree
+def test_blame_nearest_with_no_mastery_ranks_hard_before_soft_then_id():
+    # RQ3 setting: no mastery. trees -> binary_tree is hard, recursion -> binary_tree is
+    # soft: trees wins although recursion sorts first by id
     r = blame_nearest(GRAPH, ITEMS["q_bt_1"], "3", {})
-    assert [c["concept_id"] for c in r["candidates"]] == ["recursion", "trees", "binary_tree"]
+    assert [c["concept_id"] for c in r["candidates"]] == ["trees", "recursion", "binary_tree"]
+
+
+def test_blame_nearest_same_strength_ties_break_by_id():
+    graph = {
+        "nodes": [{"id": i, "name": i} for i in ("t", "b", "a")],
+        "edges": [
+            {"source": "b", "target": "t", "decision": "ACCEPT", "strength": "hard"},
+            {"source": "a", "target": "t", "decision": "ACCEPT", "strength": "hard"},
+        ],
+    }
+    r = blame_nearest(graph, {"id": "q", "concept_id": "t"}, "x", {})
+    assert [c["concept_id"] for c in r["candidates"]] == ["a", "b", "t"]
     # deeper chain: the direct prerequisite first, then target, then by distance, then id
     r = blame_nearest(GRAPH, ITEMS["q_avl_1"], "30", {})
     ids = [c["concept_id"] for c in r["candidates"]]
@@ -300,9 +313,9 @@ def test_allow_fallback_still_uses_a_reachable_llm(monkeypatch):
 def test_evaluate_without_mastery_ignores_row_mastery():
     dev, quiz = read_json(DEV_SET), read_json(EXAMPLES / "quiz_items.json")
     no_m = evaluate.evaluate(GRAPH, quiz, dev, {}, "nearest", use_mastery=False)
-    # dev_08 (q_bt_1): no mastery -> trees and recursion tie -> recursion by id
+    # dev_08 (q_bt_1): no mastery -> trees and recursion tie -> trees (hard before soft)
     row = next(r for r in no_m["rows"] if r["student_id"] == "dev_08")
-    assert row["ranked"][0] == "recursion"
+    assert row["ranked"][0] == "trees"
     with_m = evaluate.evaluate(GRAPH, quiz, dev, {}, "nearest")
     row = next(r for r in with_m["rows"] if r["student_id"] == "dev_08")
     assert row["ranked"][0] == "recursion"  # recursion mastery 0.1 < trees 0.9
