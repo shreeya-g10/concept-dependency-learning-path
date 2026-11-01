@@ -2,6 +2,14 @@
 
     python -m cdlp.discovery --concepts outputs/concepts.json \
         --chunks outputs/chunks.jsonl --out-dir outputs [--baseline | --baseline-only]
+    python -m cdlp.discovery --concepts outputs/benchmarks/X/sample_concepts.json \
+        --pairs outputs/benchmarks/X/sample_pairs.csv --out-dir outputs/rq1/X
+
+--pairs asks about exactly the listed pairs (CSV with source,target columns) instead of
+running the candidate filter: for benchmarks, which have labelled pairs but no course
+text. By default each pair is asked in BOTH directions (like a tied candidate), so the
+gold file's orientation never tells the model the answer; --pairs-direction given asks
+only the listed direction (half the calls). --chunks is optional with --pairs.
 
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
@@ -9,20 +17,22 @@ concept list and no candidate filter (the RQ1 baseline), in the same format.
 filter and every per-pair call (cheap ablation runs).
 
 Discovery writes only relationships.json. Quiz items and simulated students are
-built by the learning_path module (owner: Vaidehi).
+built by the learning_path module. --stats writes the run's LLM call counts.
 """
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
 from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
-from cdlp.discovery.candidates import candidate_stats, generate_candidates
+from cdlp.discovery.candidates import Candidate, candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
     PROMPT_VERSION,
     build_contract_relationships,
     discover_candidates,
 )
+from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
@@ -30,10 +40,27 @@ RELATIONSHIPS_SCHEMA_VERSION = "1.2"
 BASELINE_SCHEMA_VERSION = "1.3"  # relationships_baseline.json is new in 1.3
 
 
-def main() -> None:
+def read_pairs(path: Path, direction: str = "both") -> list:
+    """Candidates for exactly the listed pairs; 'both' asks each pair both ways."""
+    with Path(path).open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    if rows and not {"source", "target"} <= set(rows[0]):
+        raise SystemExit(f"{path}: needs source and target columns")
+    seen, out = set(), []
+    for row in rows:
+        a, b = row["source"].strip(), row["target"].strip()
+        key = frozenset((a, b)) if direction == "both" else (a, b)
+        if a == b or key in seen:
+            continue
+        seen.add(key)
+        out.append(Candidate(source=a, target=b, reasons=["listed_pair"], tied=direction == "both"))
+    return out
+
+
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--concepts", type=Path, required=True)
-    parser.add_argument("--chunks", type=Path, required=True)
+    parser.add_argument("--chunks", type=Path, help="required unless --pairs is given")
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument(
         "--remove-transitive",
@@ -53,19 +80,37 @@ def main() -> None:
         help="write only relationships_baseline.json; no candidates, no per-pair calls",
     )
     parser.add_argument("--baseline-prompt-version", default=BASELINE_PROMPT_VERSION)
-    args = parser.parse_args()
+    parser.add_argument("--pairs", type=Path, help="ask exactly these pairs (benchmarks)")
+    parser.add_argument("--pairs-direction", choices=["both", "given"], default="both")
+    parser.add_argument("--num-ctx", type=int, help="Ollama context size for the baseline call")
+    parser.add_argument("--stats", type=Path, help="write this run's LLM call counts here")
+    args = parser.parse_args(argv)
+    if not args.chunks and not args.pairs:
+        parser.error("--chunks is required unless --pairs is given")
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     concepts_data = read_json(args.concepts)
     course_id = concepts_data["course_id"]
     concepts = concepts_data["concepts"]
-    chunks = read_jsonl(args.chunks)
+    chunks = read_jsonl(args.chunks) if args.chunks else []
 
     if args.baseline_only:
-        write_baseline(args.out_dir, course_id, concepts, args.baseline_prompt_version)
+        write_baseline(
+            args.out_dir, course_id, concepts, args.baseline_prompt_version, args.num_ctx
+        )
+        _write_stats(args.stats)
         return
 
-    candidates = generate_candidates(concepts_data, chunks)
+    if args.pairs:
+        known = {c["id"] for c in concepts}
+        candidates = read_pairs(args.pairs, args.pairs_direction)
+        missing = {x for c in candidates for x in (c.source, c.target)} - known
+        if missing:
+            raise SystemExit(
+                f"{args.pairs}: concepts not in {args.concepts}: {sorted(missing)[:5]}"
+            )
+    else:
+        candidates = generate_candidates(concepts_data, chunks)
     stats = candidate_stats(candidates, len(concepts))
     print(
         f"candidates: {stats['candidates']} of {stats['unordered_pairs']} pairs "
@@ -92,16 +137,30 @@ def main() -> None:
     )
 
     if args.baseline:
-        write_baseline(args.out_dir, course_id, concepts, args.baseline_prompt_version)
+        write_baseline(
+            args.out_dir, course_id, concepts, args.baseline_prompt_version, args.num_ctx
+        )
+    _write_stats(args.stats)
 
 
-def write_baseline(out_dir: Path, course_id: str, concepts: list, prompt_version: str) -> None:
+def _write_stats(path: Path | None) -> None:
+    if path:
+        stats = llm.write_stats(path)
+        print(
+            f"{stats['llm_calls']} LLM calls, {stats['cache_hits']} cache hits -> {path}",
+            file=sys.stderr,
+        )
+
+
+def write_baseline(
+    out_dir: Path, course_id: str, concepts: list, prompt_version: str, num_ctx=None
+) -> None:
     write_json(
         out_dir / "relationships_baseline.json",
         {
             "schema_version": BASELINE_SCHEMA_VERSION,
             "course_id": course_id,
-            "relationships": discover_baseline(concepts, prompt_version),
+            "relationships": discover_baseline(concepts, prompt_version, num_ctx),
         },
     )
 

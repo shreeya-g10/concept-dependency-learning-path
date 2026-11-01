@@ -150,6 +150,33 @@ AL-CPL counts match the dataset README. No slug collisions. AL-CPL positives hav
 - [ ] Sanity report per dataset (concepts, edges, label balance, cycles) → `cdlp/benchmarks/results/`
 - [ ] Run discovery + validation on AL-CPL and University Course for RQ1 (P / R / F1)
 
+## RQ1 sample (decided 2026-11-02)
+
+Every graph is scored on a seeded, stratified sample (`python -m cdlp.benchmarks.sample --n 200 --subset 100 --seed 42`): 200 labelled pairs per graph in proportion to its own positive rate, plus a nested 100-pair subset for self-consistency (the single judge is also reported on that subset). It writes `sample_pairs.csv`, `gold_edges_sample.csv`, `gold_edges_subset.csv`, `sample_concepts.json` and `sample.json` (counts and inverse-probability weights) next to each graph's gold file in `outputs/benchmarks/<course>/`.
+
+| Graph | Labelled pairs | Positives | Sample (pos / neg) | Subset (pos / neg) | Concepts in sample |
+|---|---|---|---|---|---|
+| AL-CPL data mining | 826 | 292 | 71 / 129 | 36 / 64 | 99 |
+| AL-CPL geometry | 1,681 | 524 | 62 / 138 | 31 / 69 | 82 |
+| AL-CPL physics | 1,962 | 487 | 50 / 150 | 25 / 75 | 119 |
+| AL-CPL precalculus | 2,060 | 699 | 68 / 132 | 34 / 66 | 152 |
+| University Course | 2,828 | 1,007 | 71 / 129 | 36 / 64 | 207 |
+
+University Course has 3,544 annotation rows but 2,828 distinct pairs: some pairs are annotated more than once (in either order), and the converter keeps one row per pair.
+
+Discovery on a sample uses `--pairs` (benchmarks have no course text, so the candidate filter cannot run) and asks each pair **in both directions**, so the gold file's orientation never gives the answer away:
+
+```bash
+python -m cdlp.discovery --concepts outputs/benchmarks/<c>/sample_concepts.json \
+    --pairs outputs/benchmarks/<c>/sample_pairs.csv --out-dir outputs/rq1/<c> \
+    --stats outputs/rq1/<c>/discovery_only.stats.json
+python -m cdlp.discovery --concepts outputs/benchmarks/<c>/sample_concepts.json \
+    --baseline-only --num-ctx 16384 --out-dir outputs/rq1/<c> \
+    --stats outputs/rq1/<c>/baseline_prompt.stats.json
+```
+
+The baseline lists every sampled concept in one prompt, which with its answer exceeds Ollama's default 4,096-token context, so it runs with `--num-ctx 16384`.
+
 ## Notes for the paper
 - **Benchmarks used:** AL-CPL (Liang et al., 2018) and the University Course dataset (Liang et al., 2017), both CC BY-NC-SA 4.0, used for non-commercial research with attribution.
 - **Excluded:** LectureBank (Li et al., 2019). Suggested wording: *"We did not use LectureBank because its repository and paper state no licence for the prerequisite annotations."*
