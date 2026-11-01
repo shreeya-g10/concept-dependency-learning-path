@@ -29,11 +29,19 @@ Scoring conventions (set per dataset in the config)
 - `exclude_pairs`: optional CSV (`source,target`) of pairs used to tune thresholds. They
   are dropped from gold and predictions so tuning data never scores the result.
 
-LLM calls per edge = (the setting's calls + the calls of the setting it builds on, e.g.
-discovery under a validator) / edges the setting scored (proposed edges for validators).
-Calls come from `<run_dir>/<setting>.stats.json` (`{"llm_calls": n}`); without that file
-the value is null. Every result records the config, models, prompt versions, temperature,
-seed, git commit and date.
+Cost (decided 2026-11-02). Calls come from `<run_dir>/<setting>.stats.json`, written by
+`cdlp.shared.llm.write_stats()` (`{"llm_calls": n, "cache_hits": m, ...}`; a file without
+`cache_hits` counts 0 hits). Both are summed with the setting it builds on (e.g.
+discovery under a validator) and divided by the edges the setting scored (proposed
+edges for validators):
+- `llm_calls_per_edge` = (llm_calls + cache_hits) / edges: the calls the setting NEEDS,
+  the same whether or not the cache answered them. This is the cost column.
+- `real_llm_calls_per_edge` = llm_calls / edges: requests the provider actually answered
+  in this run, reported separately (it drops to 0 on a fully cached re-run).
+Without a stats file both are null.
+
+Every result records the config, models, prompt versions, temperature, seed, git commit
+and date.
 """
 
 from __future__ import annotations
@@ -181,11 +189,17 @@ def score(
     }
 
 
-def read_calls(run_dir: Path, setting: str) -> int | None:
+def read_calls(run_dir: Path, setting: str) -> tuple[int, int] | None:
+    """(real llm_calls, cache_hits) from <run_dir>/<setting>.stats.json, or None."""
     path = run_dir / f"{setting}.stats.json"
     if not path.is_file():
         return None
-    return int(json.loads(path.read_text(encoding="utf-8"))["llm_calls"])
+    stats = json.loads(path.read_text(encoding="utf-8"))
+    return int(stats["llm_calls"]), int(stats.get("cache_hits", 0))
+
+
+def _per_edge(value: int | None, edges: int) -> float | None:
+    return value / edges if value is not None and edges else None
 
 
 # ---- config -------------------------------------------------------------------
@@ -248,7 +262,9 @@ def evaluate_course(config: dict, course: dict, base: Path = Path(".")) -> dict:
         path = run_dir / setting["predictions"]
         if not path.is_file():
             row.update(status="missing", precision=None, recall=None, f1=None)
-            row.update(human_review_rate=None, llm_calls_per_edge=None)
+            row.update(
+                human_review_rate=None, llm_calls_per_edge=None, real_llm_calls_per_edge=None
+            )
             rows.append(row)
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -266,11 +282,16 @@ def evaluate_course(config: dict, course: dict, base: Path = Path(".")) -> dict:
 
         own = calls[name]
         base_setting = setting.get("adds_calls_of")
-        extra = calls[base_setting] if base_setting else 0
-        total = None if own is None or extra is None else own + extra
-        row["llm_calls"] = own
-        row["llm_calls_total"] = total
-        row["llm_calls_per_edge"] = total / edges if total is not None and edges else None
+        extra = calls[base_setting] if base_setting else (0, 0)
+        known = own is not None and extra is not None
+        real = own[0] + extra[0] if known else None
+        needed = real + own[1] + extra[1] if known else None
+        row["llm_calls"] = own[0] if own else None  # this setting alone, real
+        row["cache_hits"] = own[1] if own else None  # this setting alone
+        row["llm_calls_total"] = real  # real, incl. the setting it builds on
+        row["calls_needed_total"] = needed  # real + cache hits, incl. base setting
+        row["llm_calls_per_edge"] = _per_edge(needed, edges)
+        row["real_llm_calls_per_edge"] = _per_edge(real, edges)
         rows.append(row)
 
     positives = sum(label in POSITIVE_LABELS for label in gold.values())
@@ -290,6 +311,10 @@ def evaluate_course(config: dict, course: dict, base: Path = Path(".")) -> dict:
     }
 
 
+def _sum_or_none(values: list) -> int | None:
+    return None if any(v is None for v in values) else sum(values)
+
+
 def micro_average(dataset: str, results: list[dict]) -> dict:
     """Pool TP / FP / FN over the courses of one dataset (e.g. the 4 AL-CPL domains)."""
     names = [r["setting"] for r in results[0]["rows"]]
@@ -300,7 +325,9 @@ def micro_average(dataset: str, results: list[dict]) -> dict:
         row = {"setting": name, "kind": per_course[0]["kind"], "courses": len(ok)}
         if len(ok) < len(per_course):
             row.update(status="missing", precision=None, recall=None, f1=None)
-            row.update(human_review_rate=None, llm_calls_per_edge=None)
+            row.update(
+                human_review_rate=None, llm_calls_per_edge=None, real_llm_calls_per_edge=None
+            )
             rows.append(row)
             continue
         tp = sum(r["true_positive"] for r in ok)
@@ -310,7 +337,8 @@ def micro_average(dataset: str, results: list[dict]) -> dict:
         rec = tp / (tp + fn) if tp + fn else 0.0
         edges = sum(r["edges"] for r in ok)
         review = [r["decisions"]["HUMAN_REVIEW"] for r in ok if r["decisions"]]
-        totals = [r["llm_calls_total"] for r in ok]
+        needed = [r["calls_needed_total"] for r in ok]
+        real = [r["llm_calls_total"] for r in ok]
         row.update(
             status="ok",
             true_positive=tp,
@@ -321,9 +349,8 @@ def micro_average(dataset: str, results: list[dict]) -> dict:
             f1=2 * p * rec / (p + rec) if p + rec else 0.0,
             edges=edges,
             human_review_rate=(sum(review) / edges if edges else 0.0) if review else None,
-            llm_calls_per_edge=(
-                sum(totals) / edges if edges and all(t is not None for t in totals) else None
-            ),
+            llm_calls_per_edge=_per_edge(_sum_or_none(needed), edges),
+            real_llm_calls_per_edge=_per_edge(_sum_or_none(real), edges),
         )
         rows.append(row)
     return {

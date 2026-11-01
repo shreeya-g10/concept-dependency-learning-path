@@ -55,7 +55,8 @@ def _make_run(run_dir: Path, *, skip=(), calls=None) -> None:
         if name not in skip:
             (run_dir / name).write_text(json.dumps(data))
     for setting, n in (calls or {}).items():
-        (run_dir / f"{setting}.stats.json").write_text(json.dumps({"llm_calls": n}))
+        stats = n if isinstance(n, dict) else {"llm_calls": n}  # old files: no cache_hits
+        (run_dir / f"{setting}.stats.json").write_text(json.dumps(stats))
 
 
 @pytest.fixture
@@ -67,7 +68,11 @@ def project(tmp_path):
     shutil.copy(EXAMPLES / "concepts.json", tmp_path / "outputs/ds101/concepts.json")
     _make_run(
         tmp_path / "outputs/rq1/ds101",
-        calls={"discovery_only": 7, "baseline_prompt": 1, "full_agent": 18},
+        calls={
+            "discovery_only": {"llm_calls": 5, "cache_hits": 2, "model": "m"},
+            "baseline_prompt": 1,
+            "full_agent": {"llm_calls": 10, "cache_hits": 8, "model": "m"},
+        },
     )
     return tmp_path
 
@@ -149,12 +154,20 @@ def test_direct_scoring_on_examples(project):
 def test_llm_calls_per_edge_adds_discovery_cost(project):
     config = ev.load_config(CONFIGS / "ds101.json")
     rows = _rows(ev.evaluate_course(config, config["courses"][0], base=project))
+    # cost = real calls + cache hits, so a cached re-run costs the same
     assert rows["discovery_only"]["llm_calls_per_edge"] == pytest.approx(7 / 6)
+    assert rows["discovery_only"]["real_llm_calls_per_edge"] == pytest.approx(5 / 6)
+    # a stats file without cache_hits counts 0 hits
     assert rows["baseline_prompt"]["llm_calls_per_edge"] == pytest.approx(1 / 3)
-    assert rows["full_agent"]["llm_calls_total"] == 25
-    assert rows["full_agent"]["llm_calls_per_edge"] == pytest.approx(25 / 6)
+    assert rows["baseline_prompt"]["real_llm_calls_per_edge"] == pytest.approx(1 / 3)
+    a = rows["full_agent"]
+    assert (a["llm_calls"], a["cache_hits"]) == (10, 8)  # this setting alone
+    assert (a["llm_calls_total"], a["calls_needed_total"]) == (15, 25)  # + discovery
+    assert a["llm_calls_per_edge"] == pytest.approx(25 / 6)
+    assert a["real_llm_calls_per_edge"] == pytest.approx(15 / 6)
     # no stats file -> unknown, never 0
     assert rows["single_judge"]["llm_calls_per_edge"] is None
+    assert rows["single_judge"]["real_llm_calls_per_edge"] is None
 
 
 def test_closure_scoring_counts_shortcut_positives():
@@ -218,7 +231,7 @@ def test_cli_writes_results_the_website_can_chart(project, tmp_path):
     assert [r["setting"] for r in result["rows"]][:2] == ["discovery_only", "baseline_prompt"]
     for row in result["rows"]:
         assert {"setting", "precision", "recall", "f1", "human_review_rate"} <= set(row)
-        assert "llm_calls_per_edge" in row
+        assert "llm_calls_per_edge" in row and "real_llm_calls_per_edge" in row
     config = result["config"]
     assert config["models"]["validator"] == "llama3.1:8b"
     assert config["temperature"] == 0.0 and config["seed"] == 42
@@ -263,3 +276,5 @@ def test_multi_course_dataset_writes_micro_average(project, tmp_path):
     assert micro["full_agent"]["precision"] == 1.0
     assert micro["full_agent"]["human_review_rate"] == pytest.approx(2 / 12)
     assert micro["single_judge"]["llm_calls_per_edge"] is None
+    assert micro["full_agent"]["llm_calls_per_edge"] == pytest.approx(50 / 12)
+    assert micro["full_agent"]["real_llm_calls_per_edge"] == pytest.approx(30 / 12)

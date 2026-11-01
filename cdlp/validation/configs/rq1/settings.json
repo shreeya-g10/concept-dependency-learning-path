@@ -1,14 +1,17 @@
 {
-  "_comment": "RQ1 settings shared by every dataset config in this folder. Each setting names the file it reads in the course's run_dir and the file <name>.stats.json ({\"llm_calls\": n}) that gives its LLM calls. adds_calls_of: validator settings also pay for discovery. 'produce' says how the predictions file is made; flags marked PENDING do not exist yet in cdlp/validation/__main__.py.",
-  "models": {"discovery": "qwen2.5:7b-instruct", "validator": "llama3.1:8b"},
+  "_comment": "RQ1 settings shared by every dataset config in this folder. Each setting names the file it reads in the course's run_dir and the file <name>.stats.json ({\"llm_calls\": n}) that gives its LLM calls. adds_calls_of: validator settings also pay for discovery. 'produce' says how the predictions file is made; settings marked PENDING (the --skip-check ablations) do not exist yet in cdlp/validation/__main__.py. Cost per edge = (llm_calls + cache_hits) / edges; real calls are reported separately (evaluate.py).",
+  "models": {
+    "discovery": "qwen2.5:7b-instruct",
+    "validator": "llama3.1:8b"
+  },
   "prompt_versions": {
     "discovery": "discover_v2",
     "baseline": "baseline_v1",
     "evidence": "evidence_v1",
     "semantic": "semantic_v1",
     "necessity": "necessity_*_v1",
-    "single_judge": "PENDING",
-    "self_consistency": "PENDING"
+    "single_judge": "semantic_v2",
+    "self_consistency": "semantic_v2"
   },
   "temperature": 0.0,
   "seed": 42,
@@ -32,16 +35,16 @@
       "kind": "validated",
       "predictions": "validated_single_judge.json",
       "adds_calls_of": "discovery_only",
-      "description": "One LLM-judge call per proposed edge (accept / reject), no retrieval, no checks.",
-      "produce": "PENDING: python -m cdlp.validation --mode single_judge ..."
+      "description": "The semantic check alone (prompt semantic_v2), one validator call per proposed edge at temperature 0, seed 42: ACCEPT if strong or medium, else REJECT. No retrieval, no other check.",
+      "produce": "python -m cdlp.validation.single_judge --relationships <run_dir>/relationships.json --concepts <concepts.json> --out <run_dir>/validated_single_judge.json"
     },
     {
       "name": "self_consistency",
       "kind": "validated",
       "predictions": "validated_self_consistency.json",
       "adds_calls_of": "discovery_only",
-      "description": "The single judge sampled k times at temperature > 0, majority vote. Same call budget class as the agent, so it separates 'more calls' from 'independent checks'.",
-      "produce": "PENDING: python -m cdlp.validation --mode self_consistency --samples 5 ..."
+      "description": "The single judge sampled 3 times (seeds 42, 43, 44, temperature 0.7), majority vote; confidence = vote share. Spends several calls per edge like the agent but adds no independent evidence, so it separates 'more calls' from 'independent checks'.",
+      "produce": "python -m cdlp.validation.self_consistency --relationships <run_dir>/relationships.json --concepts <concepts.json> --out <run_dir>/validated_self_consistency.json"
     },
     {
       "name": "full_agent",
