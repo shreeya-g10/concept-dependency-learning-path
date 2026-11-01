@@ -8,6 +8,12 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.4
+
+- `review_queue.json` rows may carry a new optional `blocking` (boolean, absent = false): accepting the edge as it is would close a cycle with ACCEPT edges (or it is a self-loop). **Every review strategy handles blocking edges first**, before any impact-ranked edge; the file lists them first.
+- For a blocking row only, `impact_score` and `paths_affected` may be `null`: the path with the edge accepted is undefined, so no number is made up. The schema enforces this (a null needs `blocking: true`).
+- **Exception to the additive rule, approved by the lead (2026-11-02):** these two fields were widened from number to number-or-null. Every 1.1 file stays valid, but a reader must handle `null`. Known readers: `website/pages/3_Validation_Agent.py` (handles it).
+
 ## 1.3
 
 - New `relationships_baseline.json` (example in `examples/`): the RQ1 baseline written by `python -m cdlp.discovery --baseline` (one LLM call with the full concept list, no candidate filter). It uses the `relationships` schema unchanged; `evidence` is always empty because the baseline sees no chunks. Registered in `FILE_SCHEMAS`.
