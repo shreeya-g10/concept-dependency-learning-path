@@ -1,6 +1,6 @@
 """Run the whole pipeline end to end. Owner: Shreeya (lead) — do not edit.
 
-    python pipeline.py --course ds101 --target avl_tree
+    python pipeline.py --course ds101 [--target avl_tree]
 
 Reads course files from data/raw/<course>/ and writes to outputs/<course>/.
 Root-cause tracing runs only when outputs/<course>/student_answers.json exists.
@@ -9,6 +9,7 @@ Modules never import each other; they only exchange the files in outputs/<course
 """
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +31,36 @@ def produced_or_example(out: Path, name: str) -> Path:
     return EXAMPLES / name
 
 
+def default_target(graph_path: Path) -> str:
+    """The concept with the most ancestors along ACCEPT edges (ties: alphabetical id).
+
+    The deepest concept gives the longest, most informative learning path.
+    """
+    graph = json.loads(graph_path.read_text())
+    parents: dict[str, set] = {}
+    for edge in graph["edges"]:
+        if edge["decision"] == "ACCEPT":
+            parents.setdefault(edge["target"], set()).add(edge["source"])
+    if not parents:
+        raise SystemExit(f"no ACCEPT edges in {graph_path}; pass --target explicitly")
+
+    def ancestors(node: str) -> set:
+        seen, stack = set(), list(parents.get(node, ()))
+        while stack:
+            parent = stack.pop()
+            if parent not in seen:
+                seen.add(parent)
+                stack.extend(parents.get(parent, ()))
+        return seen
+
+    counts = {node: len(ancestors(node)) for node in parents}
+    target = min(counts, key=lambda node: (-counts[node], node))
+    print(
+        f"target: {target} ({counts[target]} ancestors via ACCEPT edges; pass --target to override)"
+    )
+    return target
+
+
 def course_input(course: str) -> Path:
     """data/raw/<course>/, or data/raw/ while the course files still sit there."""
     folder = Path("data/raw") / course
@@ -43,7 +74,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--course", default="ds101")
     parser.add_argument("--input", help="default: data/raw/<course>/")
-    parser.add_argument("--target", default="avl_tree")
+    parser.add_argument(
+        "--target", help="default: the concept with the most ancestors among ACCEPT edges"
+    )
     parser.add_argument("--out-dir", help="default: outputs/<course>/")
     args = parser.parse_args()
     raw = Path(args.input) if args.input else course_input(args.course)
@@ -82,7 +115,7 @@ def main() -> None:
         "--quiz",
         str(quiz_items),
         "--target",
-        args.target,
+        args.target or default_target(out / "validated_graph.json"),
         "--out-dir",
         str(out),
     )
