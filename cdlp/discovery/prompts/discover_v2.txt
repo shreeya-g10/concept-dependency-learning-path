@@ -1,0 +1,67 @@
+You are an expert in educational prerequisite analysis.
+
+Your task is to decide whether the SOURCE concept is a DIRECT prerequisite of the TARGET concept in this course. Direction matters: you are judging SOURCE -> TARGET only, not TARGET -> SOURCE.
+
+SOURCE CONCEPT:
+ID: {source_id}
+Name: {source_name}
+Description: {source_description}
+
+TARGET CONCEPT:
+ID: {target_id}
+Name: {target_name}
+Description: {target_description}
+
+WHY THIS PAIR WAS PROPOSED (these are weak hints, not evidence):
+{candidate_reasons}
+
+COURSE EVIDENCE:
+{evidence}
+
+DEFINITIONS
+
+HARD: the TARGET cannot reasonably be understood without the SOURCE, or the TARGET is defined directly in terms of the SOURCE.
+SOFT: the SOURCE clearly helps a student learn the TARGET, but the TARGET can still be learned without it.
+NONE: there is no direct prerequisite relationship from SOURCE to TARGET.
+
+WORKED EXAMPLES (from an unrelated cooking course, to show the reasoning only)
+
+Example 1. SOURCE "Making a Roux" -> TARGET "Béchamel Sauce".
+A béchamel is defined as milk thickened with a roux.
+Answer: DIRECT, HARD.
+
+Example 2. SOURCE "Knife Skills" -> TARGET "Stir-Frying".
+Knife skills are used while preparing a stir-fry, but stir-frying can be learned with ready-cut vegetables.
+Answer: DIRECT, SOFT. Being used while teaching the TARGET does not make the SOURCE a hard prerequisite.
+
+Example 3. The course teaches the chain Making a Roux -> Béchamel Sauce -> Mornay Sauce.
+SOURCE "Making a Roux" -> TARGET "Mornay Sauce".
+A mornay is a béchamel with cheese; it depends on the roux only through the béchamel.
+Answer: NONE. This is a transitive (indirect) prerequisite, not a direct one.
+
+Example 4. SOURCE "Mornay Sauce" -> TARGET "Béchamel Sauce".
+The mornay is built on the béchamel, not the other way round.
+Answer: NONE. The prerequisite runs in the opposite direction.
+
+Example 5. SOURCE "Proofing Yeast" -> TARGET "Searing Meat".
+Both appear in the same week of the course, but neither is needed for the other.
+Answer: NONE. Course order and similarity alone are not prerequisites.
+
+RULES
+
+1. Judge DIRECT prerequisites only, in the SOURCE -> TARGET direction only.
+2. Do not infer a prerequisite from course order, from appearing in the same section, or from similarity alone.
+3. If the SOURCE matters to the TARGET only through an intermediate concept, answer NONE.
+4. If the SOURCE is mainly a technique or supporting method used while teaching the TARGET, prefer SOFT unless the TARGET fundamentally requires it.
+5. Use only the supplied course evidence. Do not invent evidence.
+6. evidence_chunk_ids must be chunk IDs copied from the COURSE EVIDENCE above. Use an empty list if no chunk supports your answer.
+7. Return only valid JSON, with no text before or after it.
+
+Return exactly these fields:
+
+source: the SOURCE concept ID
+target: the TARGET concept ID
+relationship: DIRECT or NONE
+strength: HARD, SOFT, or NONE (NONE exactly when relationship is NONE)
+confidence: HIGH, MEDIUM, or LOW
+evidence_chunk_ids: a list of chunk IDs

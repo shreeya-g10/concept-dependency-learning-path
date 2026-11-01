@@ -13,6 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from cdlp.shared.io import EXAMPLES
 from cdlp.shared.validate import check_file
 
 
@@ -62,6 +63,12 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
     )
+    # discovery no longer writes sim_students.json; until learning_path builds simulated
+    # students from the validated graph, fall back to the shared example students
+    sim_students = out / "sim_students.json"
+    if not sim_students.exists():
+        sim_students = EXAMPLES / "sim_students.json"
+        print(f"note: no {out / 'sim_students.json'}, using {sim_students}")
     run(
         "cdlp.learning_path",
         "--graph",
@@ -69,7 +76,7 @@ def main() -> None:
         "--quiz",
         str(out / "quiz_items.json"),
         "--students",
-        str(out / "sim_students.json"),
+        str(sim_students),
         "--target",
         args.target,
         "--out-dir",

@@ -1,107 +1,74 @@
+"""discovery: concepts + chunks -> relationships.json, quiz_items.json
+
+    python -m cdlp.discovery --concepts outputs/concepts.json \
+        --chunks outputs/chunks.jsonl --out-dir outputs
+
+sim_students.json is no longer written here: simulated students are built from
+validated (ACCEPT) edges by the learning_path module.
+"""
+
 import argparse
+import sys
 from pathlib import Path
 
-from cdlp.discovery.candidates import generate_candidates
+from cdlp.discovery.candidates import candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
+    PROMPT_VERSION,
     build_contract_relationships,
     discover_candidates,
 )
-from cdlp.discovery.quiz import generate_quiz_items
-from cdlp.discovery.sim_students import (
-    generate_simulated_students,
-)
+from cdlp.discovery.quiz import get_quiz_items
 from cdlp.shared.io import read_json, read_jsonl, write_json
+
+# 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
+RELATIONSHIPS_SCHEMA_VERSION = "1.2"
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run discovery on concepts and chunks.")
-
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--concepts", type=Path, required=True)
+    parser.add_argument("--chunks", type=Path, required=True)
+    parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument(
-        "--concepts",
-        type=Path,
-        required=True,
+        "--remove-transitive",
+        action="store_true",
+        help="leave out edges implied by a longer path (off: the validator handles redundancy)",
     )
-
-    parser.add_argument(
-        "--chunks",
-        type=Path,
-        required=True,
-    )
-
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        required=True,
-    )
-
+    parser.add_argument("--prompt-version", default=PROMPT_VERSION)
     args = parser.parse_args()
-
-    args.out_dir.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+    args.out_dir.mkdir(parents=True, exist_ok=True)
 
     concepts_data = read_json(args.concepts)
-
+    course_id = concepts_data["course_id"]
     concepts = concepts_data["concepts"]
-
     chunks = read_jsonl(args.chunks)
 
-    candidates = generate_candidates(
-        concepts_data,
-        chunks,
+    candidates = generate_candidates(concepts_data, chunks)
+    stats = candidate_stats(candidates, len(concepts))
+    print(
+        f"candidates: {stats['candidates']} of {stats['unordered_pairs']} pairs "
+        f"({stats['tied']} tied, asked both ways) -> {stats['llm_calls']} LLM calls",
+        file=sys.stderr,
     )
 
     relationships = discover_candidates(
         candidates,
         concepts,
         chunks,
+        remove_transitive=args.remove_transitive,
+        prompt_version=args.prompt_version,
     )
-
-    contract_relationships = build_contract_relationships(
-        relationships,
-        concepts,
-        chunks,
-    )
-
     write_json(
         args.out_dir / "relationships.json",
         {
-            "schema_version": "1.0",
-            "course_id": concepts_data["course_id"],
-            "relationships": contract_relationships,
+            "schema_version": RELATIONSHIPS_SCHEMA_VERSION,
+            "course_id": course_id,
+            "relationships": build_contract_relationships(
+                relationships, concepts, chunks, args.prompt_version
+            ),
         },
     )
-
-    quiz_items = generate_quiz_items(
-        concepts,
-        chunks,
-    )
-
-    write_json(
-        args.out_dir / "quiz_items.json",
-        {
-            "schema_version": "1.0",
-            "course_id": concepts_data["course_id"],
-            "items": quiz_items,
-        },
-    )
-
-    sim_students = generate_simulated_students(
-        concepts,
-        contract_relationships,
-        count=500,
-        seed=42,
-    )
-
-    write_json(
-        args.out_dir / "sim_students.json",
-        {
-            "schema_version": "1.0",
-            "course_id": concepts_data["course_id"],
-            "students": sim_students,
-        },
-    )
+    write_json(args.out_dir / "quiz_items.json", get_quiz_items(course_id=course_id))
 
 
 if __name__ == "__main__":
