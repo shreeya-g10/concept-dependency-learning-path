@@ -1,27 +1,286 @@
-"""validation — relationships + chunks -> validated_graph.json
+"""validation: relationships + concepts + chunks -> validated_graph.json
 
     python -m cdlp.validation --relationships outputs/relationships.json \
         --concepts outputs/concepts.json --chunks outputs/chunks.jsonl \
-        --out outputs/validated_graph.json
+        --out outputs/validated_graph.json \
+        [--skip-evidence] [--skip-semantic] [--skip-necessity] [--skip-graph] \
+        [--review-queue outputs/review_queue.json --students outputs/sim_students.json]
+
+Runs the graph, evidence, semantic (prompt semantic_v2) and necessity checks on every
+proposed edge and combines them into ACCEPT / REJECT / HUMAN_REVIEW with the decision
+rule and thresholds in configs/default.json ("decision"). Every edge is kept, with
+all four checks, its confidence, evidence quotes and a reason.
+
+Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is written as
+"skipped" (contract 1.5), listed under "skipped_checks", named in each reason, and
+never blocks ACCEPT. A check with weight 0 in the config is report-only: it runs and is
+recorded on every edge, but takes no part in the score, the vetoes or the decision.
+Necessity is report-only by default (weight 0; --necessity-weight overrides it).
+The run's LLM call counts go to <out dir>/<setting>.stats.json (write_stats), where
+setting is full_agent, minus_<check> or minus_<a>_<b>... (or --setting).
 """
 
+from __future__ import annotations
+
 import argparse
+import json
+import sys
 from pathlib import Path
 
-from cdlp.shared.io import EXAMPLES, read_json, write_json
+import networkx as nx
+
+from cdlp.shared import llm
+from cdlp.shared.io import read_json, read_jsonl, write_json
+from cdlp.validation import evidence_check, graph_checks, necessity_test, semantic_check
+
+CHECKS = ("evidence", "semantic", "necessity", "graph")
+LLM_CHECKS = ("evidence", "semantic", "necessity")
+DEFAULT_CONFIG = Path(__file__).parent / "configs" / "default.json"
+SCHEMA_VERSION = "1.5"
+SKIPPED = "skipped"
+STRUCTURAL_REJECT = {graph_checks.SELF_LOOP: "self-loop", graph_checks.DUPLICATE: "duplicate"}
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+def load_decision_config(path: Path | str = DEFAULT_CONFIG) -> dict:
+    return json.loads(Path(path).read_text())["decision"]
+
+
+def setting_name(skipped: set[str]) -> str:
+    return "full_agent" if not skipped else "minus_" + "_".join(c for c in CHECKS if c in skipped)
+
+
+def implied_by(relationship: dict, relationships: list[dict], labels: dict[str, str]) -> list:
+    """Shortest path source -> ... -> target through OTHER acyclic edges, or []."""
+    graph = nx.DiGraph(
+        (r["source"], r["target"])
+        for r in relationships
+        if r["id"] != relationship["id"]
+        and labels[r["id"]] in (graph_checks.OK, graph_checks.REDUNDANT)
+    )
+    try:
+        path = nx.shortest_path(graph, relationship["source"], relationship["target"])
+    except (nx.NetworkXNoPath, nx.NodeNotFound):
+        return []
+    return path if len(path) > 2 else []
+
+
+def deciding(grades: dict[str, str | None], cfg: dict) -> dict[str, str]:
+    """The checks that take part in the decision: ran (not None) and weight > 0."""
+    return {c: g for c, g in grades.items() if g is not None and cfg["weights"].get(c, 0) > 0}
+
+
+def score(grades: dict[str, str], cfg: dict) -> float | None:
+    """Weighted mean of the deciding checks' grade points (None if none decides)."""
+    active = deciding(grades, cfg)
+    total = sum(cfg["weights"][c] for c in active)
+    if not total:
+        return None
+    return sum(cfg["weights"][c] * cfg["grade_points"][g] for c, g in active.items()) / total
+
+
+def decide(
+    graph_label: str,
+    grades: dict[str, str | None],
+    cfg: dict,
+    *,
+    bidirectional: bool = False,
+    implied_path: list | None = None,
+) -> tuple[str, float, str]:
+    """(decision, confidence, reason). grades: evidence / semantic / necessity grade,
+    None for a skipped check. graph_label: graph_checks label ("ok" when skipped)."""
+    if graph_label in STRUCTURAL_REJECT:
+        return "REJECT", 1.0, f"{STRUCTURAL_REJECT[graph_label]}."
+    if bidirectional or graph_label == graph_checks.CONTRADICTION:
+        why = "proposed in both directions" if bidirectional else "the reverse edge is proposed"
+        return "HUMAN_REVIEW", 0.5, f"Direction unclear: {why}."
+    if graph_label == graph_checks.REDUNDANT:
+        path = " → ".join(implied_path or [])
+        return "REJECT", 1.0, f"Redundant: implied by {path}." if path else "Redundant."
+
+    s = score(grades, cfg)
+    ran = deciding(grades, cfg)
+    summary = (
+        ", ".join(
+            f"{c} {g}" + ("" if c in ran else " (report-only)")
+            for c, g in grades.items()
+            if g is not None
+        )
+        or "no check ran"
+    )
+    unsupported = (
+        cfg.get("reject_if_unsupported")
+        and ran.get("evidence") in ("weak", "none")
+        and ran.get("semantic") in ("weak", "none")
+    )
+    if s is None:
+        decision = "HUMAN_REVIEW"
+    elif s < cfg["reject_below"] or unsupported:
+        decision = "REJECT"
+    elif s >= cfg["accept_min"] and "none" not in ran.values():
+        decision = "ACCEPT"
+    else:
+        decision = "HUMAN_REVIEW"
+
+    if graph_label == graph_checks.CYCLE and decision == "ACCEPT":
+        decision = "HUMAN_REVIEW"  # a cycle is never auto-accepted
+    confidence = (
+        0.5 if s is None or decision == "HUMAN_REVIEW" else (s if decision == "ACCEPT" else 1 - s)
+    )
+    detail = f"score {s:.2f}" if s is not None else "no score"
+    if unsupported:
+        detail += "; neither the material nor the semantic check supports it"
+    if graph_label == graph_checks.CYCLE:
+        detail += "; lies on a cycle, so never accepted automatically"
+    return decision, round(confidence, 4), f"{summary} ({detail})."
+
+
+def validate(
+    relationships: dict,
+    concepts: dict,
+    chunks: list[dict],
+    *,
+    skip: set[str] = frozenset(),
+    config_path: Path | str = DEFAULT_CONFIG,
+    embed=None,
+    necessity_weight: float | None = None,
+) -> dict:
+    cfg = load_decision_config(config_path)
+    if necessity_weight is not None:
+        cfg["weights"] = {**cfg["weights"], "necessity": necessity_weight}
+    rels = relationships["relationships"]
+    labels = (
+        graph_checks.graph_labels_by_id(rels)
+        if "graph" not in skip
+        else {r["id"]: graph_checks.OK for r in rels}
+    )
+
+    def by_id(result: dict | None) -> dict:
+        return {r["relationship_id"]: r for r in (result or {}).get("results", [])}
+
+    evidence = by_id(
+        evidence_check.run(relationships, concepts, chunks, embed=embed)
+        if "evidence" not in skip
+        else None
+    )
+    semantic = by_id(
+        semantic_check.run(relationships, concepts, prompt_version="semantic_v2")
+        if "semantic" not in skip
+        else None
+    )
+    ncfg = necessity_test.load_config(config_path)
+    necessity = by_id(
+        necessity_test.run(relationships, concepts, chunks, cfg=ncfg)
+        if "necessity" not in skip
+        else None
+    )
+
+    edges = []
+    for r in rels:
+        ev, se, ne = evidence.get(r["id"]), semantic.get(r["id"]), necessity.get(r["id"])
+        grades = {
+            "evidence": ev["evidence"] if ev else None,
+            "semantic": se["semantic"] if se else None,
+            "necessity": ne["necessity"] if ne and ne.get("status") == "ok" else None,
+        }
+        decision, confidence, reason = decide(
+            labels[r["id"]],
+            grades,
+            cfg,
+            bidirectional=bool(r.get("bidirectional")),
+            implied_path=implied_by(r, rels, labels)
+            if labels[r["id"]] == graph_checks.REDUNDANT
+            else None,
+        )
+        if se and se.get("rationale"):
+            reason += f" Semantic: {se['rationale']}"
+        skipped = [c for c in CHECKS if c in skip]
+        if skipped:
+            reason += f" (skipped: {', '.join(skipped)})"
+        edges.append(
+            {
+                "id": r["id"],
+                "source": r["source"],
+                "target": r["target"],
+                "type": "PREREQUISITE",
+                "strength": r["strength"],
+                "decision": decision,
+                "confidence": confidence,
+                "checks": {
+                    "evidence": SKIPPED if "evidence" in skip else grades["evidence"],
+                    "semantic": SKIPPED if "semantic" in skip else grades["semantic"],
+                    # necessity that could not run (no course text for B) is skipped too
+                    "necessity": SKIPPED
+                    if "necessity" in skip or grades["necessity"] is None
+                    else grades["necessity"],
+                    "graph": SKIPPED if "graph" in skip else labels[r["id"]],
+                },
+                "necessity_gap": ne.get("necessity_gap") if ne else None,
+                "score_control": ne.get("score_control") if ne else None,
+                "score_without": ne.get("score_without") if ne else None,
+                "n_questions": ncfg["n_questions"],
+                "question_format": ncfg.get("question_format", "open"),
+                # quotes verified by the evidence check; else discovery's cited chunks
+                "evidence": (ev["quotes"] if ev else None) or r.get("evidence", []),
+                "reason": reason,
+            }
+        )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "course_id": relationships["course_id"],
+        "nodes": [{"id": c["id"], "name": c["name"]} for c in concepts["concepts"]],
+        "edges": edges,
+        "skipped_checks": [c for c in CHECKS if c in skip],
+    }
+
+
+def main(argv: list[str] | None = None) -> dict:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument("--relationships", type=Path, required=True)
     parser.add_argument("--concepts", type=Path, required=True)
     parser.add_argument("--chunks", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
-    args = parser.parse_args()
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    for check in CHECKS:
+        parser.add_argument(f"--skip-{check}", action="store_true", help=f"ablation: no {check}")
+    parser.add_argument("--review-queue", type=Path, help="also write review_queue.json here")
+    parser.add_argument("--students", type=Path, help="sim_students.json (for --review-queue)")
+    parser.add_argument("--setting", help="name for the stats file (default from the skips)")
+    parser.add_argument("--stats", type=Path, help="default: <out dir>/<setting>.stats.json")
+    parser.add_argument(
+        "--necessity-weight",
+        type=float,
+        help="override the config's necessity weight (0 = report-only, the default)",
+    )
+    args = parser.parse_args(argv)
+    if args.review_queue and not args.students:
+        parser.error("--review-queue needs --students (sim_students.json)")
 
-    # TODO(Shreeya): evidence, semantic, necessity (simulated learner) and graph
-    # checks -> ACCEPT / REJECT / HUMAN_REVIEW for every relationship.
-    write_json(args.out, read_json(EXAMPLES / "validated_graph.json"))
+    skip = {c for c in CHECKS if getattr(args, f"skip_{c}")}
+    result = validate(
+        read_json(args.relationships),
+        read_json(args.concepts),
+        read_jsonl(args.chunks),
+        skip=skip,
+        config_path=args.config,
+        necessity_weight=args.necessity_weight,
+    )
+    write_json(args.out, result)
+    if args.review_queue:
+        from cdlp.validation.review_queue import write_review_queue
+
+        write_review_queue(args.review_queue, result, read_json(args.students))
+    setting = args.setting or setting_name(skip)
+    stats = llm.write_stats(args.stats or args.out.parent / f"{setting}.stats.json")
+    decisions = [e["decision"] for e in result["edges"]]
+    print(
+        f"{setting}: {decisions.count('ACCEPT')} ACCEPT, {decisions.count('REJECT')} REJECT, "
+        f"{decisions.count('HUMAN_REVIEW')} HUMAN_REVIEW; {stats['llm_calls']} LLM calls, "
+        f"{stats['cache_hits']} cache hits -> {args.out}",
+        file=sys.stderr,
+    )
+    return result
 
 
 if __name__ == "__main__":

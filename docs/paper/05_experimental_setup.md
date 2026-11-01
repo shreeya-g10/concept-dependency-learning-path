@@ -43,7 +43,7 @@ Every downloaded file is checked against its recorded git blob SHA. Neither raw 
 | Agent − evidence / − semantic / − necessity / − graph | The agent with one check removed |
 | Agent − evidence − necessity | Semantic and graph checks only: the agent reported on the benchmarks (§5.1) |
 
-[TODO: single judge, self-consistency and the minus-check runs are still marked PENDING in the settings file.]
+[TODO: the four minus-check settings are now real commands (`python -m cdlp.validation --skip-<check>`); their runs, like the single-judge and self-consistency runs, are still to do.]
 
 Models: discovery `qwen2.5:7b-instruct`; validator `llama3.1:8b`; both run locally through Ollama. Temperature 0 (except self-consistency), seed 42. Each result records the config, models, prompt versions, temperature, seed, git commit and date.
 

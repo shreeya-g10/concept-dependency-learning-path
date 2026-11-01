@@ -88,6 +88,7 @@ def test_every_config_loads_and_covers_the_rq1_settings():
         "single_judge",
         "self_consistency",
         "full_agent",
+        "full_agent_plus_necessity",
         "minus_evidence",
         "minus_semantic",
         "minus_necessity",

@@ -98,3 +98,13 @@ Mean gap ± SD across seeds (expected order: BT→BST > rec→BT > graphs→AVL 
 | graphs → avl_tree | Gradient Descent (cross-course) | 0.6 | 0.3 | 0.3 | medium | 0/5 | 0 |
 
 The expected order fails again (rec→BT > graphs→AVL > BT→BST), and the unrelated edge gets a medium gap. On BT→BST one question itself names "binary tree", exposing A to the "without A" learner, and one answer leaked it; both shrink that gap. One seed is not enough to tell noise from signal, and three seeds at this setting would take about 75 minutes. No thresholds were tuned.
+
+## Decision: the necessity test is report-only (2026-11-02)
+
+In `configs/default.json` the necessity check has **weight 0**. It runs and is recorded on every edge (`checks.necessity`, `necessity_gap`, `score_control`, `score_without`), but it never changes a decision. The RQ1 setting `full_agent_plus_necessity` runs the same agent with necessity at weight 1, so the paper can still report what it would add.
+
+Why:
+1. **Unstable across runs.** On the same 3 example edges, the gap moved with the question set rather than with the prerequisite. Open n = 3 gave every edge exactly 0.167 (the smallest possible step). MCQ n = 3 / 5 / 8 left the control and "without A" learners with identical scores in most runs. Open n = 5 with sampled questions ranked `graphs → avl_tree` (gold none) above `binary_tree → BST` (gold hard). No setting reproduced the expected order in its means or in any single seed (sections above, `necessity_stability/summary.json`, `necessity_stability_open5_qt07/summary.json`).
+2. **Not tuned against gold.** The thresholds were never fitted, and these example edges overlap the gold set, so the rule does not lean on a check that cannot yet be validated on held-out data.
+
+Also changed with this decision: generated questions may no longer name A. A question containing A's name, an alias or a stem (the leakage matcher; B's own name masked) is dropped and the writer asked again, up to 2 times, with a note and a new seed; questions that still name A are dropped (`necessity_questions_v2`, `question_attempts`, `questions_dropped`). The open n = 5 run showed why: one question named "binary tree" and exposed A to the "without A" learner.

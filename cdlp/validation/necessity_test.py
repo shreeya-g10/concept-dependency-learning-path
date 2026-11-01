@@ -213,13 +213,13 @@ def _prompt(version: str, values: dict) -> str:
     return text
 
 
-def _ask(prompt: str, version: str, cfg: dict, model: str, temperature=None) -> dict:
+def _ask(prompt: str, version: str, cfg: dict, model: str, temperature=None, seed=None) -> dict:
     try:
         reply = chat_json(
             prompt,
             model=model,
             temperature=cfg["temperature"] if temperature is None else temperature,
-            seed=cfg["seed"],
+            seed=cfg["seed"] if seed is None else seed,
             prompt_version=version,
         )
     except ValueError:  # not JSON
@@ -274,40 +274,90 @@ def _mcq_question(q: dict, cfg: dict, target_id: str, index: int) -> dict | None
     }
 
 
-def make_questions(target: dict, chunks: list[dict], cfg: dict, model: str) -> list[dict]:
-    version = _role(cfg, "questions")
-    values = {
-        "target_name": target["name"],
-        "chunks": _chunk_block(chunks),
-        "n_questions": str(cfg["n_questions"]),
-    }
-    # question writing may sample (question_temperature) so seeds give different question
-    # sets; learners and grader always use cfg["temperature"]
-    reply = _ask(
-        _prompt(version, values),
-        version,
-        cfg,
-        model,
-        temperature=cfg.get("question_temperature", cfg["temperature"]),
-    )
-    questions = []
+RETRY_NOTE = (
+    "Your previous questions named a forbidden term. Write new questions that do not, "
+    "and do not repeat these: {previous}."
+)
+
+
+def _parse_questions(reply: dict, cfg: dict, target_id: str, start: int) -> list[dict]:
+    out = []
     raw = reply.get("questions") if isinstance(reply.get("questions"), list) else []
     for q in raw:
         if not (isinstance(q, dict) and str(q.get("question", "")).strip()):
             continue
         if _mcq(cfg):
-            mcq = _mcq_question(q, cfg, target["id"], len(questions))
+            mcq = _mcq_question(q, cfg, target_id, start + len(out))
             if mcq:
-                questions.append(mcq)
+                out.append(mcq)
         else:
-            questions.append(
+            out.append(
                 {
                     "question": str(q["question"]).strip(),
                     "reference_answer": str(q.get("reference_answer", "")).strip(),
                     "chunk_id": str(q.get("chunk_id", "")),
                 }
             )
-    return questions[: cfg["n_questions"]]
+    return out
+
+
+def names_source(question: dict, source: dict, target: dict) -> list[str]:
+    """A's name, aliases or stems in the question text or its options (B masked)."""
+    return leaks(" ".join([question["question"], *question.get("options", [])]), source, target)
+
+
+def make_questions(
+    target: dict, chunks: list[dict], cfg: dict, model: str, source: dict | None = None
+) -> tuple[list[dict], dict]:
+    """Up to n questions on B that never name A. A question naming A (name, alias or
+    stem, via the leakage matcher) is dropped; the writer is asked again, up to
+    question_regenerations times, with a note and a new seed. Returns (questions, log)."""
+    version = _role(cfg, "questions")
+    n = cfg["n_questions"]
+    avoid = ", ".join(
+        f'"{t}"'
+        for t in [*([source["name"]] if source else []), *((source or {}).get("aliases") or [])]
+    )
+    clean, dropped, seen = [], [], set()
+    attempts = 0
+    for attempt in range(1 + cfg.get("question_regenerations", 2)):
+        attempts += 1
+        values = {
+            "target_name": target["name"],
+            "chunks": _chunk_block(chunks),
+            "n_questions": str(n),
+            "avoid_terms": avoid or "(none)",
+            "retry_note": RETRY_NOTE.format(previous="; ".join(d["question"] for d in dropped))
+            if attempt
+            else "",
+        }
+        # question writing may sample (question_temperature) so seeds give different
+        # question sets; learners and grader always use cfg["temperature"]
+        reply = _ask(
+            _prompt(version, values),
+            version,
+            cfg,
+            model,
+            temperature=cfg.get("question_temperature", cfg["temperature"]),
+            seed=cfg["seed"] + attempt,
+        )
+        dropped_now = 0
+        for q in _parse_questions(reply, cfg, target["id"], len(clean)):
+            key = q["question"].casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            if source and names_source(q, source, target):
+                dropped.append(
+                    {"question": q["question"], "terms": names_source(q, source, target)}
+                )
+                dropped_now += 1
+            elif len(clean) < n:
+                clean.append(q)
+        # regenerate only to replace questions dropped for naming A, not for a bad reply
+        if len(clean) >= n or not dropped_now:
+            break
+    return clean[:n], {"question_attempts": attempts, "questions_dropped": dropped}
 
 
 def _answers(reply: dict, n: int) -> list[str]:
@@ -426,7 +476,12 @@ def check_relationship(
         "n_questions": cfg["n_questions"],
         "known_control": [c["id"] for c in known_control],
     }
-    questions = make_questions(target, target_chunks, cfg, model) if target_chunks else []
+    questions, question_log = (
+        make_questions(target, target_chunks, cfg, model, source)
+        if target_chunks
+        else ([], {"question_attempts": 0, "questions_dropped": []})
+    )
+    result.update(question_log)
     if not questions:
         return {
             **result,

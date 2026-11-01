@@ -95,7 +95,8 @@ def test_labels_are_allowed_by_schema():
     labels = graph_labels(
         rels("a>a", "a>b", "a>b", "b>a", "c>d", "d>e", "e>c", "f>g", "g>h", "f>h")
     )
-    assert set(labels) == allowed
+    assert "skipped" in allowed  # 1.5: written by the CLI for --skip-graph, never a label
+    assert set(labels) == allowed - {"skipped"}
 
 
 def test_by_id():

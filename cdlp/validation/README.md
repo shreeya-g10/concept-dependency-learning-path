@@ -17,13 +17,13 @@ Use a **different model** from discovery (`LLM_VALIDATOR_MODEL` in `.env`) so th
 
 ## Tasks, in order
 - [ ] **Day 1:** push the repo, share the link, fill in `CODEOWNERS` usernames, label your share of gold edges
-- [ ] Graph check (NetworkX): cycles, self-loops, duplicates, contradictions, redundant (transitive) edges
-- [ ] Evidence check: retrieve chunks for A and B; does the text support A before B?
-- [ ] Semantic check: does the edge make teaching sense?
+- [x] Graph check (NetworkX): cycles, self-loops, duplicates, contradictions, redundant (transitive) edges
+- [x] Evidence check: retrieve chunks for A and B; does the text support A before B?
+- [x] Semantic check: does the edge make teaching sense?
 - [x] **Necessity test (simulated learner):** an LLM plays a student who doesn't know A and answers questions on B, then does it again knowing A. `necessity_gap` = score with A − score without A. Done in `necessity_test.py`: 3 questions from B's chunks, a learner who knows only the concepts taught before B (A forbidden), the same learner knowing A, a blind grader; gap → strong / medium / weak / none via `configs/default.json` (thresholds uncalibrated). Leakage check flags "without A" answers that use A's name, aliases or stems. One prompt per role: `prompts/necessity_{questions,learner_without,learner_with,grader}_v1.txt`.
-- [ ] Leakage check: does the "student without A" still use A's terms? Report the rate
-- [ ] Decision rule → ACCEPT / REJECT / HUMAN_REVIEW (tune thresholds on a small dev split, never on test)
-- [ ] **Impact-ranked review queue (`review_queue.py` done; CLI wiring pending):** `--review-queue <path>` writes `review_queue.json`. For each HUMAN_REVIEW edge, impact = number of simulated students (`sim_students.json`) whose personalized path changes if the edge flips (accepted vs not). Store it as `paths_affected`, derive `impact_score` from it, and sort highest first so reviewers see the edges that matter most Edges that would close a cycle are **blocking** (`blocking: true`, impact null) and come before every impact-ranked edge; every review strategy handles them first.
+- [x] Leakage check: does the "student without A" still use A's terms? Report the rate
+- [x] Decision rule → ACCEPT / REJECT / HUMAN_REVIEW (tune thresholds on a small dev split, never on test) Done in `__main__.py` (thresholds in `configs/default.json` → `decision`, still uncalibrated; never tune them on test).
+- [x] **Impact-ranked review queue (`review_queue.py` done; CLI wiring pending):** `--review-queue <path>` writes `review_queue.json`. For each HUMAN_REVIEW edge, impact = number of simulated students (`sim_students.json`) whose personalized path changes if the edge flips (accepted vs not). Store it as `paths_affected`, derive `impact_score` from it, and sort highest first so reviewers see the edges that matter most Edges that would close a cycle are **blocking** (`blocking: true`, impact null) and come before every impact-ranked edge; every review strategy handles them first. Wired: `python -m cdlp.validation ... --review-queue <path> --students <sim_students.json>`.
 - [ ] **Day 7: hand off real `validated_graph.json`** to Shrestha and run `python pipeline.py` on real data
 - [ ] RQ1 ablations: discovery only · single LLM judge · full agent · agent minus each check → P / R / F1, HUMAN_REVIEW rate → `cdlp/validation/results/`
 - [ ] Website page 3: decisions, checks, evidence, necessity gap

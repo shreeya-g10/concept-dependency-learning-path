@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "course_id": "ds101",
   "nodes": [
     {
@@ -175,5 +175,6 @@
       "evidence": [],
       "reason": "No evidence and no conceptual dependency between graphs and AVL trees."
     }
-  ]
+  ],
+  "skipped_checks": []
 }

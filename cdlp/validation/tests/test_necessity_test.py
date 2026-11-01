@@ -43,7 +43,7 @@ def llm(monkeypatch):
     """Role replies; records every call's prompt and kwargs."""
     calls = []
     replies = {
-        "necessity_questions_v1": {"questions": QUESTIONS},
+        "necessity_questions_v2": {"questions": QUESTIONS},
         # the "without" prompt serves two runs: keyed by the forbidden concept's name
         "necessity_learner_without_v1": {
             "How the Rook Moves": {"answers": ["no idea", "the king moves", "a rook!"]},
@@ -125,7 +125,7 @@ def test_seven_calls_per_edge_seeded_at_temperature_zero(llm):
 
     versions = [c["prompt_version"] for c in llm.calls]
     assert versions == [
-        "necessity_questions_v1",
+        "necessity_questions_v2",
         "necessity_learner_without_v1",  # A forbidden
         "necessity_learner_without_v1",  # control: C forbidden, same prompt
         "necessity_learner_with_v1",
@@ -206,7 +206,7 @@ def test_stemming_copy_matches_discovery():
 
 @pytest.mark.parametrize("bad", [{}, {"questions": "x"}, ValueError("not JSON")])
 def test_no_questions_gives_none_without_more_calls(llm, bad):
-    llm.replies["necessity_questions_v1"] = bad
+    llm.replies["necessity_questions_v2"] = bad
 
     r = run()
 
@@ -315,7 +315,7 @@ def test_cli_writes_results_and_only_filter(llm, tmp_path, monkeypatch):
 def test_prompts_have_no_course_concepts():
     terms = ["tree", "recursion", "graph", "avl", "vector", "matri", "regression", "gradient"]
     placeholder = json.dumps(nt.load_config()["control_placeholder"]).lower()
-    texts = [p.read_text().lower() for p in sorted(nt.PROMPT_DIR.glob("necessity_*_v1.txt"))]
+    texts = [p.read_text().lower() for p in sorted(nt.PROMPT_DIR.glob("necessity_*.txt"))]
     for text in [*texts, placeholder]:
         for term in terms:
             assert term not in text, term
@@ -338,7 +338,7 @@ def mcq_cfg(**overrides):
 
 @pytest.fixture
 def mcq_llm(llm):
-    llm.replies["necessity_questions_mcq_v1"] = {"questions": MCQ}
+    llm.replies["necessity_questions_mcq_v2"] = {"questions": MCQ}
 
     def letters(prompt):  # pick the option whose text starts with "right" -> all correct
         return [
@@ -372,7 +372,7 @@ def test_mcq_grades_by_exact_match_without_grader_calls(mcq_llm):
 
     versions = [c["prompt_version"] for c in mcq_llm.calls]
     assert "necessity_grader_v1" not in versions
-    assert versions[0] == "necessity_questions_mcq_v1"
+    assert versions[0] == "necessity_questions_mcq_v2"
     assert (r["score_control"], r["score_without"], r["necessity_gap"]) == (1.0, 0.0, 1.0)
     assert r["necessity"] == "strong" and r["question_format"] == "mcq"
 
@@ -457,10 +457,81 @@ def test_question_temperature_applies_to_question_writing_only(llm):
     run(cfg=cfg)
 
     by_role = {c["prompt_version"]: c["temperature"] for c in llm.calls}
-    assert by_role["necessity_questions_v1"] == 0.7
+    assert by_role["necessity_questions_v2"] == 0.7
     assert by_role["necessity_learner_without_v1"] == 0.0
     assert by_role["necessity_grader_v1"] == 0.0
 
 
 def test_question_temperature_defaults_to_zero():
     assert nt.load_config()["question_temperature"] == 0.0
+
+
+# --- questions must not name A ---------------------------------------------------
+
+
+def test_questions_naming_a_are_dropped_and_rewritten(llm):
+    named = {
+        "question": "How does the Rook move in castling?",
+        "reference_answer": "r",
+        "chunk_id": "c3",
+    }
+    replies = [
+        {"questions": [named, *QUESTIONS[:2]]},  # first attempt: one names A ("Rook" alias)
+        {"questions": [QUESTIONS[2]]},  # retry supplies the missing one
+    ]
+    calls = []
+    original = nt.chat_json
+
+    def fake(prompt, **kwargs):
+        if kwargs["prompt_version"] == "necessity_questions_v2":
+            calls.append({"prompt": prompt, **kwargs})
+            return replies[len(calls) - 1]
+        return original(prompt, **kwargs)
+
+    nt.chat_json = fake
+    try:
+        r = run()
+    finally:
+        nt.chat_json = original
+
+    assert [q["question"] for q in r["questions"]] == ["Q1?", "Q2?", "Q3?"]
+    assert r["question_attempts"] == 2
+    assert "rook" in r["questions_dropped"][0]["terms"]
+    assert r["leakage"]["questions_naming_source"] == []
+    # the writer is told the forbidden terms, and the retry differs (note + new seed)
+    assert '"How the Rook Moves", "Rook"' in calls[0]["prompt"]
+    assert "previous questions named a forbidden term" in calls[1]["prompt"]
+    assert (calls[0]["seed"], calls[1]["seed"]) == (42, 43)
+
+
+def test_questions_still_naming_a_after_two_retries_are_dropped(llm):
+    named = {"question": "Why does the rook jump?", "reference_answer": "r", "chunk_id": "c3"}
+    calls = []
+    original = nt.chat_json
+
+    def fake(prompt, **kwargs):
+        if kwargs["prompt_version"] == "necessity_questions_v2":
+            calls.append(kwargs)
+            q = dict(named, question=f"Why does the rook jump ({len(calls)})?")
+            return {"questions": [q, QUESTIONS[0]]}
+        return original(prompt, **kwargs)
+
+    nt.chat_json = fake
+    try:
+        r = run()
+    finally:
+        nt.chat_json = original
+
+    assert len(calls) == 3  # first try + 2 regenerations
+    assert [q["question"] for q in r["questions"]] == ["Q1?"]  # fewer than n, none naming A
+    assert len(r["questions_dropped"]) == 3
+
+
+def test_mcq_options_naming_a_also_count(mcq_llm):
+    q = {"question": "Which piece?", "options": ["The rook", "w1", "w2", "w3"], "correct": "A"}
+    cfg = mcq_cfg()
+    source = {"id": "rook_moves", "name": "How the Rook Moves", "aliases": ["Rook"]}
+    target = {"id": "castling", "name": "Castling"}
+
+    parsed = nt._mcq_question(q, cfg, "castling", 0)
+    assert nt.names_source(parsed, source, target) == ["rook"]

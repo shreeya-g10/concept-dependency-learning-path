@@ -1,5 +1,5 @@
 {
-  "_comment": "RQ1 settings shared by every dataset config in this folder. Each setting names the file it reads in the course's run_dir and the file <name>.stats.json ({\"llm_calls\": n}) that gives its LLM calls. adds_calls_of: validator settings also pay for discovery. 'produce' says how the predictions file is made; settings marked PENDING (the --skip-check ablations) do not exist yet in cdlp/validation/__main__.py. Cost per edge = (llm_calls + cache_hits) / edges; real calls are reported separately (evaluate.py).",
+  "_comment": "RQ1 settings shared by every dataset config in this folder. Each setting names the file it reads in the course's run_dir and the file <name>.stats.json ({\"llm_calls\": n}) that gives its LLM calls. adds_calls_of: validator settings also pay for discovery. 'produce' says how the predictions file is made; The four ablations are real flags of cdlp/validation/__main__.py (--skip-evidence / --skip-semantic / --skip-necessity / --skip-graph); each writes <run_dir>/<name>.stats.json itself. Cost per edge = (llm_calls + cache_hits) / edges; real calls are reported separately (evaluate.py).",
   "models": {
     "discovery": "qwen2.5:7b-instruct",
     "validator": "llama3.1:8b"
@@ -8,8 +8,8 @@
     "discovery": "discover_v2",
     "baseline": "baseline_v1",
     "evidence": "evidence_v1",
-    "semantic": "semantic_v1",
-    "necessity": "necessity_*_v1",
+    "semantic": "semantic_v2",
+    "necessity": "necessity_questions_v2 + necessity_{learner_without,learner_with,grader}_v1",
     "single_judge": "semantic_v2",
     "self_consistency": "semantic_v2"
   },
@@ -51,8 +51,16 @@
       "kind": "validated",
       "predictions": "validated_graph.json",
       "adds_calls_of": "discovery_only",
-      "description": "Validation agent with all four checks: evidence, semantic, necessity, graph.",
-      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json ... --out <run_dir>/validated_graph.json"
+      "description": "Validation agent: evidence, semantic (semantic_v2) and graph checks decide; the necessity test runs and is recorded on every edge but is report-only (weight 0), because it was unstable across runs.",
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --out <run_dir>/validated_graph.json"
+    },
+    {
+      "name": "full_agent_plus_necessity",
+      "kind": "validated",
+      "predictions": "validated_plus_necessity.json",
+      "adds_calls_of": "discovery_only",
+      "description": "Full agent with the necessity test deciding at its normal weight (1, like evidence and semantic). Run after full_agent: the necessity calls come from the cache.",
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --necessity-weight 1 --setting full_agent_plus_necessity --out <run_dir>/validated_plus_necessity.json"
     },
     {
       "name": "minus_evidence",
@@ -60,7 +68,7 @@
       "predictions": "validated_minus_evidence.json",
       "adds_calls_of": "discovery_only",
       "description": "Full agent without the evidence check.",
-      "produce": "PENDING: python -m cdlp.validation --skip-check evidence ..."
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --skip-evidence --out <run_dir>/validated_minus_evidence.json"
     },
     {
       "name": "minus_semantic",
@@ -68,15 +76,15 @@
       "predictions": "validated_minus_semantic.json",
       "adds_calls_of": "discovery_only",
       "description": "Full agent without the semantic check.",
-      "produce": "PENDING: python -m cdlp.validation --skip-check semantic ..."
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --skip-semantic --out <run_dir>/validated_minus_semantic.json"
     },
     {
       "name": "minus_necessity",
       "kind": "validated",
       "predictions": "validated_minus_necessity.json",
       "adds_calls_of": "discovery_only",
-      "description": "Full agent without the simulated-learner necessity test.",
-      "produce": "PENDING: python -m cdlp.validation --skip-check necessity ..."
+      "description": "Full agent without running the necessity test. Since necessity is report-only, the decisions equal full_agent's; this setting measures the calls the test costs. Its effect on decisions is full_agent_plus_necessity vs full_agent.",
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --skip-necessity --out <run_dir>/validated_minus_necessity.json"
     },
     {
       "name": "minus_evidence_necessity",
@@ -92,7 +100,7 @@
       "predictions": "validated_minus_graph.json",
       "adds_calls_of": "discovery_only",
       "description": "Full agent without the graph-consistency check (no LLM calls saved; tests cycles / redundancy).",
-      "produce": "PENDING: python -m cdlp.validation --skip-check graph ..."
+      "produce": "python -m cdlp.validation --relationships <run_dir>/relationships.json --concepts <concepts.json> --chunks <chunks.jsonl> --skip-graph --out <run_dir>/validated_minus_graph.json"
     }
   ]
 }
