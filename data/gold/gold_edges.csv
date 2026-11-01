@@ -1,0 +1,11 @@
+source,target,label,agreement,note
+binary_search_tree,avl_tree,hard,4/4,AVL is a self-balancing BST; AVL is balanced BST; AVL is balanced BST; AVL builds on BST
+binary_tree,avl_tree,none,4/4,shortcut pair via binary_search_tree; indirect via BST; shortcut; shortcut
+binary_tree,binary_search_tree,hard,4/4,BST is a binary tree with ordering invariant; BST requires binary tree; structural prerequisite; binary structure needed
+graphs,avl_tree,none,4/4,unrelated data structures; different topic; no link; no relation
+recursion,avl_tree,none,4/4,indirect dependency via binary tree; indirect; indirect
+recursion,binary_search_tree,soft,3/4,search and insert operations use recursion; recursive BST search; essential for operations; recursive methods
+recursion,binary_tree,soft,4/4,recursive traversals; recursive traversal helper; tree recursion; traversals
+trees,avl_tree,none,4/4,shortcut pair via binary_tree and bst; redundant through BST; shortcut; redundant
+trees,binary_tree,hard,4/4,binary tree is a constrained tree; tree is generalization; binary tree specializes tree; tree concept required
+trees,graphs,soft,4/4,graph generalises tree structure; tree is acyclic connected graph; acyclic graph; graph generalization

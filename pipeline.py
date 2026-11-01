@@ -1,9 +1,11 @@
 """Run the whole pipeline end to end. Owner: Shreeya (lead) — do not edit.
 
-    python pipeline.py --input data/raw --target avl_tree
+    python pipeline.py --course ds101 --target avl_tree
 
+Reads course files from data/raw/<course>/ and writes to outputs/<course>/.
+Root-cause tracing runs only when outputs/<course>/student_answers.json exists.
 Each step calls one module's CLI and checks its output against the contract.
-Modules never import each other; they only exchange the files in outputs/.
+Modules never import each other; they only exchange the files in outputs/<course>/.
 """
 
 import argparse
@@ -19,15 +21,27 @@ def run(module: str, *args: str) -> None:
     subprocess.run([sys.executable, "-m", module, *args], check=True)
 
 
+def course_input(course: str) -> Path:
+    """data/raw/<course>/, or data/raw/ while the course files still sit there."""
+    folder = Path("data/raw") / course
+    if folder.is_dir():
+        return folder
+    print(f"note: {folder} not found, reading data/raw/ instead")
+    return Path("data/raw")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="data/raw")
+    parser.add_argument("--course", default="ds101")
+    parser.add_argument("--input", help="default: data/raw/<course>/")
     parser.add_argument("--target", default="avl_tree")
-    parser.add_argument("--out-dir", default="outputs")
+    parser.add_argument("--out-dir", help="default: outputs/<course>/")
     args = parser.parse_args()
-    out = Path(args.out_dir)
+    raw = Path(args.input) if args.input else course_input(args.course)
+    out = Path(args.out_dir) if args.out_dir else Path("outputs") / args.course
+    out.mkdir(parents=True, exist_ok=True)
 
-    run("cdlp.extraction", "--input", args.input, "--out-dir", str(out))
+    run("cdlp.extraction", "--input", str(raw), "--out-dir", str(out))
     run(
         "cdlp.discovery",
         "--concepts",
@@ -61,6 +75,20 @@ def main() -> None:
         "--out-dir",
         str(out),
     )
+    if (out / "student_answers.json").exists():
+        run(
+            "cdlp.root_cause",
+            "--graph",
+            str(out / "validated_graph.json"),
+            "--quiz",
+            str(out / "quiz_items.json"),
+            "--answers",
+            str(out / "student_answers.json"),
+            "--out",
+            str(out / "root_cause.json"),
+        )
+    else:
+        print("\n==> cdlp.root_cause skipped (no student_answers.json)")
 
     print("\n==> contract check")
     failed = False

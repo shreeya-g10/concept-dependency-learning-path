@@ -1,0 +1,23 @@
+{
+  "gold_edges_merged": 10,
+  "gold_concepts_count": 6,
+  "cohens_kappa_pairwise": {
+    "annotator_a_vs_annotator_b": 1.0,
+    "annotator_a_vs_annotator_c": 0.8485,
+    "annotator_a_vs_annotator_d": 1.0,
+    "annotator_b_vs_annotator_c": 0.8485,
+    "annotator_b_vs_annotator_d": 1.0,
+    "annotator_c_vs_annotator_d": 0.8485
+  },
+  "cohens_kappa_average": 0.9243,
+  "concept_evaluation": {
+    "extracted_count": 7,
+    "gold_count": 6,
+    "true_positives": 6,
+    "false_positives": 1,
+    "false_negatives": 0,
+    "precision": 0.8571,
+    "recall": 1.0,
+    "f1": 0.9231
+  }
+}

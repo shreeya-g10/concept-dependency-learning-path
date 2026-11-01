@@ -47,3 +47,6 @@ models/
 # OS
 .DS_Store
 Thumbs.db
+
+# Downloaded public benchmark datasets (see cdlp/benchmarks/README.md)
+data/benchmarks/

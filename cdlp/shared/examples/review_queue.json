@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "queue": [
+    {
+      "edge_id": "r5",
+      "source": "trees",
+      "target": "graphs",
+      "impact_score": 0.05,
+      "paths_affected": 0,
+      "reason": "Validator unsure (confidence 0.55, necessity weak): graphs generalise trees, but graph basics can be learned without trees. No current learning path changes, since every target is avl_tree."
+    }
+  ]
+}

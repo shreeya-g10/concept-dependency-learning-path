@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "course_id": "ds101",
+  "concepts": [
+    {
+      "id": "avl_tree",
+      "name": "Avl Tree",
+      "aliases": [],
+      "description": "Gold standard concept avl_tree.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "binary_search_tree",
+      "name": "Binary Search Tree",
+      "aliases": [],
+      "description": "Gold standard concept binary_search_tree.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "binary_tree",
+      "name": "Binary Tree",
+      "aliases": [],
+      "description": "Gold standard concept binary_tree.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "graphs",
+      "name": "Graphs",
+      "aliases": [],
+      "description": "Gold standard concept graphs.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "recursion",
+      "name": "Recursion",
+      "aliases": [],
+      "description": "Gold standard concept recursion.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "trees",
+      "name": "Trees",
+      "aliases": [],
+      "description": "Gold standard concept trees.",
+      "sources": [
+        {
+          "doc": "gold_standard",
+          "page": 1
+        }
+      ]
+    }
+  ]
+}
