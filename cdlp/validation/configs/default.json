@@ -5,7 +5,9 @@
     "control_placeholder": {
       "id": "control_placeholder",
       "name": "Origami Folding",
-      "aliases": ["Paper Folding"],
+      "aliases": [
+        "Paper Folding"
+      ],
       "description": "Folding a single sheet of paper into shapes without cutting it."
     },
     "model": null,
@@ -18,7 +20,32 @@
       "learner_with": "necessity_learner_with_v1",
       "grader": "necessity_grader_v1"
     },
-    "points": {"correct": 1.0, "partial": 0.5, "incorrect": 0.0},
-    "thresholds": {"strong": 0.5, "medium": 0.3, "weak": 0.15}
+    "points": {
+      "correct": 1.0,
+      "partial": 0.5,
+      "incorrect": 0.0
+    },
+    "thresholds": {
+      "strong": 0.5,
+      "medium": 0.3,
+      "weak": 0.15
+    }
+  },
+  "decision": {
+    "_comment": "Decision rule (cdlp/validation/__main__.py). Structural rules first: self-loop and duplicate -> REJECT; bidirectional (discovery flag) or contradiction -> HUMAN_REVIEW; cycle -> never ACCEPT (REJECT if the score says so, else HUMAN_REVIEW); redundant -> REJECT 'implied by ...'. Otherwise score = weighted mean of the active checks' grade points. ACCEPT needs score >= accept_min and no active check graded none; REJECT if score < reject_below, or if evidence and semantic both ran and are both weak/none (no support from either independent source); else HUMAN_REVIEW. Values are a first, uncalibrated choice; calibrate on a held-out split, never on the evaluation gold.",
+    "grade_points": {
+      "strong": 1.0,
+      "medium": 0.67,
+      "weak": 0.33,
+      "none": 0.0
+    },
+    "weights": {
+      "evidence": 1.0,
+      "semantic": 1.0,
+      "necessity": 1.0
+    },
+    "accept_min": 0.6,
+    "reject_below": 0.35,
+    "reject_if_unsupported": true
   }
 }
