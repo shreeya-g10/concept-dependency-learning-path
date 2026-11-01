@@ -83,6 +83,23 @@
           },
           "method": {
             "type": "string"
+          },
+          "bidirectional": {
+            "type": "boolean",
+            "description": "added in 1.2: the LLM said DIRECT in both directions (tied course position). The validator must pick the direction or send it to HUMAN_REVIEW."
+          },
+          "reverse_strength": {
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "description": "added in 1.2: strength the LLM gave target -> source (only with bidirectional)"
+          },
+          "reverse_confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "added in 1.2: confidence for target -> source (only with bidirectional)"
           }
         }
       }

@@ -1,0 +1,112 @@
+You are an expert in educational prerequisite analysis.
+
+Your task is to determine whether the SOURCE concept is a DIRECT prerequisite for the TARGET concept in the course.
+
+SOURCE CONCEPT:
+ID: {source_id}
+Name: {source_name}
+Description: {source_description}
+
+TARGET CONCEPT:
+ID: {target_id}
+Name: {target_name}
+Description: {target_description}
+
+CANDIDATE GENERATION REASONS:
+{candidate_reasons}
+
+COURSE EVIDENCE:
+{evidence}
+
+Classify the relationship using these rules.
+
+HARD:
+The TARGET cannot reasonably be understood without the SOURCE, or the TARGET is explicitly defined directly in terms of the SOURCE.
+
+SOFT:
+The SOURCE clearly helps a student understand the TARGET, but the TARGET can still be learned without the SOURCE.
+
+NONE:
+There is no direct prerequisite relationship.
+
+IMPORTANT DISTINCTION:
+
+A concept may be used while teaching, implementing, or explaining another concept without being a prerequisite.
+
+For example:
+Recursion is used to explain binary tree traversals.
+This does NOT mean recursion is required to understand binary trees.
+Therefore recursion -> binary_tree should be SOFT, not HARD.
+
+A HARD relationship should be used only when the TARGET itself fundamentally depends on the SOURCE.
+
+CRITICAL RULES:
+
+1. Judge DIRECT prerequisite relationships only.
+
+2. Do not infer a prerequisite from course order alone.
+
+3. Do not infer a prerequisite from conceptual similarity alone.
+
+4. Do not infer a transitive prerequisite.
+
+5. If A is a prerequisite of B and B is a prerequisite of C, do NOT label A -> C as a direct prerequisite.
+
+6. Example:
+   Trees -> Binary Tree -> Binary Search Tree -> AVL Tree.
+
+   Therefore:
+   Trees -> Binary Tree may be DIRECT.
+   Binary Tree -> Binary Search Tree may be DIRECT.
+   Binary Search Tree -> AVL Tree may be DIRECT.
+
+   But:
+   Trees -> Binary Search Tree is NOT a direct prerequisite.
+   Trees -> AVL Tree is NOT a direct prerequisite.
+   Binary Tree -> AVL Tree is NOT a direct prerequisite.
+
+7. If the TARGET is defined using an intermediate concept rather than the SOURCE, classify the SOURCE -> TARGET relationship as NONE.
+
+8. A statement that the SOURCE is used inside the TARGET does not automatically establish a HARD prerequisite.
+
+9. If the SOURCE is mainly an implementation technique, algorithmic technique, traversal method, programming technique, or supporting method for the TARGET, prefer SOFT unless the TARGET fundamentally requires the SOURCE.
+
+10. If the SOURCE clearly helps but the TARGET can be learned independently, use SOFT.
+
+11. If the SOURCE is only an ancestor prerequisite through another concept, use NONE.
+
+12. Use only the supplied course evidence.
+
+13. Do not invent evidence.
+
+14. Evidence chunk IDs must come only from the supplied evidence.
+
+15. Return only valid JSON.
+
+Return exactly these fields:
+
+source
+target
+relationship
+strength
+confidence
+evidence_chunk_ids
+
+The relationship field must be one of:
+
+DIRECT
+NONE
+
+The strength field must be one of:
+
+HARD
+SOFT
+NONE
+
+The confidence field must be one of:
+
+HIGH
+MEDIUM
+LOW
+
+The source and target fields must contain the concept IDs.
