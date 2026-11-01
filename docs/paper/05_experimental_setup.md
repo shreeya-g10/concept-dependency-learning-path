@@ -16,11 +16,11 @@ For both we hand-annotate concepts and prerequisite pairs (§5.5). [RESULT/STAT:
 
 Every downloaded file is checked against its recorded git blob SHA. Neither raw nor converted benchmark data is redistributed. Both are used for non-commercial research with attribution. [RESULT/STAT: concepts, positive and negative pairs per graph]
 
-**Label mapping.** Neither benchmark distinguishes hard from soft prerequisites, so every positive becomes *hard* and every negative *none*. Undefined annotation labels in the University Course file (a label `4` not described in its README) are [TODO: state how they were handled]; they do not affect the positive or negative sets, which come from the authors' majority-vote file.
+**Label mapping.** Neither benchmark distinguishes hard from soft prerequisites, so every positive becomes *hard* and every negative *none*. The University Course annotation file also contains votes with label `4`, which its README does not define (it lists labels 1–3 only). **We drop label-4 votes**: they count for no direction and are left out of the agreement shares. No pair has only label-4 votes. Dropping them cannot change the positive or negative sets, which come from the authors' majority-vote file.
 
-**Excluded: LectureBank** (Li et al., AAAI 2019 [VERIFY]). A converter exists, but we do not evaluate on it: *its repository and paper state no licence for the prerequisite annotations*, and we did not request permission.
+**Excluded: LectureBank** (Li et al., AAAI 2019 [VERIFY]). We do not evaluate on it because its licence is not stated: *its repository and paper state no licence for the prerequisite annotations*, and we did not request permission. A converter exists so the work is reusable if a licence appears, but no LectureBank data is downloaded or used in any experiment.
 
-**Benchmark caveat.** The benchmarks provide concept pairs but no course text. The evidence check therefore has nothing to retrieve on them, and the necessity test has no chunks to write questions from. Benchmark results for the full agent and for ablations involving these checks must be read with that in mind. [TODO: decide whether these checks fall back to concept descriptions on benchmarks, or are disabled and reported as such.]
+**The agent on benchmarks.** On AL-CPL and University Course the agent uses only the semantic and graph checks, because benchmarks have no course text for the evidence check or for writing necessity questions. This is the agent we report on the benchmarks (`minus_evidence_necessity`). The full agent and the agent without the evidence check are still run there, but not reported. On `ds101` and `ml101` we report the full agent.
 
 ## 5.2 Research questions
 
@@ -41,6 +41,7 @@ Every downloaded file is checked against its recorded git blob SHA. Neither raw 
 | Self-consistency judge | The single judge sampled *k* = 5 times at temperature > 0, majority vote. Its call budget is in the same class as the agent's, which separates *more calls* from *independent checks* |
 | Full agent | Evidence + semantic + necessity + graph checks |
 | Agent − evidence / − semantic / − necessity / − graph | The agent with one check removed |
+| Agent − evidence − necessity | Semantic and graph checks only: the agent reported on the benchmarks (§5.1) |
 
 [TODO: single judge, self-consistency and the minus-check runs are still marked PENDING in the settings file.]
 
@@ -85,7 +86,7 @@ Every reported number states which convention it uses.
 
 ## 5.7 Simulated students
 
-Simulated students have a known ground-truth mastery for every concept that respects the validated graph: a student who knows a concept knows its prerequisites. Each student is sampled from a learning "frontier" in topological order. Concepts before the frontier and their ancestors are known, and concepts beyond it are unknown. Answers are noisy, with slip and guess probabilities (BKT-style). [STAT: number of students, slip, guess and mastery threshold as used in the final runs] Seeds are fixed.
+Simulated students have a known ground-truth mastery for every concept that respects the validated graph: a student who knows a concept knows its prerequisites. Each student is sampled from a learning "frontier" in topological order. Concepts before the frontier and their ancestors are known, and concepts beyond it are unknown. Answers are noisy, with slip and guess probabilities (BKT-style). Throughout the paper **a concept counts as mastered when its mastery is above 0.8**: in personalized paths, in the review-queue impact computation and in the RQ2/RQ4 evaluation. [STAT: number of students, slip and guess as used in the final runs] Seeds are fixed.
 
 ## 5.8 RQ3 protocol (no mastery)
 
