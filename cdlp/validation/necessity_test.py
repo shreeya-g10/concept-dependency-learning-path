@@ -7,15 +7,20 @@ For an edge A -> B:
 3. Control: the same learner, but KNOWING A (by name only, no description) and with an
    unrelated concept C forbidden instead, using the same prompt. C is neither an
    ancestor nor a descendant of B in the proposed edges (and is not A or B); if no
-   such concept exists, a neutral placeholder topic
-   from the config is used. The control absorbs the role-play penalty of being told
-   "you never learned X", which the first run showed lowers scores on its own.
+   such concept exists, a concept from the OTHER course (config cross_course_concepts),
+   and only as a last resort a neutral placeholder topic from the config. The control
+   absorbs the role-play penalty of being told "you never learned X", which the first
+   run showed lowers scores on its own.
 4. Diagnostic: the same learner also knowing A ("with A"). It is reported, not used
    in the gap, because it also gets A's description (extra context).
 5. A separate grader prompt grades each run against the reference answers. The
    grader is blind to which run it is grading.
 6. necessity_gap = control score - score without A, mapped to strong / medium /
    weak / none with the thresholds in configs/default.json. A gap <= 0 is none.
+
+question_format "open" (default) grades free-text answers with the grader prompt;
+"mcq" writes 4 options per question (shuffled with a fixed seed so the right one is
+not always first) and grades by exact match of the chosen letter, with no grader call.
 
 Leakage check: a "without A" answer that still uses A's name, an alias, or a
 stemmed form of them is flagged (B's own name is masked first, so "binary search
@@ -37,6 +42,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -162,12 +168,19 @@ def related_to(target_id: str, relationships: list[dict]) -> set[str]:
 
 
 def choose_control(
-    source: dict, target: dict, concept_list: list[dict], known: list[dict], relationships, cfg
-) -> tuple[dict, bool]:
+    source: dict,
+    target: dict,
+    concept_list: list[dict],
+    known: list[dict],
+    relationships,
+    cfg,
+    course_id: str | None = None,
+) -> tuple[dict, str]:
     """Pick C: not A, not B, neither ancestor nor descendant of B. Prefer a concept the
     learner would not know anyway (taught after B), so the control and "without A"
-    runs list the same known concepts. Falls back to the config's placeholder topic.
-    Returns (concept, is_placeholder)."""
+    runs list the same known concepts. Fallbacks, in order: a concept of the other
+    course (cross_course_concepts[course_id]), then the placeholder topic.
+    Returns (concept, kind) with kind in in_course / cross_course / placeholder."""
     excluded = related_to(target["id"], relationships) | {source["id"], target["id"]}
     known_ids = {c["id"] for c in known}
     pool = sorted(
@@ -175,8 +188,13 @@ def choose_control(
         key=lambda c: (c["id"] in known_ids, c["id"]),
     )
     if pool:
-        return pool[0], False
-    return dict(cfg["control_placeholder"]), True
+        return pool[0], "in_course"
+    course_ids = {c["id"] for c in concept_list}
+    other = (cfg.get("cross_course_concepts") or {}).get(course_id or "", [])
+    other = sorted((c for c in other if c["id"] not in course_ids), key=lambda c: c["id"])
+    if other:
+        return dict(other[0]), "cross_course"
+    return dict(cfg["control_placeholder"]), "placeholder"
 
 
 def gap_grade(gap: float | None, thresholds: dict) -> str:
@@ -195,12 +213,12 @@ def _prompt(version: str, values: dict) -> str:
     return text
 
 
-def _ask(prompt: str, version: str, cfg: dict, model: str) -> dict:
+def _ask(prompt: str, version: str, cfg: dict, model: str, temperature=None) -> dict:
     try:
         reply = chat_json(
             prompt,
             model=model,
-            temperature=cfg["temperature"],
+            temperature=cfg["temperature"] if temperature is None else temperature,
             seed=cfg["seed"],
             prompt_version=version,
         )
@@ -217,17 +235,71 @@ def _names(concepts: list[dict]) -> str:
     return ", ".join(f'"{c["name"]}"' for c in concepts) or "nothing else from this course"
 
 
+LETTERS = "ABCD"
+
+
+def _mcq(cfg: dict) -> bool:
+    return cfg.get("question_format", "open") == "mcq"
+
+
+def _role(cfg: dict, role: str) -> str:
+    """Prompt version for a role in the configured question format."""
+    return cfg["prompt_versions"][f"{role}_mcq" if _mcq(cfg) else role]
+
+
+def _mcq_question(q: dict, cfg: dict, target_id: str, index: int) -> dict | None:
+    """Validate one MCQ (4 distinct options, a resolvable correct one) and shuffle it."""
+    options = q.get("options")
+    if not isinstance(options, list) or len(options) != 4:
+        return None
+    options = [str(o).strip() for o in options]
+    if not all(options) or len({o.casefold() for o in options}) != 4:
+        return None
+    correct = str(q.get("correct", "")).strip()
+    if len(correct) == 1 and correct.upper() in LETTERS:
+        right = options[LETTERS.index(correct.upper())]
+    else:
+        matches = [o for o in options if o.casefold() == correct.casefold()]
+        if len(matches) != 1:
+            return None
+        right = matches[0]
+    # deterministic shuffle: same seed, target and question -> same order
+    random.Random(f"{cfg['seed']}:{target_id}:{index}").shuffle(options)
+    return {
+        "question": str(q["question"]).strip(),
+        "options": options,
+        "answer_letter": LETTERS[options.index(right)],
+        "reference_answer": right,
+        "chunk_id": str(q.get("chunk_id", "")),
+    }
+
+
 def make_questions(target: dict, chunks: list[dict], cfg: dict, model: str) -> list[dict]:
-    version = cfg["prompt_versions"]["questions"]
+    version = _role(cfg, "questions")
     values = {
         "target_name": target["name"],
         "chunks": _chunk_block(chunks),
         "n_questions": str(cfg["n_questions"]),
     }
-    reply = _ask(_prompt(version, values), version, cfg, model)
+    # question writing may sample (question_temperature) so seeds give different question
+    # sets; learners and grader always use cfg["temperature"]
+    reply = _ask(
+        _prompt(version, values),
+        version,
+        cfg,
+        model,
+        temperature=cfg.get("question_temperature", cfg["temperature"]),
+    )
     questions = []
-    for q in reply.get("questions") or []:
-        if isinstance(q, dict) and str(q.get("question", "")).strip():
+    raw = reply.get("questions") if isinstance(reply.get("questions"), list) else []
+    for q in raw:
+        if not (isinstance(q, dict) and str(q.get("question", "")).strip()):
+            continue
+        if _mcq(cfg):
+            mcq = _mcq_question(q, cfg, target["id"], len(questions))
+            if mcq:
+                questions.append(mcq)
+        else:
             questions.append(
                 {
                     "question": str(q["question"]).strip(),
@@ -244,17 +316,56 @@ def _answers(reply: dict, n: int) -> list[str]:
     return answers + [""] * (n - len(answers))  # a missing answer is graded incorrect
 
 
+def _listed(questions: list[dict]) -> str:
+    lines = []
+    for i, q in enumerate(questions, 1):
+        line = f"{i}. {q['question']}"
+        if "options" in q:
+            line += " " + " ".join(f"{L}) {o}" for L, o in zip(LETTERS, q["options"], strict=True))
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def answer(role: str, values: dict, questions: list[dict], cfg: dict, model: str) -> list[str]:
-    version = cfg["prompt_versions"][role]
-    listed = "\n".join(f"{i}. {q['question']}" for i, q in enumerate(questions, 1))
+    version = _role(cfg, role)
+    listed = _listed(questions)
     reply = _ask(_prompt(version, {**values, "questions": listed}), version, cfg, model)
     return _answers(reply, len(questions))
+
+
+def chosen_letter(answer_text: str, options: list[str]) -> str | None:
+    """'B', '(b)', 'B) ...' -> 'B'; an exact option text -> its letter; else None."""
+    text = str(answer_text).strip()
+    m = re.match(r"^\(?([A-Da-d])(?:[).:\s]|$)", text)
+    if m:
+        return m.group(1).upper()
+    for letter, option in zip(LETTERS, options, strict=True):
+        if text.casefold() == option.casefold():
+            return letter
+    return None
+
+
+def grade_mcq(questions: list[dict], answers: list[str]) -> list[dict]:
+    """Exact match on the chosen letter; no LLM call."""
+    grades = []
+    for q, a in zip(questions, answers, strict=True):
+        picked = chosen_letter(a, q["options"])
+        ok = picked == q["answer_letter"]
+        grades.append(
+            {
+                "grade": "correct" if ok else "incorrect",
+                "reason": f"picked {picked or 'nothing'}, key {q['answer_letter']}",
+            }
+        )
+    return grades
 
 
 def grade(
     target: dict, chunks: list[dict], questions: list[dict], answers: list[str], cfg, model
 ) -> list[dict]:
     """Blind: the grader never sees which run (with / without A) it is grading."""
+    if _mcq(cfg):
+        return grade_mcq(questions, answers)
     version = cfg["prompt_versions"]["grader"]
     items = "\n".join(
         f'{i}. Question: "{q["question"]}"\n   Reference: "{q["reference_answer"]}"\n'
@@ -287,6 +398,7 @@ def check_relationship(
     cfg: dict,
     model: str,
     relationships: list[dict] | None = None,
+    course_id: str | None = None,
 ) -> dict:
     source, target = concepts[relationship["source"]], concepts[relationship["target"]]
     chunk_map = {c["chunk_id"]: c for c in chunks}
@@ -300,8 +412,8 @@ def check_relationship(
     # it differs from "without A" only in which concept is banned and whether A is known
     pos = course_positions(concept_list, chunks)
     with_source = sorted([*known, source], key=lambda c: (pos[c["id"]], c["id"]))
-    control, placeholder = choose_control(
-        source, target, concept_list, with_source, relationships or [relationship], cfg
+    control, control_kind = choose_control(
+        source, target, concept_list, with_source, relationships or [relationship], cfg, course_id
     )
     known_control = [c for c in with_source if c["id"] != control["id"]]
     result = {
@@ -309,11 +421,9 @@ def check_relationship(
         "source": source["id"],
         "target": target["id"],
         "known_without": [c["id"] for c in known],
-        "control_concept": {
-            "id": control["id"],
-            "name": control["name"],
-            "placeholder": placeholder,
-        },
+        "control_concept": {"id": control["id"], "name": control["name"], "kind": control_kind},
+        "question_format": cfg.get("question_format", "open"),
+        "n_questions": cfg["n_questions"],
         "known_control": [c["id"] for c in known_control],
     }
     questions = make_questions(target, target_chunks, cfg, model) if target_chunks else []
@@ -343,28 +453,35 @@ def check_relationship(
 
     without = forbid(source, known)
     control_answers = forbid(control, known_control)
-    with_a = answer(
-        "learner_with",
-        {
-            **common,
-            "source_name": source["name"],
-            "source_description": source.get("description") or "(no description)",
-        },
-        questions,
-        cfg,
-        model,
+    diagnostic = cfg.get("with_a_diagnostic", True)
+    with_a = (
+        answer(
+            "learner_with",
+            {
+                **common,
+                "source_name": source["name"],
+                "source_description": source.get("description") or "(no description)",
+            },
+            questions,
+            cfg,
+            model,
+        )
+        if diagnostic
+        else []
     )
     grades_without = grade(target, target_chunks, questions, without, cfg, model)
     grades_control = grade(target, target_chunks, questions, control_answers, cfg, model)
-    grades_with = grade(target, target_chunks, questions, with_a, cfg, model)
+    grades_with = grade(target, target_chunks, questions, with_a, cfg, model) if diagnostic else []
     score_without = _score(grades_without, cfg["points"])
     score_control = _score(grades_control, cfg["points"])
-    score_with = _score(grades_with, cfg["points"])
+    score_with = _score(grades_with, cfg["points"]) if diagnostic else None
     gap = round(score_control - score_without, 4)
 
     leaked = [leaks(a, source, target) for a in without]
     control_leaked = [leaks(a, control, target) for a in control_answers]
-    question_leaks = [leaks(q["question"], source, target) for q in questions]
+    question_leaks = [
+        leaks(" ".join([q["question"], *q.get("options", [])]), source, target) for q in questions
+    ]
     return {
         **result,
         "status": "ok",
@@ -373,13 +490,13 @@ def check_relationship(
         "score_control": round(score_control, 4),
         "score_without": round(score_without, 4),
         # diagnostic only: also gets A's description, so it mixes in extra context
-        "score_with": round(score_with, 4),
-        "gap_with_minus_without": round(score_with - score_without, 4),
+        "score_with": round(score_with, 4) if diagnostic else None,
+        "gap_with_minus_without": round(score_with - score_without, 4) if diagnostic else None,
         "leakage": {
             "flagged_answers": [i for i, terms in enumerate(leaked) if terms],
             "terms": leaked,
             "rate": round(sum(bool(t) for t in leaked) / len(leaked), 4),
-            # a question that names A shows A to the "without" learner; reported, not fixed
+            # a question (or MCQ option) naming A shows A to the "without" learner
             "questions_naming_source": [i for i, t in enumerate(question_leaks) if t],
             # same check on the control run, against C
             "control_flagged_answers": [i for i, t in enumerate(control_leaked) if t],
@@ -409,7 +526,14 @@ def run(
     edges = [r for r in relationships["relationships"] if not only or r["id"] in only]
     results = [
         check_relationship(
-            r, concept_map, concept_list, chunks, cfg, model, relationships["relationships"]
+            r,
+            concept_map,
+            concept_list,
+            chunks,
+            cfg,
+            model,
+            relationships["relationships"],
+            relationships.get("course_id"),
         )
         for r in edges
     ]
@@ -438,11 +562,23 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--only", nargs="*", help="relationship ids to test (default: all)")
     parser.add_argument("--n-questions", type=int, help="override the config (default 3)")
+    parser.add_argument("--question-format", choices=["open", "mcq"], help="override the config")
+    parser.add_argument("--seed", type=int, help="override the config seed")
+    parser.add_argument("--no-with-a", action="store_true", help="skip the 'with A' diagnostic")
+    parser.add_argument("--question-temperature", type=float, help="override the config")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     if args.n_questions:
         cfg["n_questions"] = args.n_questions
+    if args.question_format:
+        cfg["question_format"] = args.question_format
+    if args.seed is not None:
+        cfg["seed"] = args.seed
+    if args.no_with_a:
+        cfg["with_a_diagnostic"] = False
+    if args.question_temperature is not None:
+        cfg["question_temperature"] = args.question_temperature
     result = run(
         read_json(args.relationships),
         read_json(args.concepts),

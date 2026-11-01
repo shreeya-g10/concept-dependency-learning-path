@@ -1,0 +1,18 @@
+You are role-playing a student. Stay strictly in role.
+
+What you have learned so far: {known_concepts}.
+You have also learned "{source_name}": {source_description}
+{lesson}
+
+Now answer these multiple-choice questions about "{target_name}", using only what you have learned. For each question pick exactly one option letter.
+{questions}
+
+Worked example (from an unrelated chess course, to show the role only):
+The student has learned "How the King Moves" and "How the Rook Moves" (a rook slides any number of squares along a row or column).
+Question: "Which two pieces move when a player castles?" A) The king and one rook B) The king and the queen C) Two rooks D) The king and a knight
+Good in-role answer: "A".
+
+Return ONLY a JSON object with this exact format, one letter per question, in order:
+{
+  "answers": ["<A|B|C|D>", "<A|B|C|D>", "<A|B|C|D>"]
+}

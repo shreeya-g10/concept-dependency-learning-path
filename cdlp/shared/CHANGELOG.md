@@ -16,6 +16,8 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - Not a contract change: `cdlp/shared/llm.py` counts, per process, the requests the provider answered (`llm_calls`) and the answers read from the cache (`cache_hits`), plus the models and prompt versions used. `write_stats(path)` writes `{"llm_calls", "cache_hits", "model", "prompt_versions"}` as JSON; `model` is a string when one model was used, a sorted list when several were, `null` when none. `get_stats()` returns the same dict and `reset_stats()` zeroes it.
   Use: a run calls `write_stats(<run_dir>/<setting>.stats.json)` at the end, which `cdlp/validation/evaluate.py` reads for LLM calls per edge.
   Nothing else in `llm.py` changed: same cache key, same requests, same return values. A failed request is not counted.
+- `validated_graph.json` edges may carry four new optional fields from the necessity test (`cdlp/validation/necessity_test.py`): `score_control` (control learner: knows A, an unrelated concept C banned), `score_without` (A banned), `n_questions` and `question_format` (`open` or `mcq`). `necessity_gap` = `score_control` − `score_without`. The necessity test writes all four per edge. Example: edge `r1` in `examples/validated_graph.json`.
+- The four `validated_graph.json` fields are purely additive (new and optional); no other field changed type.
 
 ## 1.3
 
