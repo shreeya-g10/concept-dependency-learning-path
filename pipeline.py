@@ -120,8 +120,7 @@ def main() -> None:
         str(out),
     )
     if (out / "student_answers.json").exists():
-        run(
-            "cdlp.root_cause",
+        root_cause_args = [
             "--graph",
             str(out / "validated_graph.json"),
             "--quiz",
@@ -130,7 +129,11 @@ def main() -> None:
             str(out / "student_answers.json"),
             "--out",
             str(out / "root_cause.json"),
-        )
+        ]
+        # the tracer uses each student's mastery when learning_path has written it
+        if (out / "student_state.json").exists():
+            root_cause_args += ["--state", str(out / "student_state.json")]
+        run("cdlp.root_cause", *root_cause_args)
     else:
         print("\n==> cdlp.root_cause skipped (no student_answers.json)")
 

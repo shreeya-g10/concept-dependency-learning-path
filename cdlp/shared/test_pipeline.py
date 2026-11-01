@@ -114,3 +114,48 @@ def test_default_target_picks_most_ancestors_among_accept_edges(tmp_path):
     )
 
     assert pipeline.default_target(graph) == "c"  # c and z tie on 2 ancestors; c sorts first
+
+
+@pytest.mark.parametrize("state_written", [True, False])
+def test_root_cause_gets_student_state_when_it_exists(state_written, tmp_path, monkeypatch):
+    pipeline = load_pipeline()
+    calls = {}
+
+    def fake_run(module, *args):
+        calls[module] = args
+        if module == "cdlp.extraction":
+            out = Path(arg(args, "--out-dir"))
+            relabel(EXAMPLES / "concepts.json", out / "concepts.json", "ds101")
+            relabel(EXAMPLES / "chunks.jsonl", out / "chunks.jsonl", "ds101")
+            # answers exist, so the root-cause step runs
+            relabel(EXAMPLES / "student_answers.json", out / "student_answers.json", "ds101")
+        elif module == "cdlp.discovery":
+            relabel(
+                EXAMPLES / "relationships.json",
+                Path(arg(args, "--out-dir")) / "relationships.json",
+                "ds101",
+            )
+        elif module == "cdlp.validation":
+            relabel(EXAMPLES / "validated_graph.json", Path(arg(args, "--out")), "ds101")
+        elif module == "cdlp.learning_path" and state_written:
+            relabel(
+                EXAMPLES / "student_state.json",
+                Path(arg(args, "--out-dir")) / "student_state.json",
+                "ds101",
+            )
+        elif module == "cdlp.root_cause":  # faked: its default method calls the LLM
+            relabel(EXAMPLES / "root_cause.json", Path(arg(args, "--out")), "ds101")
+
+    monkeypatch.setattr(pipeline, "run", fake_run)
+    monkeypatch.setattr(
+        "sys.argv", ["pipeline.py", "--course", "ds101", "--out-dir", str(tmp_path)]
+    )
+
+    with pytest.raises(SystemExit):
+        pipeline.main()
+
+    root_cause = calls["cdlp.root_cause"]
+    if state_written:
+        assert arg(root_cause, "--state") == str(tmp_path / "student_state.json")
+    else:
+        assert "--state" not in root_cause
