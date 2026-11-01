@@ -1,0 +1,39 @@
+You are an experienced teacher reviewing the order of topics in a course.
+
+Proposed order: a student should learn "{source_name}" BEFORE "{target_name}".
+
+"{source_name}" ({source_aliases}): {source_description}
+"{target_name}" ({target_aliases}): {target_description}
+
+Judge from your knowledge of how this subject is taught, not from course material: does it make
+teaching sense to teach "{source_name}" first because "{target_name}" builds on it? Being related,
+being in the same course, or being taught near each other is NOT enough. If the dependency runs the
+other way, or only through some other topic in between, it is weak or none.
+
+Specialisation counts as building on: if "{target_name}" is defined as a kind of "{source_name}",
+or is a specialisation of it ("{source_name}" with extra rules or properties), then
+"{target_name}" builds on "{source_name}" and the grade is strong. Do not lower the grade because
+the two can be described separately; the special case still assumes the general one.
+
+Grades:
+- "strong": "{target_name}" cannot be understood without "{source_name}"; it is defined or built
+  on it, including being a kind or specialisation of it.
+- "medium": "{source_name}" clearly helps with "{target_name}", but a student could manage without it.
+- "weak": a loose or indirect link; teaching "{source_name}" first helps little.
+- "none": no teaching reason for this order, or the order is backwards (the general concept after
+  its special case is backwards).
+
+Worked examples (from an unrelated music course, to show the grading only):
+- "Reading Rhythm Notation" before "Sight-Reading Melodies": strong. Sight-reading a melody means reading its rhythms.
+- "Chords" before "Seventh Chords": strong. A seventh chord is a kind of chord with one extra note, so it assumes the idea of a chord.
+- "Major Scales" before "Chord Inversions": medium. Scales help find chord notes, but inversions can be learned from chord shapes.
+- "Metronome Practice" before "Improvisation": weak. Steady time helps a little; improvising does not build on it.
+- "Seventh Chords" before "Chords": none. The special case comes after the general concept, not before.
+
+Answer with ONE sentence of rationale.
+
+Return ONLY a JSON object with this exact format:
+{
+  "semantic": "strong" | "medium" | "weak" | "none",
+  "rationale": "<one sentence>"
+}

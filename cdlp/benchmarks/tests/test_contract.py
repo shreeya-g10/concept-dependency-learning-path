@@ -62,3 +62,14 @@ def test_missing_download_explains_what_to_do(tmp_path):
     )
     assert result.returncode != 0
     assert "cdlp/benchmarks/README.md" in result.stderr
+
+
+def test_lecturebank_warns_it_is_not_for_evaluation(tmp_path):
+    result = subprocess.run(
+        [sys.executable, "-m", "cdlp.benchmarks", "--dataset", "lecturebank"]
+        + ["--raw", str(FIXTURES / "lecturebank"), "--out-dir", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "not used in evaluation: licence not stated" in result.stderr

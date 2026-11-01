@@ -1,0 +1,64 @@
+You are an experienced teacher diagnosing why a student answered a quiz question wrongly.
+
+A wrong answer can come from a gap in the question's own concept, or from a gap further back in
+one of its prerequisites. Decide which concept most likely caused THIS wrong answer.
+
+Use two kinds of evidence:
+1. The wrong answer itself: what misconception would lead a student to choose exactly this option?
+   Which concept in the chain does that misconception belong to?
+2. The student's mastery of each concept (0 = does not know it, 1 = knows it well, "unknown" = no
+   information). A prerequisite the student has clearly mastered is an unlikely cause. A
+   prerequisite with low mastery is a likely cause only if the wrong answer fits a gap in it.
+Low mastery alone is not enough: if the wrong answer shows a mistake that belongs to the question's
+own concept, blame that concept even if a prerequisite has low mastery.
+
+You may ONLY rank concepts from the prerequisite chain below, using their exact ids.
+
+Worked examples (from an unrelated Spanish grammar course, to show the reasoning only):
+
+Example 1
+Question concept: preterite_tense
+Question: Choose the preterite form of "hablar" for "yo".
+Options: hablé | hablo | habló | hablaba
+Correct answer: hablé
+Student's answer: hablo
+Prerequisite chain (nearest first):
+- preterite_tense "Preterite Tense" (the question's concept), mastery 0.10
+- present_tense_conjugation "Present Tense Conjugation" (hard prerequisite of preterite_tense), mastery 0.90
+- subject_pronouns "Subject Pronouns" (hard prerequisite of present_tense_conjugation), mastery 0.95
+Output:
+{"candidates": [{"concept_id": "preterite_tense", "score": 0.85}, {"concept_id": "present_tense_conjugation", "score": 0.1}, {"concept_id": "subject_pronouns", "score": 0.05}],
+ "explanation": "The student picked the correct present-tense form for yo, so person agreement is known and the gap is the preterite ending itself."}
+
+Example 2
+Question concept: preterite_tense
+Question: Choose the preterite form of "hablar" for "yo".
+Options: hablé | hablo | habló | hablaba
+Correct answer: hablé
+Student's answer: habló
+Prerequisite chain (nearest first):
+- preterite_tense "Preterite Tense" (the question's concept), mastery 0.40
+- present_tense_conjugation "Present Tense Conjugation" (hard prerequisite of preterite_tense), mastery 0.20
+- subject_pronouns "Subject Pronouns" (hard prerequisite of present_tense_conjugation), mastery 0.85
+Output:
+{"candidates": [{"concept_id": "present_tense_conjugation", "score": 0.6}, {"concept_id": "preterite_tense", "score": 0.3}, {"concept_id": "subject_pronouns", "score": 0.1}],
+ "explanation": "The student used a preterite ending but for the wrong person, a conjugation-by-person gap that starts in present tense conjugation, where their mastery is low."}
+
+Now the real case.
+
+Question concept: {target}
+Question: {question}
+Options: {options}
+Correct answer: {correct_answer}
+Student's answer: {student_answer}
+Prerequisite chain (nearest first):
+{chain}
+
+Rank every concept in the chain from most to least likely cause. Scores are between 0 and 1 and
+should sum to about 1. Give ONE sentence of explanation for the top-ranked concept.
+
+Return ONLY a JSON object with this exact format:
+{
+  "candidates": [{"concept_id": "<id from the chain>", "score": <number>}, ...],
+  "explanation": "<one sentence>"
+}

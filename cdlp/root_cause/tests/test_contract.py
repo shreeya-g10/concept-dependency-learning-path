@@ -38,6 +38,10 @@ def test_cli_output_matches_contract(tmp_path):
                 f"{EX}/quiz_items.json",
                 "--answers",
                 f"{EX}/student_answers.json",
+                "--state",
+                f"{EX}/student_state.json",
+                "--method",
+                "nearest",  # a subprocess can't see the LLM mock, so use a no-LLM baseline
                 "--out",
                 str(tmp_path / "root_cause.json"),
             ],
@@ -47,7 +51,15 @@ def test_cli_output_matches_contract(tmp_path):
     assert check_file(tmp_path / "root_cause.json") == []
 
 
-def test_trace_returns_a_root_cause_entry():
+def test_trace_returns_a_root_cause_entry(monkeypatch):
+    reply = {
+        "candidates": [
+            {"concept_id": "binary_search_tree", "score": 0.8},
+            {"concept_id": "binary_tree", "score": 0.2},
+        ],
+        "explanation": "Placed 8 left of 5, breaking the BST ordering rule.",
+    }
+    monkeypatch.setattr(llm, "chat_json", lambda *a, **k: reply)
     graph = read_json(EXAMPLES / "validated_graph.json")
     item = next(i for i in read_json(EXAMPLES / "quiz_items.json")["items"] if i["id"] == "q_bst_1")
     result = api.trace(graph, item, "8", {"binary_tree": 0.9, "binary_search_tree": 0.2})

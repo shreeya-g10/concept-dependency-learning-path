@@ -1,0 +1,18 @@
+{
+  "_comment": "RQ1 on our own course. Gold is direct-edge only (a shortcut pair is none), so scoring is direct and an unlabelled predicted pair counts as a false positive, as in cdlp/discovery/evaluate.py. exclude_pairs: set it to the dev split used to tune validator thresholds before reporting numbers.",
+  "dataset": "ds101",
+  "settings_file": "settings.json",
+  "reported_agent": "full_agent",
+  "scoring": "direct",
+  "unlabelled_pairs": "false_positive",
+  "bidirectional": "both",
+  "exclude_pairs": null,
+  "courses": [
+    {
+      "course_id": "ds101",
+      "concepts": "outputs/ds101/concepts.json",
+      "gold": "data/gold/gold_edges.csv",
+      "run_dir": "outputs/rq1/ds101"
+    }
+  ]
+}

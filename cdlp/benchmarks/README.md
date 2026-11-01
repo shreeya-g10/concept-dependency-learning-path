@@ -4,6 +4,8 @@ Public prerequisite datasets, converted into our formats so discovery and valida
 
 **Question you answer:** *Do our results hold on data we didn't annotate ourselves?*
 
+**Evaluation benchmarks: AL-CPL and University Course.** LectureBank has a loader and tests, but it is **not used in evaluation: licence not stated** (decided 2026-11-02; see "Notes for the paper").
+
 **You own (only you edit):** `cdlp/benchmarks/`
 
 | | File | Notes |
@@ -15,7 +17,7 @@ Public prerequisite datasets, converted into our formats so discovery and valida
 ```bash
 python -m cdlp.benchmarks --dataset al_cpl             # -> outputs/benchmarks/al_cpl_<domain>/ (4 domains)
 python -m cdlp.benchmarks --dataset university_course  # -> outputs/benchmarks/university_course/
-python -m cdlp.benchmarks --dataset lecturebank        # -> outputs/benchmarks/lecturebank/
+# lecturebank also converts, but is not used in evaluation (licence not stated)
 ```
 
 Each run prints a sanity line per graph (concepts, pairs, positives, negatives, slug collisions). `outputs/` is gitignored too.
@@ -54,10 +56,12 @@ Every version is pinned to a commit. Each file's **git blob SHA** is listed so a
 
 (`cs_courses.csv` and `cs_edges.csv`, the course-level data, are not needed by the loader.)
 
-### LectureBank (1.0 prerequisite annotation): `lecturebank`
+### LectureBank (1.0 prerequisite annotation): `lecturebank`. **Not used in evaluation: licence not stated**
+
+The loader (`lecturebank.py`) and its tests stay so the work is reusable if a licence appears. The dataset is in no experiment plan or config, is not downloaded for this project, and none of its data or derived files may be committed.
 - **Paper:** Li, Fabbri, Tung, Radev. *What Should I Learn First: Introducing LectureBank for NLP Education and Prerequisite Chain Learning.* AAAI 2019, 33(01):6674–6681. arXiv 1811.12181.
 - **Repository:** <https://github.com/Yale-LILY/LectureBank>, folder `LB-Paper/`, commit `b237565ded5b112295fd5bc39035f53b0dd4286b` (2023-11-06). The repo also holds later lecture-file batches (LectureBank 2/3, CD). Those carry no prerequisite annotation in the README, so they are not used.
-- **Licence: could not be confirmed.** Neither the repository README, the `LB-Paper/` README nor the paper states a licence, and the repository has no LICENSE file. The paper says only links to lectures are released "for copyright reasons". **Treat this as all rights reserved:** don't redistribute the data or the converted files, and ask the authors before reporting results on it in the paper.
+- **Licence: not stated.** Neither the repository README, the `LB-Paper/` README nor the paper states a licence, and the repository has no LICENSE file. The paper says only links to lectures are released "for copyright reasons". We did not request permission, so we do not use it.
 - **Size (paper):** 208 topics, 921 positive and 41,829 negative pairs. Two annotators; positives are the intersection of their labels; Cohen's κ = 0.7.
 
 | File (`LB-Paper/`) | Bytes | Blob SHA |
@@ -70,7 +74,7 @@ Research use is fine, with attribution (cite the papers above). Anything we deri
 
 ## Download steps
 
-Run from the repository root. Each step fetches only the files the loaders need, at the pinned commit.
+Run from the repository root. Each step fetches only the files the loaders need, at the pinned commit. LectureBank is deliberately not downloaded (not used in evaluation).
 
 ```bash
 # AL-CPL
@@ -87,15 +91,8 @@ for f in cs_annotations.tsv cs_preqs.csv; do
     "https://raw.githubusercontent.com/harrylclc/eaai17-cpr-recover/95a7fa7311abc6fb0b8ef49d74d393f56b1bc05f/$f"
 done
 
-# LectureBank (read the licence note above first)
-mkdir -p data/benchmarks/lecturebank/LB-Paper
-for f in 208topics.csv prerequisite_annotation.csv; do
-  curl -fsSL -o "data/benchmarks/lecturebank/LB-Paper/$f" \
-    "https://raw.githubusercontent.com/Yale-LILY/LectureBank/b237565ded5b112295fd5bc39035f53b0dd4286b/LB-Paper/$f"
-done
-
 # Verify: every SHA must match the tables above
-git hash-object data/benchmarks/al_cpl/data/* data/benchmarks/university_course/* data/benchmarks/lecturebank/LB-Paper/*
+git hash-object data/benchmarks/al_cpl/data/* data/benchmarks/university_course/*
 ```
 
 ## How labels are mapped
@@ -113,18 +110,35 @@ None of the three datasets distinguishes hard from soft prerequisites, so **ever
 
 **Concepts:** Wikipedia titles become slugs (`Boosting_(machine_learning)` → `boosting_machine_learning`). The title with spaces becomes `name`, and the raw title is kept as an alias. Colliding slugs get `_2`, `_3` and are counted in the sanity line. Benchmarks have no pages, so `sources` points at the dataset file and **`page` holds the 1-based line number** where the concept first appears. For LectureBank, the Wikipedia URL becomes `description`.
 
+### Scoring convention per dataset (decided 2026-11-01)
+
+Our own gold (`data/gold/`) stays **direct-edge only**: a shortcut pair is `none`. A benchmark whose positives include transitive (shortcut) pairs is scored differently: we take the **transitive closure of our predicted edges** (`common.transitive_closure`) and compare it with the benchmark's labels. Otherwise every shortcut positive would count as a miss for a correct direct-edge graph.
+
+| Dataset | Positives include transitive pairs? | How we score |
+|---|---|---|
+| AL-CPL | **Yes.** The README says positive pairs were added via transitivity. | Closure of our predictions vs. AL-CPL labels |
+| University Course | **Not stated** in the README or paper. Checked on the data: see the `positives implied by other positives` count the converter prints. | Closure if that count is > 0, else direct edges. Record the count and the choice here after the first conversion. |
+| LectureBank | n/a | **Not used in evaluation: licence not stated** |
+
+The converter's sanity line reports `positives implied by other positives` for every graph: positive pairs that a path of other positives already implies. For AL-CPL this should be large by construction.
+
 ### Caveats for evaluation (read before using these numbers in the paper)
-- **AL-CPL positives include transitive pairs.** Its authors added positives by transitivity, so shortcut pairs are positive in AL-CPL. Our gold and our discovery treat shortcut pairs as `none`. Scored naively, our recall on AL-CPL is understated. Compare against the transitive closure of our predicted edges, or say clearly which convention each number uses.
+- **AL-CPL positives include transitive pairs** (see the convention above). Say in the paper which convention each number uses.
 - **LectureBank direction** is taken from the paper ("the edge direction goes from concept vertex A to concept vertex B" when A is a prerequisite of B) and the column names (`Source_Topic_ID, Target_Topic_ID`). The README itself does not state it.
 - **LectureBank negatives are not "both said no".** A 0 means the two annotators did not both say yes.
 
 ## Tasks, in order
 - [x] **Verify each dataset before use:** official source, commit, file names and blob SHAs above
-- [x] **Licence notes:** above; LectureBank's is unconfirmed
+- [x] **Licence notes:** above; LectureBank's is not stated, so it is excluded from evaluation
 - [x] **Download instructions:** above
 - [x] Converter per dataset (`al_cpl.py`, `university_course.py`, `lecturebank.py`), with the mapping documented above
 - [ ] Sanity report per dataset (concepts, edges, label balance, cycles) → `cdlp/benchmarks/results/`
-- [ ] Run discovery + validation on each converted dataset for RQ1 (P / R / F1)
+- [ ] Run discovery + validation on AL-CPL and University Course for RQ1 (P / R / F1)
+
+## Notes for the paper
+- **Benchmarks used:** AL-CPL (Liang et al., 2018) and the University Course dataset (Liang et al., 2017), both CC BY-NC-SA 4.0, used for non-commercial research with attribution.
+- **Excluded:** LectureBank (Li et al., 2019). Suggested wording: *"We did not use LectureBank because its repository and paper state no licence for the prerequisite annotations."*
+- **Scoring convention:** state per dataset whether our predicted edges were compared directly or via their transitive closure (table above). AL-CPL uses the closure.
 
 ## Done when
 Each dataset has verified source, version and licence notes here, the CLI converts it, and `pytest cdlp/benchmarks` passes.

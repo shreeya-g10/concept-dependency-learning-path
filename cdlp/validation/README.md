@@ -28,5 +28,9 @@ Use a **different model** from discovery (`LLM_VALIDATOR_MODEL` in `.env`) so th
 - [ ] RQ1 ablations: discovery only · single LLM judge · full agent · agent minus each check → P / R / F1, HUMAN_REVIEW rate → `cdlp/validation/results/`
 - [ ] Website page 3: decisions, checks, evidence, necessity gap
 
+## Notes for the paper
+- **RQ1 on benchmarks reports the agent without the evidence check** (decided 2026-11-02). AL-CPL and the University Course dataset give concept pairs only, no course text, so the evidence check has nothing to retrieve. On those datasets the reported agent is `minus_evidence`; on ds101 and ml101 it is `full_agent`. Each config in `configs/rq1/` names it in `reported_agent`, and the results files copy it. `full_agent` is still scored on benchmarks but not reported. Suggested wording: *"The public benchmarks provide no course material, so on them we evaluate the agent without the evidence check."*
+- **Scoring conventions** (`cdlp/validation/evaluate.py`): our gold is scored on direct edges, and an unlabelled predicted pair counts as a false positive. Benchmarks score only labelled pairs; AL-CPL uses the transitive closure of our predictions, and University Course uses it only if its gold positives imply each other (count recorded in each result). State the convention next to every number.
+
 ## Done when
 The full agent and every ablation run from one config each, results are in `cdlp/validation/results/`, and `pytest cdlp/validation` passes.
