@@ -1,0 +1,5 @@
+K-means_clustering,Euclidean_distance
+K-means_clustering,Bayes'_theorem
+Naive_Bayes_classifier,Bayes'_theorem
+Boosting_(machine_learning),Decision_tree_learning
+Euclidean_distance,K-means_clustering
