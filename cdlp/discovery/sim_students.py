@@ -1,127 +1,85 @@
+"""Synthetic student generation for adaptive diagnosis evaluation (RQ2).
+
+Owner: Vaidehi.
+Generates simulated students with known ground-truth mastery respecting prerequisite DAGs.
+"""
+
+from __future__ import annotations
+
 import random
+from pathlib import Path
+from typing import Any
 
-
-def _hard_prerequisites(
-    relationships: list[dict],
-) -> dict[str, list[str]]:
-    prerequisites = {}
-
-    for relationship in relationships:
-        if relationship.get("type") == "PREREQUISITE" and relationship.get("strength") == "hard":
-            source = relationship["source"]
-            target = relationship["target"]
-
-            prerequisites.setdefault(
-                target,
-                [],
-            ).append(source)
-
-    return prerequisites
-
-
-def _topological_order(
-    concepts: list[dict],
-    prerequisites: dict[str, list[str]],
-) -> list[str]:
-    concept_ids = [concept["id"] for concept in concepts]
-
-    remaining = set(concept_ids)
-    ordered = []
-
-    while remaining:
-        ready = sorted(
-            concept_id
-            for concept_id in remaining
-            if all(
-                prerequisite not in remaining
-                for prerequisite in prerequisites.get(
-                    concept_id,
-                    [],
-                )
-            )
-        )
-
-        if not ready:
-            raise ValueError("Hard prerequisite graph contains a cycle.")
-
-        ordered.extend(ready)
-        remaining.difference_update(ready)
-
-    return ordered
-
-
-def _sample_mastery(
-    prerequisite_values: list[float],
-    rng: random.Random,
-) -> float:
-    if not prerequisite_values:
-        return rng.betavariate(2.0, 2.0)
-
-    upper_bound = min(prerequisite_values)
-
-    return rng.uniform(
-        0.0,
-        upper_bound,
-    )
+from cdlp.learning_path.graph import load_graph, topological_sort
+from cdlp.shared.io import write_json
 
 
 def generate_simulated_students(
-    concepts: list[dict],
-    relationships: list[dict],
-    count: int = 500,
+    graph_data: dict,
+    num_students: int = 50,
     seed: int = 42,
-) -> list[dict]:
-    if count <= 0:
-        raise ValueError("count must be greater than zero.")
+    course_id: str = "ds101",
+) -> dict[str, Any]:
+    """Generate synthetic students with ground truth mastery states respecting the DAG.
 
-    prerequisites = _hard_prerequisites(relationships)
-
-    concept_ids = [concept["id"] for concept in concepts]
-
-    ordered_concepts = _topological_order(
-        concepts,
-        prerequisites,
-    )
-
+    If a student has mastered concept B, they must have high mastery of its hard prerequisites,
+    subject to occasional slip (10%) and guess (15%) noise.
+    """
     rng = random.Random(seed)
+    G = load_graph(graph_data)
+    nodes = list(G.nodes)
+    topo_order = topological_sort(G) if nodes else []
 
     students = []
-
-    for index in range(1, count + 1):
+    for i in range(1, num_students + 1):
+        s_id = f"sim_s_{i:03d}"
         mastery = {}
 
-        for concept_id in ordered_concepts:
-            prerequisite_values = [
-                mastery[prerequisite]
-                for prerequisite in prerequisites.get(
-                    concept_id,
-                    [],
-                )
-            ]
+        # Cutoff depth or random proficiency level
+        proficiency = rng.random()
 
-            mastery[concept_id] = round(
-                _sample_mastery(
-                    prerequisite_values,
-                    rng,
-                ),
-                4,
-            )
+        for concept in topo_order:
+            parents = list(G.predecessors(concept))
+            if not parents:
+                # Root concepts
+                prob = 0.85 if rng.random() < (proficiency + 0.2) else 0.15
+            else:
+                # If prerequisites mastered, high chance of mastering this concept
+                parents_mastered = all(mastery.get(p, 0.5) > 0.6 for p in parents)
+                if parents_mastered:
+                    prob = 0.85 if rng.random() < 0.85 else 0.15
+                else:
+                    prob = 0.15 if rng.random() < 0.90 else 0.85  # rare slip/lucky guess
 
-        mastery = {concept_id: mastery[concept_id] for concept_id in concept_ids}
+            mastery[concept] = round(prob, 2)
+
+        target = "avl_tree" if "avl_tree" in nodes else (nodes[-1] if nodes else "concept")
 
         students.append(
             {
-                "student_id": f"student_{index:03d}",
+                "id": s_id,
+                "target": target,
                 "mastery": mastery,
-                "slip": round(
-                    rng.uniform(0.05, 0.15),
-                    4,
-                ),
-                "guess": round(
-                    rng.uniform(0.15, 0.25),
-                    4,
-                ),
             }
         )
 
-    return students
+    return {
+        "schema_version": "1.0",
+        "course_id": course_id,
+        "students": students,
+    }
+
+
+def save_simulated_students(
+    path: Path | str,
+    graph_data: dict,
+    num_students: int = 50,
+    course_id: str = "ds101",
+) -> None:
+    """Save synthetic students to disk conforming to sim_students.schema.json."""
+    data = generate_simulated_students(
+        graph_data=graph_data,
+        num_students=num_students,
+        course_id=course_id,
+    )
+    write_json(path, data)

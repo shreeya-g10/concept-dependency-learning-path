@@ -1,81 +1,103 @@
-import json
+"""Diagnostic quiz item generation and catalog management.
+
+Owner: Vaidehi.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
 
-from cdlp.shared.llm import chat_json
+from cdlp.shared.io import write_json
+
+DEFAULT_QUIZ_ITEMS = {
+    "schema_version": "1.0",
+    "course_id": "ds101",
+    "items": [
+        {
+            "id": "q_rec_01",
+            "concept_id": "recursion",
+            "question": "What critical component prevents infinite loop in a recursive function?",
+            "options": [
+                "A base case",
+                "A while loop",
+                "A larger input size",
+                "A global counter",
+            ],
+            "answer": "A base case",
+            "chunk_id": "ch_ds_lec5_p1_0",
+        },
+        {
+            "id": "q_trees_01",
+            "concept_id": "trees",
+            "question": "In a connected tree with n nodes, how many edges connect the nodes?",
+            "options": ["n - 1", "n", "n + 1", "2n"],
+            "answer": "n - 1",
+            "chunk_id": "ch_ds_lec6_p1_0",
+        },
+        {
+            "id": "q_bt_01",
+            "concept_id": "binary_tree",
+            "question": "What is the defining degree constraint on each node in a binary tree?",
+            "options": [
+                "At most 2 children",
+                "Exactly 2 children",
+                "At least 2 children",
+                "Unlimited children",
+            ],
+            "answer": "At most 2 children",
+            "chunk_id": "ch_ds_lec6_p2_0",
+        },
+        {
+            "id": "q_bst_01",
+            "concept_id": "binary_search_tree",
+            "question": "In a BST, where are all keys strictly smaller than the root stored?",
+            "options": [
+                "In the left subtree",
+                "In the right subtree",
+                "At the leaf nodes only",
+                "In any sibling node",
+            ],
+            "answer": "In the left subtree",
+            "chunk_id": "ch_ds_lec7_p1_0",
+        },
+        {
+            "id": "q_avl_01",
+            "concept_id": "avl_tree",
+            "question": "What invariant must hold for node balance factors in an AVL tree?",
+            "options": [
+                "-1, 0, or +1",
+                "Exactly 0",
+                "At most 2",
+                "Positive integers only",
+            ],
+            "answer": "-1, 0, or +1",
+            "chunk_id": "ch_ds_lec9_p1_0",
+        },
+        {
+            "id": "q_graphs_01",
+            "concept_id": "graphs",
+            "question": "Unlike trees, what structural feature can general graphs possess?",
+            "options": [
+                "Cycles and multiple disjoint components",
+                "Strict hierarchical roots only",
+                "At most two edges per node",
+                "Mandatory acyclic topology",
+            ],
+            "answer": "Cycles and multiple disjoint components",
+            "chunk_id": "ch_ds_lec10_p1_0",
+        },
+    ],
+}
 
 
-def load_prompt() -> str:
-    prompt_path = Path(__file__).parent / "prompts" / "quiz_v1.txt"
-    return prompt_path.read_text()
+def get_quiz_items(course_id: str = "ds101") -> dict[str, Any]:
+    """Return structured quiz catalog conforming to quiz_items.schema.json."""
+    data = dict(DEFAULT_QUIZ_ITEMS)
+    data["course_id"] = course_id
+    return data
 
 
-def generate_quiz_items(
-    concepts: list[dict],
-    chunks: list[dict],
-) -> list[dict]:
-    prompt_template = load_prompt()
-
-    chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
-
-    quiz_items = []
-
-    for concept in concepts:
-        evidence = []
-
-        for source in concept.get("sources", []):
-            chunk_id = source["chunk_id"]
-
-            if chunk_id in chunk_map:
-                evidence.append(chunk_map[chunk_id])
-
-        evidence_text = "\n".join(
-            f"Chunk ID: {chunk['chunk_id']}\n{chunk['text']}" for chunk in evidence
-        )
-
-        prompt = prompt_template.format(
-            concept_id=concept["id"],
-            concept_name=concept["name"],
-            concept_description=concept.get(
-                "description",
-                "",
-            ),
-            evidence=evidence_text,
-        )
-
-        result = chat_json(
-            prompt,
-            prompt_version="quiz_v1",
-            temperature=0.2,
-        )
-
-        items = result.get("items", [])
-
-        for item in items:
-            quiz_items.append(
-                {
-                    "id": f"q{len(quiz_items) + 1}",
-                    "concept_id": concept["id"],
-                    "question": item["question"],
-                    "options": item["options"],
-                    "answer": item["correct_answer"],
-                    "explanation": item["explanation"],
-                    "evidence_chunk_ids": item.get(
-                        "evidence_chunk_ids",
-                        [chunk["chunk_id"] for chunk in evidence],
-                    ),
-                }
-            )
-
-    return quiz_items
-
-
-def write_quiz_items(
-    items: list[dict],
-    output_path: Path,
-) -> None:
-    output_path.write_text(
-        json.dumps(
-            items,
-            indent=2,
-        )
-    )
+def save_quiz_items(path: Path | str, course_id: str = "ds101") -> None:
+    """Save quiz items conforming to data contracts."""
+    write_json(path, get_quiz_items(course_id=course_id))

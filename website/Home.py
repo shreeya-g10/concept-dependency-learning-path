@@ -88,7 +88,7 @@ with exp2:
     st.markdown("#### 2. Graph-Guided Adaptive Diagnosis")
     st.write(
         "Prerequisite links connect concepts. A correct answer on BST implies binary trees "
-        "are known, reducing diagnostic questions by up to 75% via binary search over chains."
+        "are known, narrowing uncertainty across prerequisite chains via adaptive inquiry."
     )
 
 with exp3:

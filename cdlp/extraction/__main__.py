@@ -17,18 +17,28 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True, help="folder of PDF/PPTX files")
     parser.add_argument("--out-dir", type=Path, required=True)
-    parser.add_argument("--course-id", type=str, default="ds101")
+    parser.add_argument("--course-id", "--course", dest="course_id", type=str, default=None)
     args = parser.parse_args()
 
     input_dir = Path(args.input)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Infer course_id if not explicitly provided
+    course_id = args.course_id
+    if not course_id:
+        if input_dir.name in ("ds101", "ml101"):
+            course_id = input_dir.name
+        elif out_dir.name in ("ds101", "ml101"):
+            course_id = out_dir.name
+        else:
+            course_id = "ds101"
+
     # 1. Parsing & Chunking
     chunks = []
     if input_dir.exists() and input_dir.is_dir():
         try:
-            chunks = parse_directory(input_dir, course_id=args.course_id)
+            chunks = parse_directory(input_dir, course_id=course_id)
         except Exception:
             chunks = []
 
@@ -43,7 +53,7 @@ def main() -> None:
     concepts_data = None
     if input_dir.exists() and any(input_dir.glob("*.pdf")):
         try:
-            concepts_data = extract_concepts_from_chunks(chunks, course_id=args.course_id)
+            concepts_data = extract_concepts_from_chunks(chunks, course_id=course_id)
         except Exception:
             concepts_data = None
 
