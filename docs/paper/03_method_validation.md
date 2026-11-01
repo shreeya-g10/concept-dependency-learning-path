@@ -1,6 +1,6 @@
 # 3 Method: the Validation Agent
 
-> Draft, written from the code. **Implementation status on `main` (2026-11-02):** the graph-consistency, evidence and semantic checks and the RQ1 harness are merged. The necessity test (§3.4) is on branch `validation/necessity-test`, the semantic prompt v2 on `validation/semantic-v2`, and the impact-ranked review queue (§3.7) on `validation/review-queue`; none of the three is merged yet. The decision rule (§3.6) and the agent CLI are **not implemented**: `python -m cdlp.validation` still writes example output. Update this section when they land.
+> Draft, written from the code. **Implementation status on `main` (2026-11-02):** the graph-consistency, evidence and semantic checks (semantic prompt v2), the impact-ranked review queue (§3.7) and the RQ1 harness are merged. The necessity test (§3.4) is on branch `validation/necessity-test`, not merged yet. The decision rule (§3.6) and the agent CLI are **not implemented**: `python -m cdlp.validation` still writes example output. Update this section when they land.
 
 ## 3.1 Input and output
 
@@ -22,8 +22,8 @@ Redundancy is computed by transitive reduction on the acyclic part only (edges s
 
 **Evidence check (course text).** For edge A → B we collect the chunks discovery cited plus the top-*k* (default 3) chunks retrieved by embedding similarity (sentence-transformers `all-MiniLM-L6-v2`, exact cosine search, which is enough at course scale). The query is built from both concepts' names and descriptions. The validator model then grades whether *the excerpts* support learning A before B, judging only from the excerpts and not from its own knowledge. Co-occurrence or a loose relation does not count as support. It must quote the text it relied on. **Every quote is verified:** it is kept only if it occurs verbatim (ignoring case and whitespace) in the chunk it cites. A strong or medium grade with no verifiable quote is capped at weak. So every quote shown to a user is traceable to a document and page, and an evidence grade can't rest on invented text.
 
-**Semantic check (no course text).** The validator model grades whether teaching A before B makes pedagogical sense, from the concepts' names, aliases and descriptions only. It never sees the chunks, so it fails independently of the evidence check. The prompt states that being related, being in the same course or being taught nearby is not enough, and that a dependency running backwards or only through an intermediate topic is weak or none. A few worked examples from an unrelated domain (music) show the grading without leaking course content. [Prompt version used in the paper: semantic_v1 on `main`; semantic_v2, which grades specialization (B is a kind of A) as strong, is pending; state which one is final.]
-On its own, this call is also our **single LLM-judge baseline**: ACCEPT if graded strong or medium, else REJECT.
+**Semantic check (no course text).** The validator model grades whether teaching A before B makes pedagogical sense, from the concepts' names, aliases and descriptions only. It never sees the chunks, so it fails independently of the evidence check. The prompt states that being related, being in the same course or being taught nearby is not enough, and that a dependency running backwards or only through an intermediate topic is weak or none. A few worked examples from an unrelated domain (music) show the grading without leaking course content. We use prompt version **semantic_v2**. Its one change from v1 is that a specialization, where B is a kind of A (for example *Binary Tree → Binary Search Tree*), is graded strong: B is defined in terms of A. v1 often graded such edges only medium. Both versions were compared on the shared example edges only. Because those edges overlap with gold, v2 was not tuned further.
+On its own, this call (same prompt, semantic_v2) is also our **single LLM-judge baseline**: ACCEPT if graded strong or medium, else REJECT.
 
 ## 3.4 Necessity test (simulated learner)
 
@@ -60,6 +60,10 @@ The HUMAN_REVIEW rate is reported next to precision and recall, because a valida
 
 Human review time is limited, so the HUMAN_REVIEW edges are ranked by how much they matter to students. For each such edge we compare every simulated student's personalized path on the ACCEPT-only graph with the path on ACCEPT plus that edge. A path is (ancestors of target + target) − mastered concepts, in topological order with ties broken by concept id; a concept is mastered when the student's true mastery is > 0.8. `paths_affected` counts the (student, target) paths whose concept set or order changes, and `impact_score` = paths_affected / paths checked ∈ [0, 1]. The queue is sorted by impact. An edge that would close a cycle with the ACCEPT edges cannot be accepted as it is, so it gets impact 0 and a reason. The computation needs no LLM call. The review queue reimplements the path rule instead of importing the learning-path module, because modules communicate only through files.
 
-## 3.8 Graph output
+## 3.8 The agent on benchmarks
+
+On AL-CPL and University Course the agent uses only the semantic and graph checks, because benchmarks have no course text for the evidence check or for writing necessity questions. This configuration (`minus_evidence_necessity`) is the agent we report on the benchmarks. The full agent is reported on our own courses, which have course text.
+
+## 3.9 Graph output
 
 The validated graph keeps every decision. The graph used downstream is built from ACCEPT edges only, stays a DAG, and is stored both in full and as its transitive reduction. Paths and visualizations use the reduced graph.
