@@ -54,9 +54,9 @@ def run_cli(monkeypatch, out_dir, *extra):
 def test_cli_output_matches_contract(tmp_path, monkeypatch):
     run_cli(monkeypatch, tmp_path)
 
-    for name in ["relationships.json", "quiz_items.json"]:
-        assert check_file(tmp_path / name) == []
-    assert not (tmp_path / "sim_students.json").exists()  # built from validated edges now
+    assert check_file(tmp_path / "relationships.json") == []
+    # quiz items and simulated students are learning_path's job now
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["relationships.json"]
 
     course = read_json(f"{EX}/concepts.json")["course_id"]
     relationships = read_json(tmp_path / "relationships.json")

@@ -1,9 +1,10 @@
 """Candidate filter: pick the concept pairs worth sending to the LLM.
 
 A pair becomes a candidate only if at least one *content* signal links the two
-concepts (same chunk, one's name in the other's definition, or embedding
-similarity). Course order is never enough on its own: it only orients the pair
-(earlier concept = source) and is then recorded as a weak extra reason.
+concepts (same chunk, one's name in the other's definition, one's name in the
+text of a chunk the other comes from, or embedding similarity). Course order is
+never enough on its own: it only orients the pair (earlier concept = source) and
+is then recorded as a weak extra reason.
 
 If both concepts sit at the same course position, there is no order to orient
 by, so the candidate is marked ``tied`` and discovery asks about both directions.
@@ -14,7 +15,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-CONTENT_SIGNALS = ("same_chunk", "name_in_definition", "embedding_similarity")
+CONTENT_SIGNALS = ("same_chunk", "name_in_definition", "name_in_chunk", "embedding_similarity")
 
 
 @dataclass
@@ -81,6 +82,30 @@ def _name_in_definition(concepts: list) -> set:
     return candidates
 
 
+def _name_in_source_chunk(concepts: list, chunks: list) -> set:
+    """(a, b) where a name or alias of a appears in the text of a chunk b comes from."""
+    chunk_text = {chunk["chunk_id"]: _normalise(chunk.get("text", "")) for chunk in chunks}
+    candidates = set()
+    for target in concepts:
+        texts = [
+            chunk_text[source["chunk_id"]]
+            for source in target.get("sources", [])
+            if source.get("chunk_id") in chunk_text
+        ]
+        if not texts:
+            continue
+        for source in concepts:
+            if source["id"] == target["id"]:
+                continue
+            if any(
+                term and re.search(rf"\b{re.escape(term)}\b", text)
+                for term in _terms(source)
+                for text in texts
+            ):
+                candidates.add((source["id"], target["id"]))
+    return candidates
+
+
 def _embedding_pairs(concepts: list, threshold: float = 0.55) -> set:
     from sentence_transformers import SentenceTransformer  # heavy; not installed in CI
 
@@ -115,6 +140,8 @@ def generate_candidates(concepts, chunks: list, embedding_threshold: float = 0.5
         add_signal(pair, "same_chunk")
     for pair in _name_in_definition(concepts):
         add_signal(pair, "name_in_definition")
+    for pair in _name_in_source_chunk(concepts, chunks):
+        add_signal(pair, "name_in_chunk")
     for pair in _embedding_pairs(concepts, embedding_threshold):
         add_signal(pair, "embedding_similarity")
 

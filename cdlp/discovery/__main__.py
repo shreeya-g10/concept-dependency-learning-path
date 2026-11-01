@@ -1,10 +1,10 @@
-"""discovery: concepts + chunks -> relationships.json, quiz_items.json
+"""discovery: concepts + chunks -> relationships.json
 
     python -m cdlp.discovery --concepts outputs/concepts.json \
         --chunks outputs/chunks.jsonl --out-dir outputs
 
-sim_students.json is no longer written here: simulated students are built from
-validated (ACCEPT) edges by the learning_path module.
+Discovery writes only relationships.json. Quiz items and simulated students are
+built by the learning_path module (owner: Vaidehi).
 """
 
 import argparse
@@ -17,7 +17,6 @@ from cdlp.discovery.llm_discovery import (
     build_contract_relationships,
     discover_candidates,
 )
-from cdlp.discovery.quiz import get_quiz_items
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
@@ -68,7 +67,6 @@ def main() -> None:
             ),
         },
     )
-    write_json(args.out_dir / "quiz_items.json", get_quiz_items(course_id=course_id))
 
 
 if __name__ == "__main__":
