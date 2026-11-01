@@ -7,6 +7,18 @@ from __future__ import annotations
 
 from typing import Any
 
+# One mastery threshold for the whole module (diagnosis, paths, simulated answers and the
+# RQ2/RQ4 evaluation): a concept counts as mastered when its mastery is strictly above it.
+# Same value and the same strict rule as cdlp/validation/review_queue.py; a design choice,
+# not a calibrated value (docs/paper/99_limitations.md).
+MASTERY_THRESHOLD = 0.8
+
+
+def is_mastered(mastery: float, threshold: float = MASTERY_THRESHOLD) -> bool:
+    """True when mastery is strictly above the threshold (exactly 0.8 is not mastered)."""
+    return mastery > threshold
+
+
 try:
     import networkx as nx
 except ImportError:

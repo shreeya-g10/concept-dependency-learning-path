@@ -19,7 +19,7 @@ from typing import Any
 from cdlp.discovery.quiz import get_quiz_items
 from cdlp.discovery.sim_students import generate_simulated_students
 from cdlp.learning_path import api
-from cdlp.learning_path.graph import generic_path, load_graph
+from cdlp.learning_path.graph import MASTERY_THRESHOLD, generic_path, is_mastered, load_graph
 from cdlp.shared.io import EXAMPLES, read_json
 
 RESULTS_DIR = Path("cdlp/learning_path/results")
@@ -32,7 +32,7 @@ def simulate_student_answer(
     guess: float = 0.15,
 ) -> bool:
     """Simulate a noisy student answer given their true latent mastery."""
-    if true_mastery >= 0.7:
+    if is_mastered(true_mastery):
         # High mastery: correct unless slip
         return rng.random() > slip
     else:
@@ -130,8 +130,8 @@ def evaluate_accuracy(estimated: dict[str, float], ground_truth: dict[str, float
     total = 0
     for concept, true_val in ground_truth.items():
         if concept in estimated:
-            est_known = estimated[concept] >= 0.7
-            true_known = true_val >= 0.7
+            est_known = is_mastered(estimated[concept])
+            true_known = is_mastered(true_val)
             if est_known == true_known:
                 correct += 1
             total += 1
@@ -190,7 +190,9 @@ def evaluate_rq2_and_rq4(
         generic_lengths.append(generic_len)
 
         # Check gap coverage: are all truly unmastered concepts in the path?
-        unmastered = {c for c, m in true_states.items() if m < 0.7 and c in baseline_generic}
+        unmastered = {
+            c for c, m in true_states.items() if not is_mastered(m) and c in baseline_generic
+        }
         path_concepts = {step["concept_id"] for step in pers_path}
         covered = len(unmastered & path_concepts)
         gap_coverages.append(covered / len(unmastered) if unmastered else 1.0)
@@ -204,6 +206,7 @@ def evaluate_rq2_and_rq4(
     return {
         "num_students": n,
         "target_concept": target,
+        "mastery_threshold": MASTERY_THRESHOLD,
         "rq2_diagnosis": {
             "adaptive": {
                 "avg_questions": sum(adaptive_q_counts) / n,
