@@ -21,7 +21,7 @@ Course PDF / PPT
 Running example used throughout the plan (Data Structures):
 `Trees → Binary Trees → Binary Search Trees → AVL Trees`. Second domain for generality: an ML course (`Vectors → Matrices → Linear Regression → Gradient Descent → Neural Networks`).
 
-The original plan is `docs/original_plan.docx`. `README.md` describes the project; `CONTRIBUTING.md` is the team guide (ownership, workflow, timeline).
+The original plan is `docs/original_plan.docx`. `README.md` describes the project; `CONTRIBUTING.md` is the maintainer guide (workflow, rules, timeline, contributors).
 
 ## Research contributions (what the paper claims)
 
@@ -80,18 +80,27 @@ Relevant theory to cite and build on: Knowledge Space Theory (Doignon & Falmagne
 
 Any experiment script must be reproducible: fixed seeds, configs in files, results written to the module's own `results/` folder with the config that produced them.
 
-## Team, modules and ownership (20-day plan in 4 phases, 2 people)
+## Maintainer and modules (20-day plan in 4 phases)
 
-Each person owns specific paths (see `CONTRIBUTING.md`, `website/README.md` and `.github/CODEOWNERS`). **Only edit paths owned by the person you are working for.** If you don't know who that is, ask before editing. Never edit someone else's paths unless the user says the owner agreed.
+Since 2026-11-02 the project has **one maintainer, Shreeya** (@shreeya-g10), who owns every path (`.github/CODEOWNERS` is `* @shreeya-g10`). There is no per-person ownership rule any more; the module boundaries below are kept because they make stages independently testable and ablatable.
 
-| Person | Owns | Builds | Writes |
-|---|---|---|---|
-| Vaidehi | `cdlp/extraction/`, `cdlp/learning_path/` (incl. `api.py`), `cdlp/discovery/quiz.py`, `cdlp/discovery/sim_students.py` (and their tests), `website/` except `pages/2_*` and `pages/3_*`, `data/raw/`, `data/gold/` | parsing, chunking, concept extraction, dedup; graph, adaptive diagnosis, personalized path, RQ2 eval; quiz items; simulated students; website shell + deployment; gold merge + kappa | `chunks.jsonl`, `concepts.json`, `quiz_items.json`, `sim_students.json`, `student_state.json`, `learning_path.json` |
-| Shreeya (team lead) | everything else: `cdlp/discovery/` (except the two files above), `cdlp/validation/`, `cdlp/root_cause/`, `cdlp/benchmarks/`, `website/pages/2_*`, `website/pages/3_*`, `cdlp/shared/`, `pipeline.py`, root files, `docs/`, `.github/` | candidate filter, LLM discovery (hard/soft); validation agent + simulated-learner necessity test, RQ1 ablations; root-cause tracing (`cdlp/root_cause/`); public datasets (`cdlp/benchmarks/`); contracts and integration | `relationships.json`, `validated_graph.json` |
+| Module | Builds | Writes |
+|---|---|---|
+| `cdlp/extraction/` | parsing, chunking, concept extraction, dedup | `chunks.jsonl`, `concepts.json` |
+| `cdlp/discovery/` | candidate filter, LLM discovery (hard/soft) | `relationships.json` |
+| `cdlp/validation/` | validation agent + simulated-learner necessity test, RQ1 ablations | `validated_graph.json` |
+| `cdlp/learning_path/` | graph, quiz items, simulated students, adaptive diagnosis, personalized path, RQ2 eval | `quiz_items.json`, `sim_students.json`, `student_state.json`, `learning_path.json` |
+| `cdlp/root_cause/` | root-cause tracing of wrong answers | `root_cause.json` |
+| `cdlp/benchmarks/` | public datasets (AL-CPL, University Course) | benchmark files in our formats |
+| `cdlp/shared/`, `pipeline.py`, `website/`, `data/`, `docs/` | contracts, integration, website, gold data, paper | |
 
-Sneha and Shrestha contributed the initial discovery and learning-path code.
+Each module's `README.md` (e.g. `cdlp/validation/README.md`) is its task list. Gold labels live in `data/gold/annotations/annotator_<x>.csv` (a = Vaidehi, c = Shreeya; b and d hold the earlier labels from Sneha and Shrestha). These files are frozen labels: never edit another annotator's file.
 
-Each module's `README.md` (e.g. `cdlp/validation/README.md`) is its owner's task list. Annotators write only to their own `data/gold/annotations/annotator_<x>.csv` (a = Vaidehi, c = Shreeya; b and d hold the earlier labels from Sneha and Shrestha).
+### Contributors
+
+- **Vaidehi** (@vkumaw): extraction, learning path, website shell, gold labels (annotator a), root-cause test set.
+- **Sneha** (@snehadebnath26): initial discovery code (annotator b).
+- **Shrestha** (@shrestha035): initial learning-path code (annotator d).
 
 The website is a multi-page Streamlit app in `website/`. Pages read contract files via `website/common.py` (falling back to `cdlp/shared/examples/`). The only module code a page may import is `cdlp/learning_path/api.py` and `cdlp/root_cause/api.py`; keep their function signatures stable.
 
@@ -124,6 +133,6 @@ Ask before adding anything not listed here.
 
 ## Working with the user
 
-- This is a team student research project. Explain non-obvious design choices briefly, since they will need to defend them in the paper.
+- This is a student research project with one maintainer. Explain non-obvious design choices briefly, since they will need to defend them in the paper.
 - Flag anything that weakens the research claim, such as data leakage between annotation and evaluation, no baseline, or an unverifiable citation.
 - Do not invent citations. If a paper is referenced, say it needs verification unless the user has supplied it.

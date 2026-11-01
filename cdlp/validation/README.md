@@ -1,11 +1,10 @@
-# Validation · owner: Shreeya (lead)
+# Validation · maintainer: Shreeya
 
 The validation agent (novelty 1).
 
 **Question you answer:** *Can we trust this relationship?*
 
-**You own (only you edit):** `cdlp/validation/`, `website/pages/3_Validation_Agent.py`, `data/gold/annotations/annotator_c.csv`.
-As lead you also own `cdlp/shared/`, `pipeline.py`, root files, `docs/` and `.github/`. These change rarely; you review PRs.
+**Files:** `cdlp/validation/`, `website/pages/3_Validation_Agent.py`.
 
 | | File | Notes |
 |---|---|---|
