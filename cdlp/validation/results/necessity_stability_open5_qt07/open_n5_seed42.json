@@ -1,0 +1,505 @@
+{
+  "course_id": "ds101",
+  "model": "llama3.1:8b",
+  "prompt_versions": {
+    "questions": "necessity_questions_v1",
+    "learner_without": "necessity_learner_without_v1",
+    "learner_with": "necessity_learner_with_v1",
+    "grader": "necessity_grader_v1",
+    "questions_mcq": "necessity_questions_mcq_v1",
+    "learner_without_mcq": "necessity_learner_without_mcq_v1",
+    "learner_with_mcq": "necessity_learner_with_mcq_v1"
+  },
+  "temperature": 0.0,
+  "seed": 42,
+  "config": {
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold. Control C: an unrelated in-course concept, else a concept from the other course (cross_course_concepts, keyed by the course being tested), else control_placeholder. question_format 'mcq' grades by exact match with no grader call. with_a_diagnostic adds the 'with A' run (not part of the gap). question_temperature applies only to writing the questions (sampling > 0 makes seeds give different question sets); learners and grader use temperature.",
+    "n_questions": 5,
+    "question_format": "open",
+    "with_a_diagnostic": false,
+    "control_placeholder": {
+      "id": "control_placeholder",
+      "name": "Origami Folding",
+      "aliases": [
+        "Paper Folding"
+      ],
+      "description": "Folding a single sheet of paper into shapes without cutting it."
+    },
+    "cross_course_concepts": {
+      "_comment": "Fallback controls: concepts of the OTHER course, keyed by the course under test.",
+      "ds101": [
+        {
+          "id": "gradient_descent",
+          "name": "Gradient Descent"
+        },
+        {
+          "id": "linear_regression",
+          "name": "Linear Regression"
+        },
+        {
+          "id": "logistic_regression",
+          "name": "Logistic Regression"
+        },
+        {
+          "id": "loss_function",
+          "name": "Loss Function"
+        },
+        {
+          "id": "neural_networks",
+          "name": "Neural Networks"
+        },
+        {
+          "id": "regularization",
+          "name": "Regularization"
+        }
+      ],
+      "ml101": [
+        {
+          "id": "avl_tree",
+          "name": "AVL Trees"
+        },
+        {
+          "id": "binary_search_tree",
+          "name": "Binary Search Trees"
+        },
+        {
+          "id": "binary_tree",
+          "name": "Binary Trees"
+        },
+        {
+          "id": "graphs",
+          "name": "Graphs"
+        },
+        {
+          "id": "recursion",
+          "name": "Recursion"
+        },
+        {
+          "id": "trees",
+          "name": "Trees"
+        }
+      ]
+    },
+    "model": null,
+    "temperature": 0.0,
+    "question_temperature": 0.7,
+    "seed": 42,
+    "learner_sees_lesson": false,
+    "prompt_versions": {
+      "questions": "necessity_questions_v1",
+      "learner_without": "necessity_learner_without_v1",
+      "learner_with": "necessity_learner_with_v1",
+      "grader": "necessity_grader_v1",
+      "questions_mcq": "necessity_questions_mcq_v1",
+      "learner_without_mcq": "necessity_learner_without_mcq_v1",
+      "learner_with_mcq": "necessity_learner_with_mcq_v1"
+    },
+    "points": {
+      "correct": 1.0,
+      "partial": 0.5,
+      "incorrect": 0.0
+    },
+    "thresholds": {
+      "strong": 0.5,
+      "medium": 0.3,
+      "weak": 0.15
+    }
+  },
+  "date": "2026-11-01T21:36:00+00:00",
+  "leakage_rate": 0.0667,
+  "results": [
+    {
+      "relationship_id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "known_without": [
+        "recursion",
+        "trees"
+      ],
+      "control_concept": {
+        "id": "graphs",
+        "name": "Graphs",
+        "kind": "in_course"
+      },
+      "question_format": "open",
+      "n_questions": 5,
+      "known_control": [
+        "recursion",
+        "trees",
+        "binary_tree"
+      ],
+      "status": "ok",
+      "necessity": "weak",
+      "necessity_gap": 0.2,
+      "score_control": 0.9,
+      "score_without": 0.7,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [
+          4
+        ],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          [
+            "binary tree"
+          ]
+        ],
+        "rate": 0.2,
+        "questions_naming_source": [
+          4
+        ],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is a binary search tree?",
+          "reference_answer": "A binary tree in which values smaller than the root are stored in the left subtree and larger values in the right subtree.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How are values stored in the left and right subtrees of a binary search tree?",
+          "reference_answer": "Values smaller than the root are stored in the left subtree and larger values in the right subtree.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What happens to values smaller than the root in a binary search tree?",
+          "reference_answer": "Values smaller than the root are stored in the left subtree.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What happens to values larger than the root in a binary search tree?",
+          "reference_answer": "Larger values are stored in the right subtree.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What is the characteristic that distinguishes a binary search tree from a binary tree?",
+          "reference_answer": "Values smaller than the root are stored in the left subtree and larger values in the right subtree.",
+          "chunk_id": "ch_l7_p18"
+        }
+      ],
+      "answers_without": [
+        "A binary search tree is a type of tree where each node has a value and its left and right subtrees contain values less than and greater than the root, respectively.",
+        "In a binary search tree, values smaller than the root are stored in the left subtree and values larger than the root are stored in the right subtree.",
+        "In a binary search tree, values smaller than the root are stored in the left subtree.",
+        "In a binary search tree, values larger than the root are stored in the right subtree.",
+        "I don't know what distinguishes a binary search tree from a binary tree, but I know that a binary search tree is a type of tree where each node has a value and its left and right subtrees contain values less than and greater than the root, respectively."
+      ],
+      "answers_control": [
+        "A binary search tree is a type of binary tree where each node has a value and its left and right subtrees contain values less than and greater than the node's value, respectively.",
+        "In a binary search tree, values stored in the left subtree of a node are less than the node's value, and values stored in the right subtree are greater than the node's value.",
+        "In a binary search tree, values smaller than the root are stored in the left subtree.",
+        "In a binary search tree, values larger than the root are stored in the right subtree.",
+        "A binary search tree is distinguished from a binary tree by the property that for each node, all values in its left subtree are less than the node's value, and all values in its right subtree are greater than the node's value."
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "accurate description"
+        },
+        {
+          "grade": "partial",
+          "reason": "similar wording, but 'larger' instead of 'greater'"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate description"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate description"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "gave up and said they didn't know"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "partial",
+          "reason": "similar but wordy"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate description"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate description"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate characteristic"
+        }
+      ],
+      "grades_with": []
+    },
+    {
+      "relationship_id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "known_without": [
+        "trees"
+      ],
+      "control_concept": {
+        "id": "graphs",
+        "name": "Graphs",
+        "kind": "in_course"
+      },
+      "question_format": "open",
+      "n_questions": 5,
+      "known_control": [
+        "recursion",
+        "trees"
+      ],
+      "status": "ok",
+      "necessity": "medium",
+      "necessity_gap": 0.4,
+      "score_control": 0.8,
+      "score_without": 0.4,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": [],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is a binary tree?",
+          "reference_answer": "A tree in which each node has at most two children.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are traversals defined in a binary tree?",
+          "reference_answer": "Traversals are defined recursively.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How many children can a node in a binary tree have?",
+          "reference_answer": "At most two children.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "What is a key characteristic of a binary tree?",
+          "reference_answer": "Each node has at most two children.",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are binary trees defined in the course material?",
+          "reference_answer": "A tree in which each node has at most two children. Traversals are defined recursively.",
+          "chunk_id": "ch_l6_p11"
+        }
+      ],
+      "answers_without": [
+        "A binary tree is a type of tree where each node has two children, a left child and a right child.",
+        "I don't know how traversals are defined in a binary tree, but I know that trees have branches and roots.",
+        "A node in a binary tree can have two children.",
+        "A key characteristic of a binary tree is that each node has two children.",
+        "I don't know how binary trees are defined in the course material, but I know that we've learned about trees."
+      ],
+      "answers_control": [
+        "A binary tree is a type of tree where each node has at most two children, often referred to as the left child and the right child.",
+        "Traversals in a binary tree are defined as the order in which we visit the nodes, and there are three common types: in-order, pre-order, and post-order.",
+        "A node in a binary tree can have at most two children.",
+        "A key characteristic of a binary tree is that each node has a maximum of two children, which allows for efficient storage and retrieval of data.",
+        "Binary trees are defined as a type of tree where each node has at most two children, and are often used for storing and searching data."
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "states key point with slight variation"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "adds extra information not in reference"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "adds unrelated information"
+        },
+        {
+          "grade": "correct",
+          "reason": "states key point with slight variation"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "adds unrelated information"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "partial",
+          "reason": "adds extra detail"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "partial",
+          "reason": "adds extra detail"
+        }
+      ],
+      "grades_with": []
+    },
+    {
+      "relationship_id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "known_without": [
+        "recursion",
+        "trees",
+        "binary_tree",
+        "binary_search_tree"
+      ],
+      "control_concept": {
+        "id": "gradient_descent",
+        "name": "Gradient Descent",
+        "kind": "cross_course"
+      },
+      "question_format": "open",
+      "n_questions": 5,
+      "known_control": [
+        "recursion",
+        "trees",
+        "binary_tree",
+        "binary_search_tree",
+        "graphs"
+      ],
+      "status": "ok",
+      "necessity": "medium",
+      "necessity_gap": 0.3,
+      "score_control": 0.6,
+      "score_without": 0.3,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": [],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is an AVL tree?",
+          "reference_answer": "An AVL tree is a self-balancing binary search tree.",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What happens to the tree after each insert operation?",
+          "reference_answer": "Rotations restore the height balance while preserving the BST ordering.",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the purpose of rotations in an AVL tree?",
+          "reference_answer": "Rotations restore the height balance",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is preserved in an AVL tree after rotations?",
+          "reference_answer": "the BST ordering",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "How do rotations affect the height of an AVL tree?",
+          "reference_answer": "Rotations restore the height balance",
+          "chunk_id": "ch_l9_p04"
+        }
+      ],
+      "answers_without": [
+        "I think an AVL tree is a type of binary search tree that has some rules to keep the height balanced, but I'm not entirely sure.",
+        "After each insert operation, the tree is rebalanced to maintain a certain balance factor, but I don't know the exact details.",
+        "Rotations in an AVL tree are used to balance the tree after insertions or deletions, but I'm not sure what the purpose is beyond that.",
+        "I think the balance factor is preserved in an AVL tree after rotations, but I'm not sure what that balance factor is.",
+        "Rotations in an AVL tree affect the height of the tree by rebalancing it, but I don't know how it's done or what the exact effect is."
+      ],
+      "answers_control": [
+        "An AVL tree is a type of self-balancing binary search tree that ensures the height of the tree remains relatively small by rotating nodes after insertions and deletions.",
+        "After each insert operation, the tree is rebalanced by rotating nodes to ensure the height of the tree remains relatively small.",
+        "The purpose of rotations in an AVL tree is to balance the tree by moving nodes to their correct positions, maintaining a balance between the height of the left and right subtrees.",
+        "The balance factor, which is the difference between the height of the left and right subtrees, is preserved in an AVL tree after rotations.",
+        "Rotations in an AVL tree can affect the height of the tree by moving nodes up or down the tree, but the height remains relatively small due to the balancing property."
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "partial",
+          "reason": "mentions balance and BST"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "missing key point of rotations"
+        },
+        {
+          "grade": "partial",
+          "reason": "mentions balance and rebalancing"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "mentions balance factor, not ordering"
+        },
+        {
+          "grade": "partial",
+          "reason": "mentions rebalancing and height"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "accurate definition"
+        },
+        {
+          "grade": "partial",
+          "reason": "adds extra detail"
+        },
+        {
+          "grade": "correct",
+          "reason": "accurate description of rebalancing"
+        },
+        {
+          "grade": "partial",
+          "reason": "mentions balance, but not ordering"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "adds extra detail not present in reference"
+        }
+      ],
+      "grades_with": []
+    }
+  ],
+  "seconds": 1486.7
+}

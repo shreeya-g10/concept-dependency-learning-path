@@ -91,6 +91,7 @@ def test_every_config_loads_and_covers_the_rq1_settings():
         "minus_evidence",
         "minus_semantic",
         "minus_necessity",
+        "minus_evidence_necessity",
         "minus_graph",
     }
     datasets = set()
@@ -102,7 +103,7 @@ def test_every_config_loads_and_covers_the_rq1_settings():
         assert {s["name"] for s in config["settings"]} == expected
         assert config["models"]["validator"] != config["models"]["discovery"]
         assert config["scoring"] in {"direct", "closure", "auto"}
-        assert config["reported_agent"] in {"full_agent", "minus_evidence"}
+        assert config["reported_agent"] in {"full_agent", "minus_evidence_necessity"}
         assert "lecturebank" not in json.dumps(config).lower()  # licence not stated
     assert datasets == {"ds101", "ml101", "al_cpl", "university_course"}
 
@@ -111,14 +112,15 @@ def test_benchmark_configs_use_closure_and_score_labelled_pairs_only():
     al_cpl = ev.load_config(CONFIGS / "al_cpl.json")
     assert al_cpl["scoring"] == "closure" and al_cpl["unlabelled_pairs"] == "ignore"
     assert len(al_cpl["courses"]) == 4
-    assert ev.load_config(CONFIGS / "university_course.json")["scoring"] == "auto"
+    assert ev.load_config(CONFIGS / "university_course.json")["scoring"] == "closure"
     assert ev.load_config(CONFIGS / "ds101.json")["scoring"] == "direct"
 
 
-def test_benchmarks_report_the_agent_without_the_evidence_check():
-    # no course text on benchmarks, so the evidence check has nothing to retrieve
+def test_benchmarks_report_the_agent_without_evidence_and_necessity():
+    # no course text on benchmarks: nothing to retrieve, no chunks to write questions from
     for name in ("al_cpl", "university_course"):
-        assert ev.load_config(CONFIGS / f"{name}.json")["reported_agent"] == "minus_evidence"
+        config = ev.load_config(CONFIGS / f"{name}.json")
+        assert config["reported_agent"] == "minus_evidence_necessity"
     for name in ("ds101", "ml101"):
         assert ev.load_config(CONFIGS / f"{name}.json")["reported_agent"] == "full_agent"
 

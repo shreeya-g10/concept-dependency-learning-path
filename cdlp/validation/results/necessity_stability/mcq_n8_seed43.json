@@ -1,0 +1,795 @@
+{
+  "course_id": "ds101",
+  "model": "llama3.1:8b",
+  "prompt_versions": {
+    "questions": "necessity_questions_v1",
+    "learner_without": "necessity_learner_without_v1",
+    "learner_with": "necessity_learner_with_v1",
+    "grader": "necessity_grader_v1",
+    "questions_mcq": "necessity_questions_mcq_v1",
+    "learner_without_mcq": "necessity_learner_without_mcq_v1",
+    "learner_with_mcq": "necessity_learner_with_mcq_v1"
+  },
+  "temperature": 0.0,
+  "seed": 43,
+  "config": {
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold. Control C: an unrelated in-course concept, else a concept from the other course (cross_course_concepts, keyed by the course being tested), else control_placeholder. question_format 'mcq' grades by exact match with no grader call. with_a_diagnostic adds the 'with A' run (not part of the gap).",
+    "n_questions": 8,
+    "question_format": "mcq",
+    "with_a_diagnostic": false,
+    "control_placeholder": {
+      "id": "control_placeholder",
+      "name": "Origami Folding",
+      "aliases": [
+        "Paper Folding"
+      ],
+      "description": "Folding a single sheet of paper into shapes without cutting it."
+    },
+    "cross_course_concepts": {
+      "_comment": "Fallback controls: concepts of the OTHER course, keyed by the course under test.",
+      "ds101": [
+        {
+          "id": "gradient_descent",
+          "name": "Gradient Descent"
+        },
+        {
+          "id": "linear_regression",
+          "name": "Linear Regression"
+        },
+        {
+          "id": "logistic_regression",
+          "name": "Logistic Regression"
+        },
+        {
+          "id": "loss_function",
+          "name": "Loss Function"
+        },
+        {
+          "id": "neural_networks",
+          "name": "Neural Networks"
+        },
+        {
+          "id": "regularization",
+          "name": "Regularization"
+        }
+      ],
+      "ml101": [
+        {
+          "id": "avl_tree",
+          "name": "AVL Trees"
+        },
+        {
+          "id": "binary_search_tree",
+          "name": "Binary Search Trees"
+        },
+        {
+          "id": "binary_tree",
+          "name": "Binary Trees"
+        },
+        {
+          "id": "graphs",
+          "name": "Graphs"
+        },
+        {
+          "id": "recursion",
+          "name": "Recursion"
+        },
+        {
+          "id": "trees",
+          "name": "Trees"
+        }
+      ]
+    },
+    "model": null,
+    "temperature": 0.0,
+    "seed": 43,
+    "learner_sees_lesson": false,
+    "prompt_versions": {
+      "questions": "necessity_questions_v1",
+      "learner_without": "necessity_learner_without_v1",
+      "learner_with": "necessity_learner_with_v1",
+      "grader": "necessity_grader_v1",
+      "questions_mcq": "necessity_questions_mcq_v1",
+      "learner_without_mcq": "necessity_learner_without_mcq_v1",
+      "learner_with_mcq": "necessity_learner_with_mcq_v1"
+    },
+    "points": {
+      "correct": 1.0,
+      "partial": 0.5,
+      "incorrect": 0.0
+    },
+    "thresholds": {
+      "strong": 0.5,
+      "medium": 0.3,
+      "weak": 0.15
+    }
+  },
+  "date": "2026-11-01T20:19:29+00:00",
+  "leakage_rate": 0.0,
+  "results": [
+    {
+      "relationship_id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "known_without": [
+        "recursion",
+        "trees"
+      ],
+      "control_concept": {
+        "id": "graphs",
+        "name": "Graphs",
+        "kind": "in_course"
+      },
+      "question_format": "mcq",
+      "n_questions": 8,
+      "known_control": [
+        "recursion",
+        "trees",
+        "binary_tree"
+      ],
+      "status": "ok",
+      "necessity": "none",
+      "necessity_gap": 0.0,
+      "score_control": 0.25,
+      "score_without": 0.25,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": [
+          0
+        ],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is a binary search tree?",
+          "options": [
+            "A binary tree in which all values are stored in the left subtree.",
+            "A binary tree in which values smaller than the root are stored in the left subtree and larger values in the right subtree.",
+            "A binary tree in which all values are stored in the right subtree.",
+            "A binary tree in which values are stored randomly in the left and right subtrees."
+          ],
+          "answer_letter": "B",
+          "reference_answer": "A binary tree in which values smaller than the root are stored in the left subtree and larger values in the right subtree.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How are values stored in the left subtree of a binary search tree?",
+          "options": [
+            "Values are stored randomly.",
+            "Values larger than the root are stored.",
+            "Values equal to the root are stored.",
+            "Values smaller than the root are stored."
+          ],
+          "answer_letter": "D",
+          "reference_answer": "Values smaller than the root are stored.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How are values stored in the right subtree of a binary search tree?",
+          "options": [
+            "Values larger than the root are stored.",
+            "Values are stored randomly.",
+            "Values equal to the root are stored.",
+            "Values smaller than the root are stored."
+          ],
+          "answer_letter": "D",
+          "reference_answer": "Values smaller than the root are stored.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What is the purpose of a binary search tree?",
+          "options": [
+            "To store values in a way that makes it easy to insert a new value.",
+            "To store values in a way that makes it easy to count the number of values.",
+            "To store values in a way that makes it easy to delete a value.",
+            "To store values in a way that makes it easy to find a specific value."
+          ],
+          "answer_letter": "D",
+          "reference_answer": "To store values in a way that makes it easy to find a specific value.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How does a binary search tree help with searching for a value?",
+          "options": [
+            "It makes it easy to search for a value by comparing it to the root.",
+            "It makes it easy to search for a value by comparing it to all the values in the tree.",
+            "It makes it easy to search for a value by comparing it to a random value in the tree.",
+            "It makes it easy to search for a value by comparing it to the left and right subtrees."
+          ],
+          "answer_letter": "A",
+          "reference_answer": "It makes it easy to search for a value by comparing it to the root.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What is the time complexity of searching for a value in a binary search tree?",
+          "options": [
+            "O(n)",
+            "O(n^2)",
+            "O(1)",
+            "O(log n)"
+          ],
+          "answer_letter": "D",
+          "reference_answer": "O(log n)",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "How does a binary search tree help with inserting a new value?",
+          "options": [
+            "It makes it easy to insert a new value by comparing it to all the values in the tree.",
+            "It makes it easy to insert a new value by comparing it to the root.",
+            "It makes it easy to insert a new value by comparing it to a random value in the tree.",
+            "It makes it easy to insert a new value by comparing it to the left and right subtrees."
+          ],
+          "answer_letter": "D",
+          "reference_answer": "It makes it easy to insert a new value by comparing it to the left and right subtrees.",
+          "chunk_id": "ch_l7_p18"
+        },
+        {
+          "question": "What is the time complexity of inserting a new value in a binary search tree?",
+          "options": [
+            "O(1)",
+            "O(log n)",
+            "O(n^2)",
+            "O(n)"
+          ],
+          "answer_letter": "B",
+          "reference_answer": "O(log n)",
+          "chunk_id": "ch_l7_p18"
+        }
+      ],
+      "answers_without": [
+        "B",
+        "D",
+        "A",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "answers_control": [
+        "B",
+        "D",
+        "A",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked A, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key B"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked A, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked nothing, key B"
+        }
+      ],
+      "grades_with": []
+    },
+    {
+      "relationship_id": "r4",
+      "source": "recursion",
+      "target": "binary_tree",
+      "known_without": [
+        "trees"
+      ],
+      "control_concept": {
+        "id": "graphs",
+        "name": "Graphs",
+        "kind": "in_course"
+      },
+      "question_format": "mcq",
+      "n_questions": 8,
+      "known_control": [
+        "recursion",
+        "trees"
+      ],
+      "status": "ok",
+      "necessity": "strong",
+      "necessity_gap": 0.5,
+      "score_control": 1.0,
+      "score_without": 0.5,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": [
+          1,
+          4,
+          7
+        ],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is a characteristic of a binary tree?",
+          "options": [
+            "Each node has no children",
+            "Each node has at most three children",
+            "Each node has at most two children",
+            "Each node has at most one child"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "Each node has at most two children",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are traversals defined in a binary tree?",
+          "options": [
+            "They are defined by the user",
+            "They are defined recursively",
+            "They are defined iteratively",
+            "They are defined randomly"
+          ],
+          "answer_letter": "B",
+          "reference_answer": "They are defined recursively",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "What is a binary tree?",
+          "options": [
+            "A tree in which each node has at most three children",
+            "A tree in which each node has at most two children",
+            "A tree in which each node has at most one child",
+            "A tree in which each node has no children"
+          ],
+          "answer_letter": "B",
+          "reference_answer": "A tree in which each node has at most two children",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "What is a characteristic of a binary tree?",
+          "options": [
+            "Each node has at most one child",
+            "Each node has no children",
+            "Each node has at most three children",
+            "Each node has at most two children"
+          ],
+          "answer_letter": "D",
+          "reference_answer": "Each node has at most two children",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are traversals defined in a binary tree?",
+          "options": [
+            "They are defined randomly",
+            "They are defined iteratively",
+            "They are defined recursively",
+            "They are defined by the user"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "They are defined recursively",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "What is a characteristic of a binary tree?",
+          "options": [
+            "Each node has at most three children",
+            "Each node has at most one child",
+            "Each node has at most two children",
+            "Each node has no children"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "Each node has at most two children",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "What is a characteristic of a binary tree?",
+          "options": [
+            "Each node has at most one child",
+            "Each node has no children",
+            "Each node has at most two children",
+            "Each node has at most three children"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "Each node has at most two children",
+          "chunk_id": "ch_l6_p11"
+        },
+        {
+          "question": "How are traversals defined in a binary tree?",
+          "options": [
+            "They are defined by the user",
+            "They are defined randomly",
+            "They are defined recursively",
+            "They are defined iteratively"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "They are defined recursively",
+          "chunk_id": "ch_l6_p11"
+        }
+      ],
+      "answers_without": [
+        "C",
+        "D",
+        "B",
+        "C",
+        "D",
+        "C",
+        "C",
+        "D"
+      ],
+      "answers_control": [
+        "C",
+        "B",
+        "B",
+        "D",
+        "C",
+        "C",
+        "C",
+        "C"
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked D, key B"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked C, key D"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked D, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked D, key C"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked C, key C"
+        }
+      ],
+      "grades_with": []
+    },
+    {
+      "relationship_id": "r6",
+      "source": "graphs",
+      "target": "avl_tree",
+      "known_without": [
+        "recursion",
+        "trees",
+        "binary_tree",
+        "binary_search_tree"
+      ],
+      "control_concept": {
+        "id": "gradient_descent",
+        "name": "Gradient Descent",
+        "kind": "cross_course"
+      },
+      "question_format": "mcq",
+      "n_questions": 8,
+      "known_control": [
+        "recursion",
+        "trees",
+        "binary_tree",
+        "binary_search_tree",
+        "graphs"
+      ],
+      "status": "ok",
+      "necessity": "none",
+      "necessity_gap": 0.0,
+      "score_control": 0.5714,
+      "score_without": 0.5714,
+      "score_with": null,
+      "gap_with_minus_without": null,
+      "leakage": {
+        "flagged_answers": [],
+        "terms": [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "rate": 0.0,
+        "questions_naming_source": [
+          0
+        ],
+        "control_flagged_answers": []
+      },
+      "questions": [
+        {
+          "question": "What is an AVL tree?",
+          "options": [
+            "A type of heap data structure",
+            "A type of binary tree used for sorting",
+            "A data structure used for graph algorithms",
+            "A self-balancing binary search tree"
+          ],
+          "answer_letter": "D",
+          "reference_answer": "A self-balancing binary search tree",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the main purpose of rotations in an AVL tree?",
+          "options": [
+            "To increase the height of the tree",
+            "To decrease the height of the tree",
+            "To preserve the BST ordering",
+            "To balance the tree"
+          ],
+          "answer_letter": "D",
+          "reference_answer": "To balance the tree",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the effect of rotations on the BST ordering in an AVL tree?",
+          "options": [
+            "It is changed",
+            "It is preserved",
+            "It is not affected",
+            "It is not preserved"
+          ],
+          "answer_letter": "B",
+          "reference_answer": "It is preserved",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the result of inserting a new node into an AVL tree?",
+          "options": [
+            "The tree becomes unbalanced",
+            "The tree becomes balanced and the BST ordering is preserved",
+            "The tree becomes balanced, but the BST ordering is not preserved",
+            "The tree remains balanced"
+          ],
+          "answer_letter": "C",
+          "reference_answer": "The tree becomes balanced, but the BST ordering is not preserved",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the main goal of an AVL tree?",
+          "options": [
+            "To balance the tree",
+            "To minimize the height of the tree",
+            "To preserve the BST ordering",
+            "To maximize the height of the tree"
+          ],
+          "answer_letter": "A",
+          "reference_answer": "To balance the tree",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What happens to the height balance of an AVL tree after each insert?",
+          "options": [
+            "It is decreased",
+            "It is not affected",
+            "It is increased",
+            "Rotations restore it"
+          ],
+          "answer_letter": "A",
+          "reference_answer": "It is decreased",
+          "chunk_id": "ch_l9_p04"
+        },
+        {
+          "question": "What is the relationship between AVL trees and binary search trees?",
+          "options": [
+            "AVL trees are not related to binary search trees",
+            "AVL trees preserve the BST ordering",
+            "AVL trees are a type of binary search tree",
+            "AVL trees are used to implement binary search trees"
+          ],
+          "answer_letter": "B",
+          "reference_answer": "AVL trees preserve the BST ordering",
+          "chunk_id": "ch_l9_p04"
+        }
+      ],
+      "answers_without": [
+        "D",
+        "D",
+        "B",
+        "B",
+        "A",
+        "D",
+        "C"
+      ],
+      "answers_control": [
+        "D",
+        "D",
+        "B",
+        "B",
+        "A",
+        "D",
+        "C"
+      ],
+      "answers_with": [],
+      "grades_without": [
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked B, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked A, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked D, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked C, key B"
+        }
+      ],
+      "grades_control": [
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked D, key D"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked B, key B"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked B, key C"
+        },
+        {
+          "grade": "correct",
+          "reason": "picked A, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked D, key A"
+        },
+        {
+          "grade": "incorrect",
+          "reason": "picked C, key B"
+        }
+      ],
+      "grades_with": []
+    }
+  ],
+  "seconds": 375.9
+}

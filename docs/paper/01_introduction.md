@@ -33,7 +33,7 @@ We do not claim that prerequisite discovery itself is new (see Section 2). Our c
 
 ## 1.4 Evaluation in brief
 
-We evaluate stage by stage on two courses we annotated ourselves, Data Structures (`ds101`) and Machine Learning (`ml101`), and on two public prerequisite benchmarks, AL-CPL and the University Course dataset (Section 5). Validation is compared against discovery alone, a single LLM judge and a self-consistency judge, with ablations that remove each check. Diagnosis and paths are evaluated on simulated students with known ground-truth knowledge states.
+We evaluate stage by stage on two courses we annotated ourselves, Data Structures (`ds101`) and Machine Learning (`ml101`), and on two public prerequisite benchmarks, AL-CPL and the University Course dataset (Section 5). Validation is compared against discovery alone, a single LLM judge and a self-consistency judge, with ablations that remove each check. On the two benchmarks the agent runs with its semantic and graph checks only, since they provide no course text. Diagnosis and paths are evaluated on simulated students with known ground-truth knowledge states.
 
 [RESULT: one-sentence headline for RQ1, precision gain and recall cost]
 [RESULT: one-sentence headline for RQ2, questions saved at matched accuracy]

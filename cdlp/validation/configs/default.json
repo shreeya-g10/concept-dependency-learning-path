@@ -1,7 +1,9 @@
 {
   "necessity": {
-    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold.",
+    "_comment": "Simulated-learner necessity test (cdlp/validation/necessity_test.py). gap = control score - score without A. n_questions defaults to 3; compare 2 vs 3 for stability before relying on it. Thresholds are a first, uncalibrated choice: with 3 questions graded in 0.5 steps every gap is a multiple of 1/6, so 0.15 / 0.3 / 0.5 separate one, two and three-or-more half-steps. Calibrate on a held-out split, never on the evaluation gold. Control C: an unrelated in-course concept, else a concept from the other course (cross_course_concepts, keyed by the course being tested), else control_placeholder. question_format 'mcq' grades by exact match with no grader call. with_a_diagnostic adds the 'with A' run (not part of the gap). question_temperature applies only to writing the questions (sampling > 0 makes seeds give different question sets); learners and grader use temperature.",
     "n_questions": 3,
+    "question_format": "open",
+    "with_a_diagnostic": true,
     "control_placeholder": {
       "id": "control_placeholder",
       "name": "Origami Folding",
@@ -10,15 +12,74 @@
       ],
       "description": "Folding a single sheet of paper into shapes without cutting it."
     },
+    "cross_course_concepts": {
+      "_comment": "Fallback controls: concepts of the OTHER course, keyed by the course under test.",
+      "ds101": [
+        {
+          "id": "gradient_descent",
+          "name": "Gradient Descent"
+        },
+        {
+          "id": "linear_regression",
+          "name": "Linear Regression"
+        },
+        {
+          "id": "logistic_regression",
+          "name": "Logistic Regression"
+        },
+        {
+          "id": "loss_function",
+          "name": "Loss Function"
+        },
+        {
+          "id": "neural_networks",
+          "name": "Neural Networks"
+        },
+        {
+          "id": "regularization",
+          "name": "Regularization"
+        }
+      ],
+      "ml101": [
+        {
+          "id": "avl_tree",
+          "name": "AVL Trees"
+        },
+        {
+          "id": "binary_search_tree",
+          "name": "Binary Search Trees"
+        },
+        {
+          "id": "binary_tree",
+          "name": "Binary Trees"
+        },
+        {
+          "id": "graphs",
+          "name": "Graphs"
+        },
+        {
+          "id": "recursion",
+          "name": "Recursion"
+        },
+        {
+          "id": "trees",
+          "name": "Trees"
+        }
+      ]
+    },
     "model": null,
     "temperature": 0.0,
+    "question_temperature": 0.0,
     "seed": 42,
     "learner_sees_lesson": false,
     "prompt_versions": {
       "questions": "necessity_questions_v1",
       "learner_without": "necessity_learner_without_v1",
       "learner_with": "necessity_learner_with_v1",
-      "grader": "necessity_grader_v1"
+      "grader": "necessity_grader_v1",
+      "questions_mcq": "necessity_questions_mcq_v1",
+      "learner_without_mcq": "necessity_learner_without_mcq_v1",
+      "learner_with_mcq": "necessity_learner_with_mcq_v1"
     },
     "points": {
       "correct": 1.0,

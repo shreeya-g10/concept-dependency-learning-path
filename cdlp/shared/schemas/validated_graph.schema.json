@@ -165,6 +165,36 @@
           },
           "reason": {
             "type": "string"
+          },
+          "score_control": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "added in 1.4: necessity-test score of the control learner (knows A, unrelated C banned)"
+          },
+          "score_without": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1,
+            "description": "added in 1.4: necessity-test score of the learner with A banned; necessity_gap = score_control - score_without"
+          },
+          "n_questions": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "added in 1.4: questions per necessity-test run"
+          },
+          "question_format": {
+            "enum": [
+              "open",
+              "mcq"
+            ],
+            "description": "added in 1.4: necessity-test question format"
           }
         }
       }
