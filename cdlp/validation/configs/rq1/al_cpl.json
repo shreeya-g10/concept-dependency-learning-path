@@ -1,7 +1,8 @@
 {
-  "_comment": "RQ1 on AL-CPL (CC BY-NC-SA 4.0). Positives include transitive pairs (dataset README), so the transitive closure of our predictions is scored (cdlp/benchmarks/README.md). Only labelled pairs are scored. Benchmarks have no course text: the evidence check has nothing to retrieve, so read minus_evidence and full_agent with that in mind.",
+  "_comment": "RQ1 on AL-CPL (CC BY-NC-SA 4.0). Positives include transitive pairs (dataset README), so the transitive closure of our predictions is scored (cdlp/benchmarks/README.md). Only labelled pairs are scored. Benchmarks have no course text, so the evidence check has nothing to retrieve: the agent reported on this dataset is minus_evidence (decided 2026-11-02; cdlp/validation/README.md, Notes for the paper). full_agent is still scored but not reported.",
   "dataset": "al_cpl",
   "settings_file": "settings.json",
+  "reported_agent": "minus_evidence",
   "scoring": "closure",
   "unlabelled_pairs": "ignore",
   "bidirectional": "both",
