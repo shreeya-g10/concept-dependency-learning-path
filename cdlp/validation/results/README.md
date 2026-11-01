@@ -86,3 +86,15 @@ Mean gap ± SD across seeds (expected order: BT→BST > rec→BT > graphs→AVL 
 2. **MCQ is insensitive to the ban.** In most MCQ runs the control and "without A" learners scored exactly the same (e.g. both 1.00 on `binary_tree → BST` at n = 3, both 0.25 at n = 8). That correctly gives `graphs → avl_tree` ≈ 0, but also gives 0 for the hard edge. The learner chooses between options by elimination, whether or not A is banned.
 3. **Open n = 3 responds to the ban, but too little to rank.** Every edge got exactly one half-step (0.167), the smallest non-zero gap possible, so it cannot separate a hard prerequisite from an unrelated one.
 4. No setting reproduces the expected order, in the means or in any single seed. No thresholds were tuned.
+
+### Follow-up: open n = 5, questions written at temperature 0.7 (2026-11-02)
+
+`necessity_stability_open5_qt07/`. Question writing sampled at 0.7, so seeds give different question sets; learner and grader at 0. Approved budget ~30 min; **only seed 42 finished**: that one seed took 1,487 s (≈ 99 s per call, against the ≈ 24–52 s estimated per call type), so seeds 43 and 44 were skipped by the budget and there is **no SD**.
+
+| Edge | C | Control | Without A | Gap | Grade | Leakage A | Questions naming A |
+|---|---|---|---|---|---|---|---|
+| binary_tree → BST | Graphs | 0.9 | 0.7 | 0.2 | weak | 1/5 | 1 |
+| recursion → binary_tree | Graphs | 0.8 | 0.4 | 0.4 | medium | 0/5 | 0 |
+| graphs → avl_tree | Gradient Descent (cross-course) | 0.6 | 0.3 | 0.3 | medium | 0/5 | 0 |
+
+The expected order fails again (rec→BT > graphs→AVL > BT→BST), and the unrelated edge gets a medium gap. On BT→BST one question itself names "binary tree", exposing A to the "without A" learner, and one answer leaked it; both shrink that gap. One seed is not enough to tell noise from signal, and three seeds at this setting would take about 75 minutes. No thresholds were tuned.
