@@ -57,7 +57,8 @@ Every version is pinned to a commit. Each file's **git blob SHA** is listed so a
 ### LectureBank (1.0 prerequisite annotation): `lecturebank`
 - **Paper:** Li, Fabbri, Tung, Radev. *What Should I Learn First: Introducing LectureBank for NLP Education and Prerequisite Chain Learning.* AAAI 2019, 33(01):6674–6681. arXiv 1811.12181.
 - **Repository:** <https://github.com/Yale-LILY/LectureBank>, folder `LB-Paper/`, commit `b237565ded5b112295fd5bc39035f53b0dd4286b` (2023-11-06). The repo also holds later lecture-file batches (LectureBank 2/3, CD). Those carry no prerequisite annotation in the README, so they are not used.
-- **Licence: could not be confirmed.** Neither the repository README, the `LB-Paper/` README nor the paper states a licence, and the repository has no LICENSE file. The paper says only links to lectures are released "for copyright reasons". **Treat this as all rights reserved:** don't redistribute the data or the converted files, and ask the authors before reporting results on it in the paper.
+- **Licence: could not be confirmed.** Neither the repository README, the `LB-Paper/` README nor the paper states a licence, and the repository has no LICENSE file. The paper says only links to lectures are released "for copyright reasons".
+- **Our use until the authors reply to our permission request (sent by Shreeya):** local evaluation only, always cited (paper above). **Never commit** the raw files, the converted files or per-pair outputs derived from them; `data/benchmarks/` and `outputs/` are gitignored. Aggregate scores may go in the paper only once permission is confirmed.
 - **Size (paper):** 208 topics, 921 positive and 41,829 negative pairs. Two annotators; positives are the intersection of their labels; Cohen's κ = 0.7.
 
 | File (`LB-Paper/`) | Bytes | Blob SHA |
@@ -113,8 +114,20 @@ None of the three datasets distinguishes hard from soft prerequisites, so **ever
 
 **Concepts:** Wikipedia titles become slugs (`Boosting_(machine_learning)` → `boosting_machine_learning`). The title with spaces becomes `name`, and the raw title is kept as an alias. Colliding slugs get `_2`, `_3` and are counted in the sanity line. Benchmarks have no pages, so `sources` points at the dataset file and **`page` holds the 1-based line number** where the concept first appears. For LectureBank, the Wikipedia URL becomes `description`.
 
+### Scoring convention per dataset (decided 2026-11-01)
+
+Our own gold (`data/gold/`) stays **direct-edge only**: a shortcut pair is `none`. A benchmark whose positives include transitive (shortcut) pairs is scored differently: we take the **transitive closure of our predicted edges** (`common.transitive_closure`) and compare it with the benchmark's labels. Otherwise every shortcut positive would count as a miss for a correct direct-edge graph.
+
+| Dataset | Positives include transitive pairs? | How we score |
+|---|---|---|
+| AL-CPL | **Yes.** The README says positive pairs were added via transitivity. | Closure of our predictions vs. AL-CPL labels |
+| University Course | **Not stated** in the README or paper. Checked on the data: see the `positives implied by other positives` count the converter prints. | Closure if that count is > 0, else direct edges. Record the count and the choice here after the first conversion. |
+| LectureBank | **Not stated.** Annotators judged each pair independently, so shortcuts may be labelled either way. Same check. | Same rule as University Course |
+
+The converter's sanity line reports `positives implied by other positives` for every graph: positive pairs that a path of other positives already implies. For AL-CPL this should be large by construction.
+
 ### Caveats for evaluation (read before using these numbers in the paper)
-- **AL-CPL positives include transitive pairs.** Its authors added positives by transitivity, so shortcut pairs are positive in AL-CPL. Our gold and our discovery treat shortcut pairs as `none`. Scored naively, our recall on AL-CPL is understated. Compare against the transitive closure of our predicted edges, or say clearly which convention each number uses.
+- **AL-CPL positives include transitive pairs** (see the convention above). Say in the paper which convention each number uses.
 - **LectureBank direction** is taken from the paper ("the edge direction goes from concept vertex A to concept vertex B" when A is a prerequisite of B) and the column names (`Source_Topic_ID, Target_Topic_ID`). The README itself does not state it.
 - **LectureBank negatives are not "both said no".** A 0 means the two annotators did not both say yes.
 

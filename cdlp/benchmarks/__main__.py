@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> None:
         print(
             f"{s['course_id']}: {s['concepts']} concepts, {s['pairs']} pairs "
             f"({s['positive']} positive, {s['none']} none), "
+            f"{s['transitive_positives']} positives implied by other positives, "
             f"{s['slug_collisions']} slug collisions -> {folder}",
             file=sys.stderr,
         )
