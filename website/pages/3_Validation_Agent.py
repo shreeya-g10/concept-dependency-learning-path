@@ -202,17 +202,23 @@ else:
     data = rq1[name]
     rows = data["rows"]
     config = data.get("config", {})
+    done = [r for r in rows if r.get("status", "ok") == "ok" and r.get("f1") is not None]
+    missing = [r["setting"] for r in rows if r not in done]
     st.caption(
-        f"dataset `{data.get('dataset', '?')}` · scoring `{config.get('scoring', '?')}` · "
-        f"{len(rows)} settings"
+        f"dataset `{data.get('dataset', '?')}` · course `{data.get('course_id', '?')}` · "
+        f"scoring `{data.get('scoring', config.get('scoring', '?'))}` · "
+        f"{len(done)} of {len(rows)} settings run"
     )
-    st.bar_chart(
-        {
-            metric: {r["setting"]: r.get(metric) or 0.0 for r in rows}
-            for metric in ("precision", "recall", "f1")
-        },
-        stack=False,
-    )
+    if missing:
+        st.caption(f"Not run yet (left out of the chart): {', '.join(missing)}")
+    if done:
+        st.bar_chart(
+            {
+                metric: {r["setting"]: r[metric] for r in done}
+                for metric in ("precision", "recall", "f1")
+            },
+            stack=False,
+        )
     st.dataframe(
         [
             {
