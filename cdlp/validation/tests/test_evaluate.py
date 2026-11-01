@@ -105,7 +105,7 @@ def test_benchmark_configs_use_closure_and_score_labelled_pairs_only():
     al_cpl = ev.load_config(CONFIGS / "al_cpl.json")
     assert al_cpl["scoring"] == "closure" and al_cpl["unlabelled_pairs"] == "ignore"
     assert len(al_cpl["courses"]) == 4
-    assert ev.load_config(CONFIGS / "university_course.json")["scoring"] == "auto"
+    assert ev.load_config(CONFIGS / "university_course.json")["scoring"] == "closure"
     assert ev.load_config(CONFIGS / "ds101.json")["scoring"] == "direct"
 
 

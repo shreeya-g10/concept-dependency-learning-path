@@ -117,13 +117,27 @@ Our own gold (`data/gold/`) stays **direct-edge only**: a shortcut pair is `none
 | Dataset | Positives include transitive pairs? | How we score |
 |---|---|---|
 | AL-CPL | **Yes.** The README says positive pairs were added via transitivity. | Closure of our predictions vs. AL-CPL labels |
-| University Course | **Not stated** in the README or paper. Checked on the data: see the `positives implied by other positives` count the converter prints. | Closure if that count is > 0, else direct edges. Record the count and the choice here after the first conversion. |
+| University Course | **Yes, on the data** (not stated in the README or paper): 555 of 1007 positives are implied by other positives (first conversion, 2026-11-02). | **Closure** of our predictions vs. University Course labels (`scoring: closure` in `cdlp/validation/configs/rq1/university_course.json`) |
 | LectureBank | n/a | **Not used in evaluation: licence not stated** |
 
 The converter's sanity line reports `positives implied by other positives` for every graph: positive pairs that a path of other positives already implies. For AL-CPL this should be large by construction.
 
+### First conversion (2026-11-02, files verified against the SHAs above)
+
+| Graph | Concepts | Positive pairs | Negative pairs | Positives implied by other positives |
+|---|---|---|---|---|
+| `al_cpl_data_mining` | 120 | 292 | 534 | 180 |
+| `al_cpl_geometry` | 89 | 524 | 1157 | 414 |
+| `al_cpl_physics` | 153 | 487 | 1475 | 308 |
+| `al_cpl_precalculus` | 224 | 699 | 1361 | 454 |
+| `university_course` | 521 | 1007 | 1821 | 555 |
+
+AL-CPL counts match the dataset README. No slug collisions. AL-CPL positives have no cycles. **University Course positives contain one cycle:** a strongly connected component of 12 concepts (21 positives inside it). Outside it, 542 of 986 positives are still implied, so closure scoring does not depend on the cycle.
+
+**Open: University Course label `4`.** `cs_annotations.tsv` contains 99 votes with label `4`, which the dataset README does not define (it lists 1–3), and `university_course.py` rejects them (`line 150: unknown labels ['4']`). The numbers above come from a scratch copy with those votes blanked. That cannot change the positives, negatives or shortcut count (positives come only from `cs_preqs.csv`), only the `agreement` vote shares. The converter must handle `4` before RQ1 runs on this dataset.
+
 ### Caveats for evaluation (read before using these numbers in the paper)
-- **AL-CPL positives include transitive pairs** (see the convention above). Say in the paper which convention each number uses.
+- **AL-CPL and University Course positives include transitive pairs** (see the convention above). Say in the paper which convention each number uses.
 - **LectureBank direction** is taken from the paper ("the edge direction goes from concept vertex A to concept vertex B" when A is a prerequisite of B) and the column names (`Source_Topic_ID, Target_Topic_ID`). The README itself does not state it.
 - **LectureBank negatives are not "both said no".** A 0 means the two annotators did not both say yes.
 
@@ -138,7 +152,7 @@ The converter's sanity line reports `positives implied by other positives` for e
 ## Notes for the paper
 - **Benchmarks used:** AL-CPL (Liang et al., 2018) and the University Course dataset (Liang et al., 2017), both CC BY-NC-SA 4.0, used for non-commercial research with attribution.
 - **Excluded:** LectureBank (Li et al., 2019). Suggested wording: *"We did not use LectureBank because its repository and paper state no licence for the prerequisite annotations."*
-- **Scoring convention:** state per dataset whether our predicted edges were compared directly or via their transitive closure (table above). AL-CPL uses the closure.
+- **Scoring convention:** state per dataset whether our predicted edges were compared directly or via their transitive closure (table above). AL-CPL and University Course both use the closure.
 
 ## Done when
 Each dataset has verified source, version and licence notes here, the CLI converts it, and `pytest cdlp/benchmarks` passes.

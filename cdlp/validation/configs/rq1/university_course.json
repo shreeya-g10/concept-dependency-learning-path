@@ -1,8 +1,8 @@
 {
-  "_comment": "RQ1 on the University Course dataset (CC BY-NC-SA 4.0). Whether positives include transitive pairs is not stated, so scoring is auto: closure if some gold positive is implied by other positives (the count is recorded in gold_summary). Only labelled pairs are scored. No course text: see the evidence-check note in al_cpl.json.",
+  "_comment": "RQ1 on the University Course dataset (CC BY-NC-SA 4.0). Positives include transitive pairs: 555 of 1007 positives are implied by other positives (first conversion, 2026-11-02), so the transitive closure of our predictions is scored (cdlp/benchmarks/README.md). Only labelled pairs are scored. No course text: see the evidence-check note in al_cpl.json.",
   "dataset": "university_course",
   "settings_file": "settings.json",
-  "scoring": "auto",
+  "scoring": "closure",
   "unlabelled_pairs": "ignore",
   "bidirectional": "both",
   "exclude_pairs": null,
