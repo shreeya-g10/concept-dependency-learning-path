@@ -4,7 +4,7 @@ Dependency discovery, plus quiz items and simulated students.
 
 **Question you answer:** *How might these concepts depend on each other?*
 
-**Owners:** Shreeya owns `cdlp/discovery/` and `website/pages/2_Proposed_Dependencies.py`, except `cdlp/discovery/quiz.py` and `cdlp/discovery/sim_students.py`, which Vaidehi owns. Initial code by Sneha.
+**Owners:** Shreeya owns `cdlp/discovery/` and `website/pages/2_Proposed_Dependencies.py`, except `cdlp/discovery/quiz.py`, `cdlp/discovery/sim_students.py` and their tests (`tests/test_quiz.py`, `tests/test_sim_students.py`), which Vaidehi owns. Initial code by Sneha.
 
 | | File | Notes |
 |---|---|---|

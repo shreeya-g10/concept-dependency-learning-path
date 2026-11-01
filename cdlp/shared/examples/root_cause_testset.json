@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.1",
+  "course_id": "ds101",
+  "answers": [
+    {
+      "student_id": "student_a",
+      "item_id": "q_bst_1",
+      "concept_id": "binary_search_tree",
+      "answer": "None",
+      "correct": false,
+      "expected_concept": "binary_tree",
+      "note": "does not know a node has at most two children, so the BST ordering question fails"
+    },
+    {
+      "student_id": "student_b",
+      "item_id": "q_bst_1",
+      "concept_id": "binary_search_tree",
+      "answer": "8",
+      "correct": false,
+      "expected_concept": "binary_search_tree"
+    }
+  ]
+}

@@ -19,6 +19,8 @@
 # Files inside those folders with a different owner
 /cdlp/discovery/quiz.py                     @vkumaw
 /cdlp/discovery/sim_students.py             @vkumaw
+/cdlp/discovery/tests/test_quiz.py          @vkumaw
+/cdlp/discovery/tests/test_sim_students.py  @vkumaw
 /website/pages/2_*                          @shreeya-g10
 /website/pages/3_*                          @shreeya-g10
 

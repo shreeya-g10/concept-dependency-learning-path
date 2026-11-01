@@ -25,6 +25,7 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 
 - New `student_answers.json`: one row per quiz answer (`student_id`, `item_id`, `concept_id`, `answer`, `correct`). Input for root-cause tracing.
 - New `root_cause.json`: one trace per wrong answer (`traced_concept`, ranked `candidates`, `confidence`, `explanation`).
+- New `root_cause_testset.json` (added to 1.1 after its release; additive, so nothing breaks): the gold test set for root-cause tracing. Each row has the `student_answers.json` fields plus a required `expected_concept` (the gold root-cause slug) and an optional `note`. Example in `examples/`.
 - New `review_queue.json`: one row per HUMAN_REVIEW edge, ranked by `impact_score`, with `paths_affected` and `reason`.
 - `pipeline.py --course <id>` reads `data/raw/<course>/` and writes `outputs/<course>/`. No module CLI changed.
 - No existing schema changed; 1.0 files stay valid.

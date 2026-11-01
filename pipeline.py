@@ -50,7 +50,7 @@ def main() -> None:
     out = Path(args.out_dir) if args.out_dir else Path("outputs") / args.course
     out.mkdir(parents=True, exist_ok=True)
 
-    run("cdlp.extraction", "--input", str(raw), "--out-dir", str(out))
+    run("cdlp.extraction", "--input", str(raw), "--out-dir", str(out), "--course-id", args.course)
     run(
         "cdlp.discovery",
         "--concepts",
@@ -71,18 +71,16 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
     )
-    # discovery no longer writes quiz_items.json or sim_students.json; until
-    # learning_path builds them, fall back to the shared examples
+    # learning_path generates sim_students.json from the validated graph itself.
+    # It does not generate quiz_items.json yet, so fall back to the shared example
+    # (ds101 items) until it does.
     quiz_items = produced_or_example(out, "quiz_items.json")
-    sim_students = produced_or_example(out, "sim_students.json")
     run(
         "cdlp.learning_path",
         "--graph",
         str(out / "validated_graph.json"),
         "--quiz",
         str(quiz_items),
-        "--students",
-        str(sim_students),
         "--target",
         args.target,
         "--out-dir",

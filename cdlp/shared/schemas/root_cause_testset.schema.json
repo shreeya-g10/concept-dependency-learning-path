@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "root_cause_testset.json",
+  "description": "Since 1.1. Gold test set for root-cause tracing: student_answers rows, each with the concept a teacher says the wrong answer really traces back to.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "answers"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "student_id",
+          "item_id",
+          "concept_id",
+          "answer",
+          "correct",
+          "expected_concept"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string"
+          },
+          "item_id": {
+            "type": "string",
+            "description": "id of an item in quiz_items.json"
+          },
+          "concept_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "answer": {
+            "type": "string",
+            "description": "the option the student chose"
+          },
+          "correct": {
+            "type": "boolean"
+          },
+          "expected_concept": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "gold root-cause concept slug for this answer (may equal concept_id)"
+          },
+          "note": {
+            "type": "string",
+            "description": "optional annotator note"
+          }
+        }
+      }
+    }
+  }
+}
