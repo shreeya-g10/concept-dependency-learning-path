@@ -49,16 +49,16 @@ _CSS = """
 [data-testid="stSidebarNav"] a { min-height: 2.75rem; }
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
 [data-testid="stAlertContainer"] p, [data-testid="stAlertContainer"] strong {
-  color: #14202B !important; opacity: 1 !important;
+  color: #1F1B3D !important; opacity: 1 !important;
 }
 [data-testid="stMainBlockContainer"] { padding-top: 4rem; }
 h1 { font-size: 2.1rem !important; line-height: 1.2 !important; }
 [data-testid="stExpandSidebarButton"]::after {
   content: "__MENU__"; margin-left: 0.25rem; font-size: 1.05rem; font-weight: 600;
-  color: #14202B;
+  color: #1F1B3D;
 }
 [data-testid="stExpandSidebarButton"] { width: auto !important; min-height: 2.75rem; }
-:focus-visible { outline: 3px solid #0B4F8A !important; outline-offset: 2px; }
+:focus-visible { outline: 3px solid #4B3F8F !important; outline-offset: 2px; }
 </style>
 """.replace("__MENU__", S.MENU)
 

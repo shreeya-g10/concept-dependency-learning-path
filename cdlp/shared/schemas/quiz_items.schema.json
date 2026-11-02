@@ -49,6 +49,10 @@
           },
           "chunk_id": {
             "type": "string"
+          },
+          "source_quote": {
+            "type": "string",
+            "description": "optional (1.9): word-for-word sentence from chunk_id that proves the answer"
           }
         }
       }
@@ -92,6 +96,21 @@
           "additionalProperties": {
             "type": "integer"
           }
+        },
+        "check_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "check_prompt_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items_checked": {
+          "type": "integer"
         }
       }
     }

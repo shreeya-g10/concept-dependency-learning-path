@@ -1,12 +1,12 @@
-# Calm, high-contrast theme. website/test_foundation.py checks the contrast ratios.
+# Calm pastel lavender, high contrast. website/test_foundation.py checks the contrast ratios.
 [theme]
 base = "light"
-primaryColor = "#0B4F8A"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#EEF3F8"
-textColor = "#14202B"
-linkColor = "#0B4F8A"
-borderColor = "#5B6B7A"
+primaryColor = "#4B3F8F"
+backgroundColor = "#F4F2FB"
+secondaryBackgroundColor = "#E6E2F6"
+textColor = "#1F1B3D"
+linkColor = "#4B3F8F"
+borderColor = "#6A6494"
 font = "sans-serif"
 baseFontSize = 18
 baseRadius = "medium"
