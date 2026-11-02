@@ -1,7 +1,7 @@
 """Evaluate discovered edges against gold prerequisite labels.
 
     python -m cdlp.discovery.evaluate --relationships outputs/ds101/relationships.json \
-        --gold data/gold/gold_edges.csv --out cdlp/discovery/results/evaluation.json
+        [--gold data/gold/<course>/gold_edges.csv] --out cdlp/discovery/results/evaluation.json
 
 Counting (directed pairs):
 - TP: gold says hard/soft and the edge was predicted.
@@ -81,7 +81,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--relationships", type=Path, required=True)
-    parser.add_argument("--gold", type=Path, default=Path("data/gold/gold_edges.csv"))
+    parser.add_argument("--gold", type=Path, help="default: data/gold/<course_id>/gold_edges.csv")
     parser.add_argument(
         "--out", type=Path, default=Path(__file__).parent / "results/evaluation.json"
     )
@@ -91,6 +91,7 @@ def main() -> None:
     args = parser.parse_args()
 
     data = read_json(args.relationships)
+    args.gold = args.gold or Path("data/gold") / data["course_id"] / "gold_edges.csv"
     metrics = evaluate(data["relationships"], load_gold(args.gold))
     result = {
         "config": {

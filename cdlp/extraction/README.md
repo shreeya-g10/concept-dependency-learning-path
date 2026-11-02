@@ -25,7 +25,7 @@ Format and example: `cdlp/shared/schemas/`, `cdlp/shared/examples/`.
 - [x] Canonicalization: merge "BST" / "Binary Search Tree" (embeddings + LLM check), keep aliases
 - [x] Granularity filter: drop too-fine ("Left Subtree") and too-broad ("Computer Science") concepts
 - [x] **Day 5: hand off real `chunks.jsonl` + `concepts.json`** (post in the group when they're ready)
-- [x] Merge everyone's annotation files into `data/gold/gold_edges.csv` + `gold_concepts.json`, and report Cohen's κ (per-course merge and κ both ways now in `data/gold/merge_gold.py`)
+- [x] Merge the annotation files and report Cohen's κ. Moved to `data/gold/merge_gold.py` (per course, κ raw and with the shortcut rule); `evaluate.py` now scores concept extraction only
 - [x] Evaluation: concept precision / recall / F1 vs gold → `cdlp/extraction/results/`
 - [x] Website shell: navigation, styling, course selector, page 1; deploy free on Streamlit Community Cloud
 

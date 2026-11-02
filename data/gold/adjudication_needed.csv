@@ -1,0 +1,8 @@
+course,source,target,label_a,note_a,label_c,note_c
+ds101,recursion,binary_search_tree,soft,search and insert operations use recursion,none,shortcut via binary_tree
+ml101,gradient_descent,logistic_regression,hard,logistic regression optimized via gradient descent,soft,
+ml101,gradient_descent,neural_networks,hard,neural networks trained with gradient descent via backprop,soft,
+ml101,linear_regression,logistic_regression,soft,logistic regression generalizes linear model to probability,none,"shortcut via loss_function, gradient_descent"
+ml101,loss_function,gradient_descent,hard,gradient descent minimizes loss function,soft,
+ml101,loss_function,logistic_regression,hard,binary cross-entropy loss required for logistic regression,none,shortcut via gradient_descent
+ml101,loss_function,neural_networks,hard,loss function required for backpropagation,none,shortcut via gradient_descent

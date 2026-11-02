@@ -1,5 +1,5 @@
 {
-  "_comment": "RQ1 on the second domain. Gold rows are restricted to ml101's concepts, so the shared gold file works once the ml101 labels are merged into it (not yet: data/gold/gold_edges.csv holds ds101 pairs only).",
+  "_comment": "RQ1 on the second domain. Gold: data/gold/ml101/gold_edges.csv (data/gold/merge_gold.py; 4 rows until the 6 ml101 ties are adjudicated).",
   "dataset": "ml101",
   "settings_file": "settings.json",
   "reported_agent": "full_agent",
@@ -11,7 +11,7 @@
     {
       "course_id": "ml101",
       "concepts": "outputs/ml101/concepts.json",
-      "gold": "data/gold/gold_edges.csv",
+      "gold": "data/gold/ml101/gold_edges.csv",
       "run_dir": "outputs/rq1/ml101"
     }
   ]

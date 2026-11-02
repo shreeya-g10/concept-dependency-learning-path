@@ -42,7 +42,7 @@
     "kappa": {
       "title": "Inter-annotator agreement (Cohen's \u03ba, before adjudication)",
       "sources": [
-        "data/gold/merged/agreement.json"
+        "data/gold/agreement.json"
       ],
       "placeholders": 0
     },
@@ -67,7 +67,7 @@
       "cdlp/learning_path/results/rq2_rq4_results.json"
     ],
     "figures/kappa_raw_vs_rule.png": [
-      "data/gold/merged/agreement.json"
+      "data/gold/agreement.json"
     ],
     "figures/necessity_gap_stability.png": [
       "cdlp/validation/results/necessity_stability/summary.json"
@@ -110,7 +110,7 @@
     "cdlp/validation/results/necessity_v1_examples.json",
     "cdlp/validation/results/semantic_v1_examples.json",
     "cdlp/validation/results/semantic_v2_examples.json",
-    "data/gold/merged/agreement.json"
+    "data/gold/agreement.json"
   ],
   "results_not_used": [
     "cdlp/root_cause/results/dev_set_baselines_no_mastery.json",
