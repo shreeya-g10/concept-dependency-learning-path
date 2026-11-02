@@ -1,0 +1,33 @@
+{
+  "_comment": "Which proposed edges the ds101 demo validates (cdlp/validation/demo_rule.py). Chosen by hand before any validation run and without the gold labels. likely_wrong_family_pairs is a guess that makes rejections likely to appear; the agent may still accept these edges. A rejection rate on this subset says nothing about the agent's quality.",
+  "rule_id": "demo_subset_ds101_v1",
+  "selection": "rule demo_subset_ds101_v1: tree-family edges first, plus edges picked because they look likely to be wrong, so that rejections can be shown; rejection counts here are not a performance measure",
+  "chain": ["general_tree", "binary_tree", "binary_search_tree", "avl_tree"],
+  "families": {
+    "tree": [
+      "recursion",
+      "general_tree", "binary_tree", "binary_search_tree", "avl_tree", "red_black_tree",
+      "scapegoat_tree", "two_four_tree", "unbalanced_binary_search_tree", "rotation",
+      "rotate_left", "traversal", "breadth_first_traversal", "pre_order_traversal",
+      "height_of_tree"
+    ],
+    "heap": ["heap", "meldable_heap"],
+    "graph": ["graph", "adjacency_list", "adjacency_matrix", "depth_first_search"],
+    "linear": [
+      "array_stack", "array_based_stack", "array_based_queue", "rootish_array_stack", "stack",
+      "queue", "linked_list", "doubly_linked_list", "space_efficient_linked_list"
+    ]
+  },
+  "likely_wrong_family_pairs": [
+    ["linear", "tree"],
+    ["linear", "heap"],
+    ["heap", "tree"],
+    ["heap", "linear"],
+    ["heap", "graph"],
+    ["tree", "linear"],
+    ["graph", "tree"],
+    ["graph", "heap"],
+    ["graph", "linear"]
+  ],
+  "likely_wrong_slots": 8
+}

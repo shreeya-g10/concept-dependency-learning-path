@@ -19,6 +19,9 @@ Necessity is report-only by default (weight 0; --necessity-weight overrides it).
 --demo-subset N validates only the N proposed edges with the highest discovery confidence
 (ties by id), for a quick demo; the output says so in its top-level "subset" field, and
 the website shows a banner. It is not an evaluation of the course graph.
+With --demo-rule <config> the N edges are picked by that written rule instead (demo_rule.py,
+e.g. configs/demo_subset_ds101.json); the chosen edges and the rule are written next to
+--out as <out stem>.demo_subset.json. Only proposed edges can ever be chosen.
 --necessity-sample N runs the necessity test only on a seeded sample of N edges (same
 sample for the same seed and edges, so the runs with and without necessity compare on
 the same edges); the other edges get necessity "skipped". The sampled ids are written
@@ -38,7 +41,13 @@ import networkx as nx
 
 from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl
-from cdlp.validation import evidence_check, graph_checks, necessity_test, semantic_check
+from cdlp.validation import (
+    demo_rule,
+    evidence_check,
+    graph_checks,
+    necessity_test,
+    semantic_check,
+)
 
 CHECKS = ("evidence", "semantic", "necessity", "graph")
 LLM_CHECKS = ("evidence", "semantic", "necessity")
@@ -326,14 +335,40 @@ def main(argv: list[str] | None = None) -> dict:
         type=int,
         help="validate only the N highest-confidence proposed edges (labelled as a demo subset)",
     )
+    parser.add_argument(
+        "--demo-rule",
+        type=Path,
+        help="with --demo-subset: pick the N edges by this written rule, not by confidence",
+    )
     args = parser.parse_args(argv)
+    if args.demo_rule and not args.demo_subset:
+        parser.error("--demo-rule needs --demo-subset N")
     if args.review_queue and not args.students:
         parser.error("--review-queue needs --students (sim_students.json)")
 
     skip = {c for c in CHECKS if getattr(args, f"skip_{c}")}
     relationships = read_json(args.relationships)
     subset = None
-    if args.demo_subset:
+    if args.demo_rule:
+        relationships, subset, record = demo_rule.select(
+            relationships, args.demo_subset, demo_rule.load_rule(args.demo_rule)
+        )
+        sidecar = args.out.with_name(f"{args.out.stem}.demo_subset.json")
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        sidecar.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+        tiers = [edge["tier"] for edge in record["selected"]]
+        print(
+            f"demo subset ({record['rule_id']}): {subset['n']} of {subset['of']} proposed edges, "
+            f"{ {tier: tiers.count(tier) for tier in record['tier_order']} } -> {sidecar}",
+            file=sys.stderr,
+        )
+        for link in record["missing_chain_links"]:
+            print(
+                f"WARNING: chain link {link['source']} -> {link['target']} was not proposed "
+                "by discovery, so it is not in the demo graph",
+                file=sys.stderr,
+            )
+    elif args.demo_subset:
         relationships, subset = demo_subset(relationships, args.demo_subset)
         print(f"demo subset: {subset['n']} of {subset['of']} proposed edges", file=sys.stderr)
     result = validate(
