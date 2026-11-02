@@ -401,9 +401,12 @@ def test_searching_moves_the_focus(outputs):
     assert any(m.value == S.MAP_THIS_TOPIC.format(topic="Trees") for m in at.markdown)
 
 
-def test_map_and_full_map_use_accepted_links_only(outputs):
-    graph = json.loads((common.EXAMPLES / "validated_graph.json").read_text())
-    other = [e for e in graph["edges"] if e["decision"] != "ACCEPT"]
+def example_edges() -> list[dict]:
+    return json.loads((common.EXAMPLES / "validated_graph.json").read_text())["edges"]
+
+
+def test_map_cards_use_accepted_links_only(outputs):
+    other = [e for e in example_edges() if e["decision"] != "ACCEPT"]
     assert other
     for edge in other:
         at = map_page(edge["source"])
@@ -412,17 +415,33 @@ def test_map_and_full_map_use_accepted_links_only(outputs):
         at = map_page(edge["target"])
         assert not [b for b in at.button if b.key == f"before_{edge['source']}"]
 
+
+def test_full_map_picture_uses_accepted_links_only_and_waits_for_the_button(outputs):
+    pytest.importorskip("pyvis")  # not installed in CI: see the next test for that case
     at = map_page("binary_tree")
     assert not at.get("iframe")  # off until the button is pressed
     at = at.button(key="map_full_button").click().run()
     assert not at.exception
     html = at.get("iframe")[0].proto.srcdoc
-    accepted = {(e["source"], e["target"]) for e in graph["edges"] if e["decision"] == "ACCEPT"}
-    for edge in graph["edges"]:
+    for edge in example_edges():
         drawn = re.search(rf'"from": "{edge["source"]}"[^}}]*"to": "{edge["target"]}"', html)
-        assert bool(drawn) == ((edge["source"], edge["target"]) in accepted)
+        assert bool(drawn) == (edge["decision"] == "ACCEPT")
     at = at.button(key="map_full_button").click().run()
     assert not at.get("iframe")
+
+
+def test_full_map_without_the_drawing_library_lists_accepted_links_only(outputs, monkeypatch):
+    monkeypatch.setitem(sys.modules, "pyvis.network", None)  # importing it now fails
+    names = common.concept_names()
+    at = map_page("binary_tree")
+    assert not any("comes before" in m.value for m in at.markdown)  # off until the button
+    at = at.button(key="map_full_button").click().run()
+    assert not at.exception
+    assert not at.get("iframe")
+    listed = " ".join(m.value for m in at.markdown)
+    for edge in example_edges():
+        line = f"**{names[edge['source']]}** comes before **{names[edge['target']]}**"
+        assert (line in listed) == (edge["decision"] == "ACCEPT")
 
 
 def test_topic_without_links_says_the_map_is_not_complete(outputs):
