@@ -12,6 +12,7 @@ Labels are plain words first; the technical term follows in smaller text.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 
@@ -56,6 +57,62 @@ CHECK_WORDS = {
     "graph": "Fits the topic map",
 }
 STRENGTH_WORDS = {"hard": "Must learn first", "soft": "Helps to learn first"}
+
+
+# The validator's own reason is built for the results files: plain sentences come first, from the
+# same check grades, and the raw text follows in small print.
+TECHNICAL_REASON = re.compile(
+    r"^(evidence|semantic|necessity) \w+|^no check ran|^Direction unclear:|^Redundant"
+    r"|^self-loop\.|^duplicate\."
+)
+EVIDENCE_WORDS = {
+    "strong": "The notes clearly support this link.",
+    "medium": "The notes partly support this link.",
+    "weak": "The notes barely support this link.",
+    "none": "We found nothing in the notes that supports this link.",
+}
+SEMANTIC_WORDS = {
+    "strong": "The AI says this teaching order makes sense.",
+    "medium": "The AI says this teaching order mostly makes sense.",
+    "weak": "The AI has doubts about this teaching order.",
+    "none": "The AI says this teaching order does not make sense.",
+}
+GRAPH_WORDS = {
+    "cycle": "This link is part of a circle of links, so a person has to decide.",
+    "contradiction": "The AI suggested this link in both directions, so a person has to decide.",
+    "redundant": "Other links already lead from the first topic to the second.",
+    "self_loop": "This link goes from a topic back to itself.",
+    "duplicate": "This link is listed twice.",
+}
+
+
+def plain_reason(edge: dict) -> tuple[str, str | None]:
+    """(reason in plain words, the technical part for the small print, or None if it was plain)."""
+    reason = edge["reason"]
+    if not TECHNICAL_REASON.match(reason):
+        return reason, None
+    checks = edge.get("checks", {})
+    sentences = [
+        EVIDENCE_WORDS.get(checks.get("evidence")),
+        SEMANTIC_WORDS.get(checks.get("semantic")),
+        GRAPH_WORDS.get(checks.get("graph")),
+    ]
+    technical, found, ai_words = reason.partition(" Semantic: ")
+    if found:
+        skipped = re.search(r"\s*\((skipped: [^)]*|necessity not in the sample)\)\s*$", ai_words)
+        if skipped:
+            technical += f" ({skipped.group(1)})"
+            ai_words = ai_words[: skipped.start()]
+        sentences.append(f"The AI's words: {ai_words}")
+    plain = " ".join(s for s in sentences if s)
+    return plain or "The checks did not give a clear answer, so a person has to decide.", technical
+
+
+def show_reason(edge: dict) -> None:
+    plain, technical = plain_reason(edge)
+    st.write(plain)
+    if technical:
+        st.caption(f"Technical details: {technical}")
 
 
 def label(concept_id: str) -> str:
@@ -215,7 +272,7 @@ for edge in pending:
             f"**{label(edge['source'])} → {label(edge['target'])}**"
             + (" · ⛔ makes a circle" if blocking else "")
         )
-        st.write(edge["reason"])
+        show_reason(edge)
         st.caption(
             ("blocking · " if blocking else f"impact score {fmt(row.get('impact_score'))} · ")
             + f"AI confidence {edge['confidence']:.2f} · edge {edge['id']}"
@@ -358,7 +415,7 @@ with links_box:
     for e in shown:
         by = " · decided by teacher" if (e.get("review") or {}).get("status") == "applied" else ""
         with st.expander(f"{label(e['source'])} → {label(e['target'])}{by}"):
-            st.write(e["reason"])
+            show_reason(e)
             st.markdown(" · ".join(f"**{CHECK_WORDS[c]}** {grade(e['checks'][c])}" for c in CHECKS))
             st.caption(f"AI confidence {e['confidence']:.2f} · edge {e['id']}")
             row = necessity_rows.get(f"{e['source']}->{e['target']}")
