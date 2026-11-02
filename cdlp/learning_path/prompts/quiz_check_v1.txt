@@ -1,0 +1,20 @@
+You are checking a quiz question before a student sees it. Use only the excerpt below, not your own memory.
+
+TOPIC:
+{concept_name}
+
+EXCERPT FROM THE STUDENT'S BOOK:
+{excerpt}
+
+QUESTION:
+{question}
+
+OPTIONS:
+{options}
+
+Decide three things:
+1. "correct_letter": which single option does the excerpt prove? Write "NONE" if the excerpt does not prove any option.
+2. "only_one_correct": false if two options could both be correct or mean the same thing, otherwise true.
+3. "about_topic": false if the question is really about something other than the topic, otherwise true.
+
+Return only JSON: {{"correct_letter": "A", "only_one_correct": true, "about_topic": true}}

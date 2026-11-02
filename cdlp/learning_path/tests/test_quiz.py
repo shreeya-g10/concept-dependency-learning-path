@@ -175,7 +175,9 @@ def test_generate_keeps_only_valid_items_and_records_skips(monkeypatch):
             "trees": {"something": "else"},
         },
     )
-    out = quiz.generate_quiz_items(concepts, chunks, course_id="ml101", model="m-test")
+    out = quiz.generate_quiz_items(
+        concepts, chunks, course_id="ml101", model="m-test", prompt_version="quiz_v1"
+    )
 
     assert check(out, "quiz_items") == []
     assert out["course_id"] == "ml101"
@@ -217,6 +219,8 @@ def test_cli_writes_quiz_items_for_any_course(monkeypatch, tmp_path):
             "any_course_42",
             "--out",
             str(out),
+            "--prompt-version",
+            "quiz_v1",
         ]
     )
     written = read_json(out)
@@ -228,6 +232,7 @@ def test_learning_path_cli_generates_quiz_when_no_quiz_given(monkeypatch, tmp_pa
     from cdlp.learning_path import __main__ as cli
     from cdlp.shared.validate import check_file
 
+    monkeypatch.setattr(quiz, "PROMPT_VERSION", "quiz_v1")
     fake_llm(
         monkeypatch,
         {c: {"items": [good(f"About {c}?")]} for c in ["trees", "binary_tree", "avl_tree"]},
