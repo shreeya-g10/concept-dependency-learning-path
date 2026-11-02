@@ -76,6 +76,16 @@ def main() -> None:
         help="passed to extraction: deduplicate with TF-IDF if the embedding model fails",
     )
     parser.add_argument(
+        "--skip-necessity",
+        action="store_true",
+        help="passed to validation: skip the report-only necessity test (quick builds)",
+    )
+    parser.add_argument(
+        "--demo-subset",
+        type=int,
+        help="passed to validation: validate only the N highest-confidence edges (a demo)",
+    )
+    parser.add_argument(
         "--allow-rule-based",
         action="store_true",
         help="passed to extraction: keyword-catalog concepts if the LLM is unreachable",
@@ -108,6 +118,8 @@ def main() -> None:
         str(out / "chunks.jsonl"),
         "--out",
         str(out / "validated_graph.json"),
+        *(["--skip-necessity"] if args.skip_necessity else []),
+        *(["--demo-subset", str(args.demo_subset)] if args.demo_subset else []),
     )
     # teacher decisions (website page 3) survive a re-run: apply them to the new graph
     if (out / "review_decisions.json").exists():

@@ -194,8 +194,10 @@ with tab_upload:
                 f"**Time estimate:** extraction makes {est['extraction_calls']} LLM calls "
                 f"(≈ {est['extraction_minutes']} min). The whole pipeline takes roughly "
                 f"**{low}–{high} min**: discovery and validation depend on how many concepts "
-                "are found, so that part is a rough range (assumptions in `website/jobs.py`). "
-                "Cached LLM calls are almost free, so a re-run is faster."
+                "are found, so that part is a rough range. Only the validator speed is measured "
+                "(llama3.1:8b, about 48 s per call on this laptop); the rest are assumptions "
+                "(`website/jobs.py`). Website builds skip the report-only necessity test to stay "
+                "quick. Cached LLM calls are almost free, so a re-run is faster."
             )
         llm_ok, llm_message = jobs.llm_status()
         if llm_ok:

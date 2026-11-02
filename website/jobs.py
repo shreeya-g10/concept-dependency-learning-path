@@ -52,18 +52,22 @@ STAGES = [
 ]
 START_TIMEOUT = 30  # s a job may stay "starting" before it counts as failed to start
 
-# Time estimate. Per-call times measured on the team laptop with llama3.1:8b
-# (CLAUDE.local.md): ~18 s for a short reply, ~36 s for a long one. Cached calls ~0 s.
-SHORT_S, LONG_S = 18, 36
+# Time estimate. MEASURED on this 8 GB laptop (2026-11-02): the validator llama3.1:8b
+# takes ~48 s per call (it swaps). ASSUMED (not measured for these prompts): qwen2.5:7b
+# ~5 s for a short reply (discovery) and ~15 s for a long one (extraction, quiz).
+# Cached calls ~0 s.
+VALIDATOR_S = 48
+SHORT_S, LONG_S = 5, 15
 CHUNK_WORDS = 500  # cdlp.extraction splits a page into chunks of at most ~500 words
 # Discovery and validation depend on how many concepts extraction finds, which is
 # unknown before the run. These are ASSUMPTIONS for a rough range, not measurements.
 CONCEPTS_PER_CHUNK = (0.15, 0.4)
 CANDIDATES_PER_CONCEPT = 3  # candidate pairs sent to discovery per concept
 EDGE_SHARE = 0.5  # share of candidate pairs proposed as edges (then validated)
-# Validation per edge: evidence (short) + semantic (short) + necessity test
-# (question writing and 3 learner runs: long; 3 grades: short).
-VALIDATION_S_PER_EDGE = 2 * SHORT_S + 4 * LONG_S + 3 * SHORT_S
+# Website builds skip the report-only necessity test (QUICK_BUILD_ARGS), so validation
+# costs two validator calls per edge: evidence and semantic.
+VALIDATION_S_PER_EDGE = 2 * VALIDATOR_S
+QUICK_BUILD_ARGS = ["--skip-necessity"]
 
 LLM_HINTS = ("Connection refused", "ConnectionError", "Max retries exceeded", "NewConnectionError")
 
@@ -246,7 +250,14 @@ def _alive(pid: int | None) -> bool:
 
 
 def pipeline_command(course_id: str) -> list[str]:
-    return [sys.executable, "-u", str(ROOT / "pipeline.py"), "--course", course_id]
+    return [
+        sys.executable,
+        "-u",
+        str(ROOT / "pipeline.py"),
+        "--course",
+        course_id,
+        *QUICK_BUILD_ARGS,
+    ]
 
 
 def start_job(

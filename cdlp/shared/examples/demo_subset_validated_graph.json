@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.8",
+  "course_id": "ds101",
+  "nodes": [
+    {
+      "id": "recursion",
+      "name": "Recursion"
+    },
+    {
+      "id": "trees",
+      "name": "Trees"
+    },
+    {
+      "id": "binary_tree",
+      "name": "Binary Trees"
+    },
+    {
+      "id": "binary_search_tree",
+      "name": "Binary Search Trees"
+    },
+    {
+      "id": "avl_tree",
+      "name": "AVL Trees"
+    },
+    {
+      "id": "graphs",
+      "name": "Graphs"
+    }
+  ],
+  "edges": [
+    {
+      "id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.95,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.72,
+      "score_control": 0.89,
+      "score_without": 0.17,
+      "n_questions": 3,
+      "question_format": "open",
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "A binary tree is a tree in which"
+        }
+      ],
+      "reason": "Binary trees are defined as a restricted kind of tree."
+    },
+    {
+      "id": "r2",
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.7,
+      "evidence": [
+        {
+          "chunk_id": "ch_l7_p18",
+          "doc": "ds_lec7.pdf",
+          "page": 18,
+          "quote": "A binary search tree is a binary tree"
+        }
+      ],
+      "reason": "BST is defined as a binary tree with an ordering rule."
+    },
+    {
+      "id": "r3",
+      "source": "binary_search_tree",
+      "target": "avl_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "decision": "ACCEPT",
+      "confidence": 0.94,
+      "checks": {
+        "evidence": "strong",
+        "semantic": "strong",
+        "necessity": "strong",
+        "graph": "ok"
+      },
+      "necessity_gap": 0.67,
+      "evidence": [
+        {
+          "chunk_id": "ch_l9_p04",
+          "doc": "ds_lec9.pdf",
+          "page": 4,
+          "quote": "self-balancing binary search tree"
+        }
+      ],
+      "reason": "AVL rotations must preserve the BST ordering property."
+    }
+  ],
+  "skipped_checks": [],
+  "subset": {
+    "kind": "demo",
+    "n": 3,
+    "of": 6,
+    "selection": "highest discovery confidence (ties by id)"
+  }
+}

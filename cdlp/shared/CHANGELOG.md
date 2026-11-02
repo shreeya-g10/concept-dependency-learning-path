@@ -8,6 +8,11 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.8
+
+- `validated_graph.json` may carry an optional top-level `subset` (`kind`, `n`, `of`, `selection`), written when only part of the proposed edges was validated (`python -m cdlp.validation --demo-subset N`: the N highest-confidence edges). Such a graph is a demo, not an evaluation; the website shows a banner for it. Example: `examples/demo_subset_validated_graph.json`.
+- No field renamed, removed, retyped or made required; older files stay valid.
+
 ## 1.7
 
 - `concepts.json` may carry four new optional top-level fields written by `cdlp.extraction`:

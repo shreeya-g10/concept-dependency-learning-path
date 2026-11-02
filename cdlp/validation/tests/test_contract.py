@@ -262,3 +262,22 @@ def test_ablation_outputs_can_have_their_rq1_names(tmp_path, name):
         ]
     )
     assert check(json.loads((tmp_path / name).read_text()), "validated_graph") == []
+
+
+def test_demo_subset_keeps_the_highest_confidence_edges(tmp_path):
+    graph = run_cli(tmp_path, "--demo-subset", "3")
+
+    rels = read_json(f"{EX}/relationships.json")["relationships"]
+    top = sorted(rels, key=lambda r: (-r["confidence"], r["id"]))[:3]
+    assert sorted(e["id"] for e in graph["edges"]) == sorted(r["id"] for r in top)
+    assert graph["subset"] == {
+        "kind": "demo",
+        "n": 3,
+        "of": len(rels),
+        "selection": "highest discovery confidence (ties by id)",
+    }
+    assert check_file(tmp_path / "validated_graph.json") == []
+
+
+def test_no_subset_field_without_the_flag(tmp_path):
+    assert "subset" not in run_cli(tmp_path)

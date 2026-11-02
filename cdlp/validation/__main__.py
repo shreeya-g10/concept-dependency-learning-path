@@ -16,6 +16,9 @@ Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is writt
 never blocks ACCEPT. A check with weight 0 in the config is report-only: it runs and is
 recorded on every edge, but takes no part in the score, the vetoes or the decision.
 Necessity is report-only by default (weight 0; --necessity-weight overrides it).
+--demo-subset N validates only the N proposed edges with the highest discovery confidence
+(ties by id), for a quick demo; the output says so in its top-level "subset" field, and
+the website shows a banner. It is not an evaluation of the course graph.
 --necessity-sample N runs the necessity test only on a seeded sample of N edges (same
 sample for the same seed and edges, so the runs with and without necessity compare on
 the same edges); the other edges get necessity "skipped". The sampled ids are written
@@ -40,7 +43,7 @@ from cdlp.validation import evidence_check, graph_checks, necessity_test, semant
 CHECKS = ("evidence", "semantic", "necessity", "graph")
 LLM_CHECKS = ("evidence", "semantic", "necessity")
 DEFAULT_CONFIG = Path(__file__).parent / "configs" / "default.json"
-SCHEMA_VERSION = "1.5"
+SCHEMA_VERSION = "1.8"  # 1.5: 'skipped'; 1.8: optional top-level 'subset' (demo runs)
 SKIPPED = "skipped"
 STRUCTURAL_REJECT = {graph_checks.SELF_LOOP: "self-loop", graph_checks.DUPLICATE: "duplicate"}
 
@@ -146,6 +149,20 @@ def necessity_sample_ids(rels: list[dict], n: int, seed: int, course_id: str) ->
     if n >= len(ids):
         return ids
     return sorted(random.Random(f"{seed}:{course_id}").sample(ids, n))
+
+
+def demo_subset(relationships: dict, n: int) -> tuple[dict, dict]:
+    """Keep the n proposed edges with the highest discovery confidence (ties by id)."""
+    rels = relationships["relationships"]
+    kept = sorted(rels, key=lambda r: (-float(r.get("confidence") or 0), r["id"]))[:n]
+    kept_ids = {r["id"] for r in kept}
+    subset = {
+        "kind": "demo",
+        "n": len(kept),
+        "of": len(rels),
+        "selection": "highest discovery confidence (ties by id)",
+    }
+    return {**relationships, "relationships": [r for r in rels if r["id"] in kept_ids]}, subset
 
 
 def validate(
@@ -304,13 +321,23 @@ def main(argv: list[str] | None = None) -> dict:
         "--necessity-sample", type=int, help="run necessity on a seeded sample of N edges only"
     )
     parser.add_argument("--necessity-seed", type=int, default=42)
+    parser.add_argument(
+        "--demo-subset",
+        type=int,
+        help="validate only the N highest-confidence proposed edges (labelled as a demo subset)",
+    )
     args = parser.parse_args(argv)
     if args.review_queue and not args.students:
         parser.error("--review-queue needs --students (sim_students.json)")
 
     skip = {c for c in CHECKS if getattr(args, f"skip_{c}")}
+    relationships = read_json(args.relationships)
+    subset = None
+    if args.demo_subset:
+        relationships, subset = demo_subset(relationships, args.demo_subset)
+        print(f"demo subset: {subset['n']} of {subset['of']} proposed edges", file=sys.stderr)
     result = validate(
-        read_json(args.relationships),
+        relationships,
         read_json(args.concepts),
         read_jsonl(args.chunks),
         skip=skip,
@@ -319,6 +346,8 @@ def main(argv: list[str] | None = None) -> dict:
         necessity_sample=args.necessity_sample,
         necessity_seed=args.necessity_seed,
     )
+    if subset:
+        result["subset"] = subset
     sample = result.pop("_necessity_sample", None)
     if sample:
         sidecar = args.out.with_name(f"{args.out.stem}.necessity_sample.json")

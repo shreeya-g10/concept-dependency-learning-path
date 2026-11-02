@@ -100,6 +100,22 @@ def get_chunks_map(course_id: str | None = None) -> dict[str, dict[str, Any]]:
     return {}
 
 
+def demo_subset_note(course_id: str | None = None) -> str | None:
+    """Banner text when the course's validated graph covers only a demo subset of edges."""
+    try:
+        graph = load("validated_graph.json", course_id=course_id)
+    except (OSError, ValueError):
+        return None
+    subset = graph.get("subset") if isinstance(graph, dict) else None
+    if not subset:
+        return None
+    return (
+        f"**Demo subset:** only {subset['n']} of {subset['of']} proposed prerequisite edges "
+        f"were validated ({subset['selection']}). The graph and the learning paths use only "
+        "these edges. This is a demo, not an evaluation of the course graph."
+    )
+
+
 def page_header(title: str, owner: str, source_file: str) -> None:
     """`owner` is kept for signature stability and no longer shown (single maintainer)."""
     st.title(title)
@@ -107,6 +123,9 @@ def page_header(title: str, owner: str, source_file: str) -> None:
     is_example = using_examples(source_file, course_id=course)
     badge = "🟡 Example Mock Data" if is_example else f"🟢 Live Pipeline Data (outputs/{course}/)"
     st.caption(f"Course: `{course}` · Source: `{source_file}` · {badge}")
+    note = demo_subset_note(course)
+    if note:
+        st.warning(note)
 
 
 # ---- anonymous answer log ---------------------------------------------------------
