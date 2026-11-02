@@ -11,6 +11,10 @@ text. By default each pair is asked in BOTH directions (like a tied candidate), 
 gold file's orientation never tells the model the answer; --pairs-direction given asks
 only the listed direction (half the calls). --chunks is optional with --pairs.
 
+--prompt-version discover_v3 asks one neutral question per unordered pair (A before B, B
+before A, or neither), so the direction comes from the model and not from the candidate's
+course order. Tied candidates and --pairs-direction make no difference: one call per pair.
+
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
 --baseline-only writes just relationships_baseline.json and skips the candidate
@@ -29,9 +33,11 @@ from pathlib import Path
 from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
 from cdlp.discovery.candidates import Candidate, candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
+    NEUTRAL_PROMPT_VERSIONS,
     PROMPT_VERSION,
     build_contract_relationships,
     discover_candidates,
+    neutral_summary,
 )
 from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
@@ -113,9 +119,14 @@ def main(argv: list[str] | None = None) -> None:
     else:
         candidates = generate_candidates(concepts_data, chunks)
     stats = candidate_stats(candidates, len(concepts))
+    neutral = args.prompt_version in NEUTRAL_PROMPT_VERSIONS
+    if neutral:
+        n_pairs = len({frozenset((c.source, c.target)) for c in candidates})
+        asked = f"(one neutral question each) -> {n_pairs} LLM calls"
+    else:
+        asked = f"({stats['tied']} tied, asked both ways) -> {stats['llm_calls']} LLM calls"
     print(
-        f"candidates: {stats['candidates']} of {stats['unordered_pairs']} pairs "
-        f"({stats['tied']} tied, asked both ways) -> {stats['llm_calls']} LLM calls",
+        f"candidates: {stats['candidates']} of {stats['unordered_pairs']} pairs {asked}",
         file=sys.stderr,
     )
 
@@ -126,6 +137,8 @@ def main(argv: list[str] | None = None) -> None:
         remove_transitive=args.remove_transitive,
         prompt_version=args.prompt_version,
     )
+    if neutral:
+        print(f"{args.prompt_version} answers: {neutral_summary(relationships)}", file=sys.stderr)
     write_json(
         args.out_dir / "relationships.json",
         {

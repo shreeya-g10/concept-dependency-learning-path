@@ -5,12 +5,26 @@ reasons by default: cycles, duplicates and transitive redundancy are the
 validator's graph check (cdlp/validation/graph_checks.py).
 """
 
+import hashlib
+from collections import Counter
+from itertools import chain, zip_longest
 from pathlib import Path
 
+from cdlp.discovery.candidates import _mentions, _terms
 from cdlp.shared.llm import chat_json
 
 PROMPT_VERSION = "discover_v2"  # discover_v1 is kept for the record; it leaked gold pairs
 TEMPERATURE = 0.0
+
+# Versions that ask one neutral question per unordered pair (A before B, B before A or
+# neither), so the direction comes from the model and not from the course file order.
+NEUTRAL_PROMPT_VERSIONS = {"discover_v3"}
+NEUTRAL_ANSWERS = {"A_BEFORE_B", "B_BEFORE_A", "NEITHER"}
+# Ollama's default context is 4096 tokens; a longer prompt loses its START, which held the
+# question in discover_v2 (200 of the 237 ds101 calls). These caps keep a neutral prompt
+# near 8,000 characters (about 2,300 tokens at the 3.56 characters per token of that run).
+MAX_EVIDENCE_CHUNKS = 4
+MAX_EXCERPT_CHARS = 1200
 
 # The prompt asks for a confidence *label*; the contract needs a number in [0, 1].
 # These values are a fixed, arbitrary ordinal mapping, not calibrated probabilities.
@@ -91,6 +105,127 @@ def _evidence_for(source: dict, target: dict, chunk_map: dict) -> list[dict]:
     return evidence
 
 
+def _hash_order(chunk_id: str) -> str:
+    """A stable order unrelated to file order, so evidence order cannot hint at direction."""
+    return hashlib.sha256(chunk_id.encode()).hexdigest()
+
+
+def _excerpt(text: str, terms: list[str], limit: int = MAX_EXCERPT_CHARS) -> str:
+    """At most limit characters, starting just before the first mention of either concept."""
+    if len(text) <= limit:
+        return text
+    lowered = text.lower()
+    hits = [i for i in (lowered.find(term) for term in terms) if i >= 0]
+    start = max(0, min(hits) - 100) if hits else 0
+    return text[start : start + limit]
+
+
+def select_neutral_evidence(a: dict, b: dict, chunk_map: dict) -> list[dict]:
+    """A few short excerpts: chunks naming both concepts first, then A's and B's in turn."""
+
+    def own_chunks(concept: dict) -> list[dict]:
+        ids = dict.fromkeys(s.get("chunk_id") for s in concept.get("sources", []))
+        return [chunk_map[i] for i in ids if i in chunk_map]
+
+    a_terms, b_terms = _terms(a), _terms(b)
+
+    def names_both(chunk: dict) -> bool:
+        text = chunk.get("text", "")
+        return any(_mentions(t, text) for t in a_terms) and any(_mentions(t, text) for t in b_terms)
+
+    a_chunks, b_chunks = own_chunks(a), own_chunks(b)
+    both = [c for c in {c["chunk_id"]: c for c in a_chunks + b_chunks}.values() if names_both(c)]
+    both.sort(key=lambda c: _hash_order(c["chunk_id"]))
+    turns = chain.from_iterable(zip_longest(a_chunks, b_chunks))
+    picked = {c["chunk_id"]: c for c in both[:MAX_EVIDENCE_CHUNKS]}
+    for chunk in turns:
+        if len(picked) >= MAX_EVIDENCE_CHUNKS:
+            break
+        if chunk is not None:
+            picked.setdefault(chunk["chunk_id"], chunk)
+    terms = a_terms + b_terms
+    return [
+        {**chunk, "text": _excerpt(chunk.get("text", ""), terms)}
+        for chunk in sorted(picked.values(), key=lambda c: _hash_order(c["chunk_id"]))
+    ]
+
+
+def build_neutral_prompt(x: dict, y: dict, evidence: list[dict], prompt_version: str) -> str:
+    """The same text whichever way round the pair arrives: A is always the lower ID."""
+    a, b = sorted((x, y), key=lambda concept: concept["id"])
+    return load_prompt(prompt_version).format(
+        a_id=a["id"],
+        a_name=a["name"],
+        a_description=a.get("description", ""),
+        b_id=b["id"],
+        b_name=b["name"],
+        b_description=b.get("description", ""),
+        evidence="\n".join(f"Chunk ID: {i['chunk_id']}\n{i['text']}" for i in evidence),
+    )
+
+
+def _names_concept(value, concept: dict) -> bool:
+    """Did the model name this concept? Tolerates case and _ - or space between words."""
+
+    def norm(text) -> str:
+        return " ".join(str(text).lower().replace("_", " ").replace("-", " ").split())
+
+    names = (concept["id"], concept["name"], *(concept.get("aliases") or []))
+    return norm(value) in {norm(name) for name in names}
+
+
+def _normalise_neutral_result(result, a: dict, b: dict, allowed_chunks: set) -> dict:
+    """Turn the reply into one record. Off-topic or malformed replies count as NEITHER."""
+    if not isinstance(result, dict):
+        result = {}
+    answer = str(result.get("answer", "NEITHER")).strip().upper().replace(" ", "_")
+    strength = str(result.get("strength", "NONE")).strip().lower()
+    on_topic = _names_concept(result.get("a"), a) and _names_concept(result.get("b"), b)
+    source, target = (b, a) if answer == "B_BEFORE_A" else (a, b)
+    direct = on_topic and answer in {"A_BEFORE_B", "B_BEFORE_A"} and strength in {"hard", "soft"}
+    chunk_ids = result.get("evidence_chunk_ids")
+    return {
+        "source": source["id"],  # always ours, never the LLM's
+        "target": target["id"],
+        "relationship": "DIRECT" if direct else "NONE",
+        "strength": strength if direct else "none",
+        "confidence": confidence_score(result.get("confidence")),
+        "evidence_chunk_ids": [
+            c for c in (chunk_ids if isinstance(chunk_ids, list) else []) if c in allowed_chunks
+        ],
+        "answer": answer if answer in NEUTRAL_ANSWERS and direct else "NEITHER",
+        "on_topic": on_topic,
+    }
+
+
+def discover_pair_neutral(
+    x: dict, y: dict, chunk_map: dict, prompt_version: str = "discover_v3"
+) -> dict:
+    a, b = sorted((x, y), key=lambda concept: concept["id"])
+    evidence = select_neutral_evidence(a, b, chunk_map)
+    prompt = build_neutral_prompt(a, b, evidence, prompt_version)
+    try:
+        result = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
+    except ValueError:  # the model returned text that is not JSON
+        result = {}
+    return _normalise_neutral_result(result, a, b, {item["chunk_id"] for item in evidence})
+
+
+def neutral_summary(relationships: list[dict]) -> dict:
+    """What a neutral run answered. Printed so a bad run shows up before anyone uses it."""
+    answers = Counter(r.get("answer") for r in relationships)
+    direct = [r for r in relationships if r["relationship"] == "DIRECT"]
+    return {
+        "A_BEFORE_B": answers["A_BEFORE_B"],
+        "B_BEFORE_A": answers["B_BEFORE_A"],
+        "NEITHER": answers["NEITHER"],
+        "off_topic": sum(not r.get("on_topic") for r in relationships),
+        "hard": sum(r["strength"] == "hard" for r in direct),
+        "soft": sum(r["strength"] == "soft" for r in direct),
+        "confidence": dict(sorted(Counter(r["confidence"] for r in direct).items())),
+    }
+
+
 def _merge_both_directions(forward: dict, backward: dict) -> dict:
     """A tied pair was asked both ways. Keep ONE record, never two opposite edges."""
     forward_direct = forward["relationship"] == "DIRECT"
@@ -152,17 +287,27 @@ def discover_candidates(
     chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     relationships = []
-    for candidate in candidates:
-        source = concept_map[candidate.source]
-        target = concept_map[candidate.target]
-        evidence = _evidence_for(source, target, chunk_map)
-        forward = discover_relationship(source, target, evidence, candidate.reasons, prompt_version)
-        if getattr(candidate, "tied", False):
-            backward = discover_relationship(
-                target, source, evidence, candidate.reasons, prompt_version
+    if prompt_version in NEUTRAL_PROMPT_VERSIONS:
+        # one question per unordered pair; the candidate's direction and reasons are not used
+        for pair in dict.fromkeys(frozenset((c.source, c.target)) for c in candidates):
+            x, y = sorted(pair)
+            relationships.append(
+                discover_pair_neutral(concept_map[x], concept_map[y], chunk_map, prompt_version)
             )
-            forward = _merge_both_directions(forward, backward)
-        relationships.append(forward)
+    else:
+        for candidate in candidates:
+            source = concept_map[candidate.source]
+            target = concept_map[candidate.target]
+            evidence = _evidence_for(source, target, chunk_map)
+            forward = discover_relationship(
+                source, target, evidence, candidate.reasons, prompt_version
+            )
+            if getattr(candidate, "tied", False):
+                backward = discover_relationship(
+                    target, source, evidence, candidate.reasons, prompt_version
+                )
+                forward = _merge_both_directions(forward, backward)
+            relationships.append(forward)
 
     if remove_transitive:
         # opt-in only: redundant edges are left out of the output; no record is rewritten

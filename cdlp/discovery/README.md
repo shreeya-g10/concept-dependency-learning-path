@@ -22,3 +22,8 @@ Dependency discovery. Quiz items and simulated students moved to `cdlp/learning_
 
 ## Done when
 The CLI writes `relationships.json` from the real `concepts.json`, metrics are in `cdlp/discovery/results/`, and `pytest cdlp/discovery` passes.
+
+## Prompt versions
+- `discover_v1`: kept for the record; it leaked gold pairs.
+- `discover_v2`: the default. It asks one fixed direction per candidate, set by course (file) order, and sends every chunk of both concepts. On ds101 that overflowed Ollama's 4096-token context in 200 of 237 calls, so the model never saw the question. Don't use it on real course text.
+- `discover_v3` (`--prompt-version discover_v3`): one neutral question per unordered pair (A before B, B before A, or neither). A is the lower ID, and the candidate's direction and reasons are not shown. Evidence is capped at 4 excerpts of up to 1,200 characters and the question comes last. A reply that doesn't name both concepts counts as NEITHER and as `off_topic` in the printed summary.
