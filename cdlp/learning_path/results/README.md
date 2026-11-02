@@ -54,4 +54,4 @@ How to read this:
 - The example quiz has one item per concept, so as shipped the strategy has nothing to ask and matches plain adaptive exactly. The rows with a placeholder ask "what if a second item existed". The placeholder item has no text: the simulated answer depends only on the concept.
 - The simulated answers are independent given the concept. A real student who guesses one question may well get a similar one right too, so the gain here is probably an upper limit.
 - This is the example graph, with 5 concepts. Rerun on real course graphs before citing it in the paper. The real ds101 quiz has 2 to 3 items per concept, so the strategy could run there.
-- Asked to reproduce: the code is in commit __COMMIT__ (`python -m cdlp.learning_path.evaluate`), and was removed in the next commit because it was not kept.
+- To reproduce: the code is in commit ae6327cb7 (`python -m cdlp.learning_path.evaluate`), and was removed in the next commit because it was not kept.
