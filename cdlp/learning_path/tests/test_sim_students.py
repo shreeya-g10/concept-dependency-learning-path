@@ -1,11 +1,8 @@
-"""Tests for simulated student generation with level-independent frontier sampler.
-
-Owner: Vaidehi.
-"""
+"""Tests for simulated student generation with level-independent frontier sampler."""
 
 from __future__ import annotations
 
-from cdlp.discovery.sim_students import generate_simulated_students
+from cdlp.learning_path.sim_students import generate_simulated_students
 from cdlp.shared.io import EXAMPLES, read_json
 from cdlp.shared.validate import check
 

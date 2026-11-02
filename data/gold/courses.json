@@ -1,0 +1,7 @@
+{
+  "_comment": "Concept ids per course, used by merge_gold.py to put each annotated pair in its course. A pair must fall in exactly one course.",
+  "courses": {
+    "ds101": ["trees", "binary_tree", "binary_search_tree", "avl_tree", "recursion", "graphs"],
+    "ml101": ["linear_regression", "loss_function", "gradient_descent", "logistic_regression", "regularization", "neural_networks"]
+  }
+}

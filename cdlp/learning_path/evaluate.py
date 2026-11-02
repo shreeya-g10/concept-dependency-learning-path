@@ -16,10 +16,10 @@ import random
 from pathlib import Path
 from typing import Any
 
-from cdlp.discovery.quiz import get_quiz_items
-from cdlp.discovery.sim_students import generate_simulated_students
 from cdlp.learning_path import api
 from cdlp.learning_path.graph import MASTERY_THRESHOLD, generic_path, is_mastered, load_graph
+from cdlp.learning_path.quiz import get_quiz_items
+from cdlp.learning_path.sim_students import generate_simulated_students
 from cdlp.shared.io import EXAMPLES, read_json
 
 RESULTS_DIR = Path("cdlp/learning_path/results")

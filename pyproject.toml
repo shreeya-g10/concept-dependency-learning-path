@@ -15,4 +15,4 @@ select = ["E", "F", "I", "B"]
 [tool.pytest.ini_options]
 # Each module has its own tests/ folder; importlib mode stops same-named test files clashing.
 addopts = "--import-mode=importlib"
-testpaths = ["cdlp", "website"]
+testpaths = ["cdlp", "website", "scripts"]

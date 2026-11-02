@@ -11,9 +11,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from cdlp.discovery.sim_students import generate_simulated_students
 from cdlp.learning_path import api
 from cdlp.learning_path.graph import is_mastered
+from cdlp.learning_path.sim_students import generate_simulated_students
 from cdlp.shared.io import read_json, write_json
 
 
