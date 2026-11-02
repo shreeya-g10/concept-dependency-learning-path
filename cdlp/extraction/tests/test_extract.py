@@ -1,9 +1,11 @@
 """Unit tests for concept extraction, canonicalization, and deduplication.
 
-Owner: Vaidehi.
-Never calls the real LLM in tests; uses pytest monkeypatch.
+Never calls the real LLM or loads the real embedding model; both are faked with monkeypatch.
 """
 
+import pytest
+
+from cdlp.extraction import extract
 from cdlp.extraction.extract import (
     are_acronym_match,
     extract_concepts_from_chunks,
@@ -13,6 +15,27 @@ from cdlp.extraction.extract import (
     to_slug,
 )
 from cdlp.shared.validate import check
+
+VOCAB = ["binary", "search", "tree", "recursion", "graph", "avl", "sort"]
+
+
+class FakeEmbedder:
+    """Bag-of-words over a tiny vocabulary: deterministic, CPU-only, needs no model download."""
+
+    def __init__(self):
+        self.calls = []
+
+    def encode(self, texts):
+        self.calls.append(list(texts))
+        return [[float(t.lower().count(w)) for w in VOCAB] for t in texts]
+
+
+@pytest.fixture(autouse=True)
+def fake_embedder(monkeypatch):
+    """No test in this file may load sentence-transformers (it needs the GPU and a download)."""
+    embedder = FakeEmbedder()
+    monkeypatch.setattr(extract, "get_embedder", lambda: embedder)
+    return embedder
 
 
 def test_to_slug():
@@ -46,12 +69,20 @@ def test_acronym_matching():
     assert not are_acronym_match("Trees", "Graphs")
 
 
-def test_semantic_similarity_dedup():
-    sim = semantic_similarity("BST", "Binary Search Tree")
-    assert sim >= 0.85
+def test_semantic_similarity_dedup(fake_embedder):
+    # acronym rule, no embedding needed
+    assert semantic_similarity("BST", "Binary Search Tree") >= 0.85
+    assert fake_embedder.calls == []
 
-    sim_diff = semantic_similarity("Recursion", "Graphs")
-    assert sim_diff < 0.6
+    # embedding path: cosine of the fake vectors
+    assert semantic_similarity("Recursion", "Graphs") < 0.6
+    assert semantic_similarity("Search Tree", "Tree Search") >= 0.85
+    assert fake_embedder.calls == [["Recursion", "Graphs"], ["Search Tree", "Tree Search"]]
+
+
+def test_semantic_similarity_without_embedder(monkeypatch):
+    monkeypatch.setattr(extract, "get_embedder", lambda: None)
+    assert semantic_similarity("Recursion", "Graphs") < 0.6  # char n-gram fallback
 
 
 def test_merge_and_canonicalize():
