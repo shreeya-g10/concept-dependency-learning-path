@@ -23,7 +23,9 @@ Merge, the gold of record (`<out-dir>/<course>/gold_edges.csv`, default
 data/gold/<course>/gold_edges.csv; columns source,target,label,agreement,note):
 majority of the committed (raw) labels. A tie
 is decided only by a row in the adjudication file (source,target,label,note); without
-one the pair is left out of the gold file and listed as unresolved in agreement.json.
+one the pair is left out of the gold file, listed as unresolved in agreement.json and
+written to `<out-dir>/adjudication_needed.csv` (course, pair, each annotator's label and
+note), the worklist for adjudication.
 Nothing here edits an annotator file.
 """
 
@@ -213,12 +215,30 @@ def write_gold(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def write_adjudication_needed(path: Path, unresolved: list[dict], annotations: dict) -> None:
+    """One row per unresolved tie: label_<x> / note_<x> for every annotator on any tie."""
+    who = sorted({a for tie in unresolved for a in tie["labels"]})
+    columns = ["course", "source", "target"] + [f"{k}_{a}" for a in who for k in ("label", "note")]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        for tie in sorted(unresolved, key=lambda t: (t["course"], t["source"], t["target"])):
+            row = {"course": tie["course"], "source": tie["source"], "target": tie["target"]}
+            for a in who:
+                cell = annotations[a].get((tie["source"], tie["target"]), {})
+                row[f"label_{a}"] = cell.get("label", "")
+                row[f"note_{a}"] = cell.get("note", "")
+            writer.writerow(row)
+
+
 def run(annotations_dir: Path, courses_file: Path, adjudication_file: Path | None, out: Path):
     annotations = load_annotations(annotations_dir)
     courses = json.loads(courses_file.read_text(encoding="utf-8"))["courses"]
     gold, unresolved = merge(annotations, courses, load_adjudication(adjudication_file))
     for course, rows in gold.items():
         write_gold(out / course / "gold_edges.csv", rows)
+    write_adjudication_needed(out / "adjudication_needed.csv", unresolved, annotations)
     report = {
         "computed_on": "labels as committed, before any adjudication",
         "shortcut_rule": RULE,
