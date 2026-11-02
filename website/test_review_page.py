@@ -69,7 +69,8 @@ def test_blocking_edges_come_first_and_cannot_be_accepted(outputs):
     accept = [b for b in at.button if b.key and b.key.startswith("accept_")]
     assert [b.key for b in accept] == ["accept_r7", "accept_r5"]  # blocking r7 first
     assert accept[0].disabled and not accept[1].disabled
-    assert any("blocking link" in e.value for e in at.error)
+    message = next(e.value for e in at.error if "blocking link" in e.value)
+    assert "in a circle" in message and "Reject it" in message  # why, and what to do next
 
 
 def test_accept_saves_the_decision_and_updates_the_graph(outputs):
@@ -97,6 +98,7 @@ def test_reject_and_change_of_mind(outputs):
     assert not at.exception
     r7 = edges_of(outputs)["r7"]
     assert r7["decision"] == "HUMAN_REVIEW" and r7["review"]["status"] == "refused_cycle"
+    assert any("Your Accept was refused" in w.value for w in at.warning)
 
 
 def test_example_data_is_read_only(tmp_path, monkeypatch):
