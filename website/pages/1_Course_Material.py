@@ -1,8 +1,8 @@
 """Course Material: upload files, build a course graph in the background, explore concepts.
 
-Upload: the files go to data/raw/<course_id>/ (TXT / MD / DOCX converted to PDF, see
-website/jobs.py). "Build course graph" starts `python pipeline.py --course <course_id>` as a
-background job through jobs.start_job(); this page only reads the job's state and log.
+Upload: the files go to data/raw/<course_id>/ as they are (cdlp.extraction reads PDF, PPTX,
+MD, TXT and DOCX). "Build course graph" starts `python pipeline.py --course <course_id>` as
+a background job through jobs.start_job(); this page only reads the job's state and log.
 """
 
 from __future__ import annotations
@@ -105,7 +105,9 @@ with tab_concepts:
                 doc_name = s.get("doc", "")
                 page_num = s.get("page", 1)
                 chunk_id = s.get("chunk_id", "")
-                citations.append(f"📄 **{doc_name}** (p. {page_num})")
+                # MD / DOCX chunks count sections, not pages (cdlp/extraction/parse.py)
+                where = "§" if doc_name.lower().endswith((".md", ".docx")) else "p."
+                citations.append(f"📄 **{doc_name}** ({where} {page_num})")
 
             st.markdown(" · ".join(citations))
 
@@ -162,12 +164,16 @@ with tab_upload:
 
     folder = jobs.RAW / course_id
     readable = (
-        sorted(p.name for p in folder.iterdir() if p.suffix.lower() in jobs.NATIVE)
+        sorted(
+            p.name
+            for p in folder.iterdir()
+            if p.suffix.lower() in jobs.READABLE and not p.name.lower().startswith("readme")
+        )
         if folder.is_dir()
         else []
     )
     if not readable:
-        st.info(f"No PDF or PPTX in `data/raw/{course_id}/` yet. Upload and save files first.")
+        st.info(f"No course files in `data/raw/{course_id}/` yet. Upload and save files first.")
     else:
         st.markdown(
             f"**Files in `data/raw/{course_id}/`:** " + ", ".join(f"`{n}`" for n in readable)
@@ -181,7 +187,7 @@ with tab_upload:
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Files", est["files"])
             c2.metric("Size", f"{est['megabytes']} MB")
-            c3.metric("Pages / slides", est["pages"])
+            c3.metric("Pages / slides / sections", est["pages"])
             c4.metric("Chunks", est["chunks"])
             low, high = est["total_minutes"]
             st.markdown(

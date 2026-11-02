@@ -143,3 +143,20 @@ def test_write_stats(sent, monkeypatch, tmp_path, fresh_stats):
             "prompt_versions": ["p_v1"],
         }
     )
+
+
+def test_num_ctx_is_sent_and_keyed_only_when_set(sent, monkeypatch, tmp_path, fresh_stats):
+    import hashlib
+
+    monkeypatch.setattr(llm, "PROVIDER", "ollama")
+
+    llm.chat("hi")  # unset: same key as before num_ctx existed
+    llm.chat("hi", num_ctx=16384)  # set: a different key -> a new request
+
+    assert "num_ctx" not in sent[0]["options"]
+    assert sent[1]["options"]["num_ctx"] == 16384
+    old_key = json.dumps(
+        [llm.PROVIDER, llm.DEFAULT_MODEL, 0.0, 42, False, [{"role": "user", "content": "hi"}]],
+        sort_keys=True,
+    )
+    assert (tmp_path / f"{hashlib.sha256(old_key.encode()).hexdigest()}.json").exists()

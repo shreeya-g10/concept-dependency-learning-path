@@ -2,3 +2,4 @@
 pymupdf
 python-pptx
 sentence-transformers
+python-docx  # DOCX course files
