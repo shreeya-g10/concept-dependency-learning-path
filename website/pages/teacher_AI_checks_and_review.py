@@ -1,9 +1,12 @@
 """For teachers: what the AI checks decided for each link, and the teacher review.
 
-Sections: counts per decision, the four checks for every link, trial-check details
-(control / without A / gap), teacher review of HUMAN_REVIEW links (Accept / Reject,
-blocking links first, then by impact; applied through cdlp.validation.apply_review), and
-RQ1 and necessity results from cdlp/validation/results/ when those files exist.
+Sections, the links that need the teacher first: counts per decision, teacher review of
+HUMAN_REVIEW links (Accept / Reject, blocking links first, then by impact; applied through
+cdlp.validation.apply_review), the four checks and quotes for every link, trial-check details
+(control / without A / gap), RQ1 results from cdlp/validation/results/ when those files
+exist, and the stages and log of the last website build.
+
+Labels are plain words first; the technical term follows in smaller text.
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ import json
 import subprocess
 import sys
 
+import jobs
 import networkx as nx
 import streamlit as st
 import ui
@@ -41,7 +45,14 @@ names = concept_names()
 edges = load("validated_graph.json")["edges"]
 
 
-DECISION_WORDS = {"ACCEPT": "Accepted", "REJECT": "Rejected", "HUMAN_REVIEW": "Needs a teacher"}
+DECISION_WORDS = {"ACCEPT": "Accepted", "REJECT": "Rejected", "HUMAN_REVIEW": "Needs your review"}
+CHECK_WORDS = {
+    "evidence": "Found in the notes",
+    "semantic": "Makes teaching sense",
+    "necessity": "Trial: really needed",
+    "graph": "Fits the topic map",
+}
+STRENGTH_WORDS = {"hard": "Must learn first", "soft": "Helps to learn first"}
 
 
 def label(concept_id: str) -> str:
@@ -74,129 +85,23 @@ def fmt(value) -> str:
 # ---- Counts per decision ----------------------------------------------------
 st.subheader("Decisions")
 counts = {d: sum(e["decision"] == d for e in edges) for d in DECISIONS}
-st.metric("Accepted", counts["ACCEPT"])
-st.metric("Rejected", counts["REJECT"])
-st.metric("Needs a teacher", counts["HUMAN_REVIEW"])
+st.metric(decision_word("ACCEPT"), counts["ACCEPT"])
+st.metric(decision_word("REJECT"), counts["REJECT"])
+st.metric(decision_word("HUMAN_REVIEW"), counts["HUMAN_REVIEW"])
 st.metric(
-    "Share that needs a teacher", f"{counts['HUMAN_REVIEW'] / len(edges):.0%}" if edges else "—"
+    "Share that needs your review", f"{counts['HUMAN_REVIEW'] / len(edges):.0%}" if edges else "—"
 )
-st.caption("Every suggested link is kept with its decision. Students only see accepted links.")
-
-# ---- Four checks per edge ---------------------------------------------------
-st.subheader("Checks for each link")
-decision_filter = st.multiselect(
-    "Decision", DECISIONS, default=DECISIONS, format_func=decision_word
+st.caption(
+    "Every suggested link is kept with its decision. Students only see accepted links. "
+    "Technical terms: ACCEPT, REJECT, HUMAN_REVIEW; the share is the human-review rate."
 )
-shown = [e for e in edges if e["decision"] in decision_filter]
-st.dataframe(
-    [
-        {
-            "link": f"{label(e['source'])} → {label(e['target'])}",
-            "decision": decision_word(e["decision"]),
-            "confidence": e["confidence"],
-            **{check: grade(e["checks"][check]) for check in CHECKS},
-            "necessity gap": e.get("necessity_gap"),
-        }
-        for e in shown
-    ],
-    width="stretch",
-    hide_index=True,
-)
-
-# ---- Necessity details ------------------------------------------------------
-# validated_graph.json carries only necessity_gap. The control and "without A" scores
-# come from the necessity-test results file (cdlp/validation/results/necessity_*.json).
-# Shown only when this graph ran the necessity test and every edge of the run is an edge
-# of this graph: results files are tagged only by course id, so an experiment on the
-# shared example edges must never be shown as if it belonged to a live course.
-graph_pairs = {(e["source"], e["target"]) for e in edges}
-graph_ran_necessity = any(
-    e.get("checks", {}).get("necessity") not in (None, "skipped") for e in edges
-)
-necessity_runs = {
-    name: data
-    for name, data in read_results("necessity_*.json").items()
-    if graph_ran_necessity
-    and data.get("course_id", course) == course
-    and isinstance(data.get("results"), list)
-    and data["results"]
-    and {(r.get("source"), r.get("target")) for r in data["results"]} <= graph_pairs
-}
-necessity_rows: dict[str, dict] = {}
-if necessity_runs:
-    st.subheader("Trial check: can a learner manage without topic A?")
-    run_name = st.selectbox("Trial run", sorted(necessity_runs, reverse=True))
-    run = necessity_runs[run_name]
-    st.caption(
-        f"model `{run.get('model', '?')}` · temperature {run.get('temperature', '?')} · "
-        f"seed {run.get('seed', '?')} · leakage rate {run.get('leakage_rate', '?')}. "
-        "Gap = control score − score without A. The control learner bans an unrelated "
-        "topic C instead of A. This check is on trial: it does not change any decision."
-    )
-    for row in run["results"]:
-        necessity_rows[f"{row['source']}->{row['target']}"] = row  # by pair, never by id
-    st.dataframe(
-        [
-            {
-                "link": f"{label(r.get('source', ''))} → {label(r.get('target', ''))}",
-                "control C": (r.get("control_concept") or {}).get("name"),
-                "control": r.get("score_control"),
-                "without A": r.get("score_without"),
-                "gap": r.get("necessity_gap"),
-                "grade": r.get("necessity"),
-                "with A (diag.)": r.get("score_with"),
-                "status": r.get("status"),
-            }
-            for r in run["results"]
-        ],
-        width="stretch",
-        hide_index=True,
-    )
-
-# ---- Edge details -----------------------------------------------------------
-st.subheader("Link details")
-decision = st.radio("Show", DECISIONS, format_func=decision_word)
-for e in edges:
-    if e["decision"] != decision:
-        continue
-    by = " · decided by teacher" if (e.get("review") or {}).get("status") == "applied" else ""
-    with st.expander(f"{label(e['source'])} → {label(e['target'])} · {e['confidence']:.2f}{by}"):
-        st.write(e["reason"])
-        st.markdown(" · ".join(f"**{check}** {grade(e['checks'][check])}" for check in CHECKS))
-        row = necessity_rows.get(f"{e['source']}->{e['target']}")
-        if row:
-            control = (row.get("control_concept") or {}).get("name", "?")
-            st.markdown(
-                f"Trial check: control (bans *{control}*) {fmt(row.get('score_control'))} · "
-                f"without A {fmt(row.get('score_without'))} · "
-                f"gap **{fmt(row.get('necessity_gap'))}**"
-            )
-            with st.popover("Questions and answers"):
-                for i, question in enumerate(row.get("questions", [])):
-                    st.markdown(f"**Q{i + 1}.** {question.get('question', question)}")
-                    for side in ("without", "control"):
-                        answers = row.get(f"answers_{side}", [])
-                        grades = row.get(f"grades_{side}", [])
-                        if i < len(answers):
-                            graded = grades[i] if i < len(grades) else "?"
-                            graded = (
-                                graded.get("grade", graded) if isinstance(graded, dict) else graded
-                            )
-                            st.caption(f"{side}: {answers[i]} → {graded}")
-        else:
-            st.caption(f"Trial-check gap: {fmt(e.get('necessity_gap'))} (no trial-run details)")
-        if not e["evidence"]:
-            st.caption("No quote.")
-        for ev in e["evidence"]:
-            st.markdown(f"> {ev.get('quote') or '(no quote)'}")
-            st.caption(f"{ev.get('doc', '?')} p.{ev.get('page', '?')}")
 
 # ---- Teacher review ---------------------------------------------------------
 # Every decision goes through `python -m cdlp.validation.apply_review` (a module CLI, not
 # an import): it records the decision in review_decisions.json, applies all decisions to
 # validated_graph.json (never accepting an edge that closes a cycle) and, when
 # sim_students.json exists, rebuilds review_queue.json on the updated graph.
-st.subheader("Teacher review")
+st.subheader(decision_word("HUMAN_REVIEW"))
 out_dir = OUTPUTS / course
 graph_path = resolve_path("validated_graph.json")
 live = graph_path == out_dir / "validated_graph.json"
@@ -275,17 +180,20 @@ if n_blocking:
         "a circle. Reject it, or reject another link in that circle. They come first."
     )
 if pending and not queue_rows:
-    st.caption("No impact ranking yet. Blocking links come first.")
+    st.caption("Not ranked by effect on study plans yet. Blocking links come first.")
 for edge in pending:
     blocking = blocking_now(edge)
     row = queue_rows.get(edge["id"]) or {}
-    tag = "⛔ blocking" if blocking else f"impact {fmt(row.get('impact_score'))}"
     with st.container(border=True):
         st.markdown(
-            f"**{label(edge['source'])} → {label(edge['target'])}** · {tag} · "
-            f"AI confidence {edge['confidence']:.2f}"
+            f"**{label(edge['source'])} → {label(edge['target'])}**"
+            + (" · ⛔ makes a circle" if blocking else "")
         )
-        st.caption(edge["reason"])
+        st.write(edge["reason"])
+        st.caption(
+            ("blocking · " if blocking else f"impact score {fmt(row.get('impact_score'))} · ")
+            + f"AI confidence {edge['confidence']:.2f} · edge {edge['id']}"
+        )
         if row.get("paths_affected") is not None:
             st.caption(f"Accepting changes {row['paths_affected']} simulated learning path(s).")
         review = edge.get("review") or {}
@@ -320,16 +228,144 @@ if by_teacher:
             other = "REJECT" if review["decision"] == "ACCEPT" else "ACCEPT"
             st.markdown(
                 f"**{label(edge['source'])} → {label(edge['target'])}** · "
-                f"{review['decision']} by {review['decided_by']} · {review.get('decided_at', '')}"
+                f"{decision_word(review['decision'])} by {review['decided_by']} · "
+                f"{review.get('decided_at', '')}"
                 + (f" · “{review['comment']}”" if review.get("comment") else "")
             )
             st.button(
-                f"Change to {other}",
+                f"Change to {decision_word(other)}",
                 key=f"change_{edge['id']}",
                 disabled=not live,
                 on_click=decide,
                 args=(edge["id"], other, review.get("comment", "")),
             )
+
+# ---- Every link: its checks, reason and quotes ------------------------------
+st.subheader("All links")
+choice = st.radio(
+    "Show",
+    DECISIONS,
+    format_func=lambda d: f"{decision_word(d)} ({counts[d]})",
+    horizontal=True,
+)
+links_box = st.container()  # filled after the trial check: the details use its rows
+
+# ---- Necessity details ------------------------------------------------------
+# validated_graph.json carries only necessity_gap. The control and "without A" scores
+# come from the necessity-test results file (cdlp/validation/results/necessity_*.json).
+# Shown only when this graph ran the necessity test and every edge of the run is an edge
+# of this graph: results files are tagged only by course id, so an experiment on the
+# shared example edges must never be shown as if it belonged to a live course.
+graph_pairs = {(e["source"], e["target"]) for e in edges}
+graph_ran_necessity = any(
+    e.get("checks", {}).get("necessity") not in (None, "skipped") for e in edges
+)
+necessity_runs = {
+    name: data
+    for name, data in read_results("necessity_*.json").items()
+    if graph_ran_necessity
+    and data.get("course_id", course) == course
+    and isinstance(data.get("results"), list)
+    and data["results"]
+    and {(r.get("source"), r.get("target")) for r in data["results"]} <= graph_pairs
+}
+necessity_rows: dict[str, dict] = {}
+if necessity_runs:
+    st.subheader("Trial check: can a learner manage without topic A?")
+    run_name = st.selectbox("Trial run", sorted(necessity_runs, reverse=True))
+    run = necessity_runs[run_name]
+    st.write(
+        "A pretend learner answers questions about the later topic without topic A. A second "
+        "one is kept from an unrelated topic C instead, to compare. A big difference means A "
+        "is really needed. This check is on trial: it does not change any decision."
+    )
+    st.caption(
+        f"Necessity test. model `{run.get('model', '?')}` · "
+        f"temperature {run.get('temperature', '?')} · seed {run.get('seed', '?')} · "
+        f"leakage rate {run.get('leakage_rate', '?')}. Difference = necessity gap = control "
+        "score − score without A."
+    )
+    for row in run["results"]:
+        necessity_rows[f"{row['source']}->{row['target']}"] = row  # by pair, never by id
+    st.dataframe(
+        [
+            {
+                "Link": f"{label(r.get('source', ''))} → {label(r.get('target', ''))}",
+                "Unrelated topic C": (r.get("control_concept") or {}).get("name"),
+                "Score without C (control)": r.get("score_control"),
+                "Score without A": r.get("score_without"),
+                "Difference (gap)": r.get("necessity_gap"),
+                "Grade": r.get("necessity"),
+                "Score with A (diagnostic)": r.get("score_with"),
+                "Status": r.get("status"),
+            }
+            for r in run["results"]
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+
+# ---- Link table and details (drawn in links_box above) -----------------------
+shown = [e for e in edges if e["decision"] == choice]
+with links_box:
+    st.dataframe(
+        [
+            {
+                "Link": f"{label(e['source'])} → {label(e['target'])}",
+                "Decision": decision_word(e["decision"]),
+                "Kind": STRENGTH_WORDS.get(e.get("strength"), e.get("strength")),
+                "How sure the AI is": e["confidence"],
+                **{CHECK_WORDS[check]: grade(e["checks"][check]) for check in CHECKS},
+                "Trial difference": e.get("necessity_gap"),
+            }
+            for e in shown
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+    st.caption(
+        "Technical terms: How sure the AI is = confidence · Must learn first = hard, Helps to "
+        "learn first = soft · "
+        + " · ".join(f"{word} = {check} check" for check, word in CHECK_WORDS.items())
+        + " · Trial difference = necessity gap."
+    )
+    for e in shown:
+        by = " · decided by teacher" if (e.get("review") or {}).get("status") == "applied" else ""
+        with st.expander(f"{label(e['source'])} → {label(e['target'])}{by}"):
+            st.write(e["reason"])
+            st.markdown(" · ".join(f"**{CHECK_WORDS[c]}** {grade(e['checks'][c])}" for c in CHECKS))
+            st.caption(f"AI confidence {e['confidence']:.2f} · edge {e['id']}")
+            row = necessity_rows.get(f"{e['source']}->{e['target']}")
+            if row:
+                control = (row.get("control_concept") or {}).get("name", "?")
+                st.markdown(
+                    f"Trial check: without *{control}* {fmt(row.get('score_control'))} · "
+                    f"without A {fmt(row.get('score_without'))} · "
+                    f"difference **{fmt(row.get('necessity_gap'))}**"
+                )
+                with st.popover("Questions and answers"):
+                    for i, question in enumerate(row.get("questions", [])):
+                        st.markdown(f"**Q{i + 1}.** {question.get('question', question)}")
+                        for side in ("without", "control"):
+                            answers = row.get(f"answers_{side}", [])
+                            grades = row.get(f"grades_{side}", [])
+                            if i < len(answers):
+                                graded = grades[i] if i < len(grades) else "?"
+                                graded = (
+                                    graded.get("grade", graded)
+                                    if isinstance(graded, dict)
+                                    else graded
+                                )
+                                st.caption(f"{side}: {answers[i]} → {graded}")
+            else:
+                st.caption(
+                    f"Trial difference: {fmt(e.get('necessity_gap'))} (no trial-run details)"
+                )
+            if not e["evidence"]:
+                st.caption("No quote.")
+            for ev in e["evidence"]:
+                st.markdown(f"> {ev.get('quote') or '(no quote)'}")
+                st.caption(f"{ev.get('doc', '?')} p.{ev.get('page', '?')}")
 
 # ---- RQ1 results ------------------------------------------------------------
 rq1 = {
@@ -367,11 +403,11 @@ else:
     st.dataframe(
         [
             {
-                "setting": r["setting"],
-                "precision": r.get("precision"),
-                "recall": r.get("recall"),
-                "F1": r.get("f1"),
-                "share needing a teacher": r.get("human_review_rate"),
+                "Setting": r["setting"],
+                "Right when it accepts (precision)": r.get("precision"),
+                "True links it keeps (recall)": r.get("recall"),
+                "Overall (F1)": r.get("f1"),
+                "Share needing review": r.get("human_review_rate"),
                 "AI calls / link": r.get("llm_calls_per_edge"),
                 "new calls / link": r.get("real_llm_calls_per_edge"),
             }
@@ -387,3 +423,21 @@ else:
     )
     with st.expander("Config"):
         st.json(config)
+
+# ---- Last website build -------------------------------------------------------
+# The stage names and log stay here: step 1 tells students about progress in plain words.
+build = jobs.read_status(course)
+if build["state"] != "none":
+    st.subheader("Last time the notes were read")
+    st.dataframe(
+        [
+            {"Stage": s["label"], "Status": s["status"], "Module": s["stage"]}
+            for s in build["stages"]
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+    if build["error"]:
+        st.caption(build["error"])
+    with st.expander("Log"):
+        st.code(build["log"] or "(empty)", language="text")
