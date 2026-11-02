@@ -78,10 +78,11 @@ cd /Users/shreeyakhairnar/Desktop/PREP/projects/GenAI/concept-dependency-learnin
 2. By eye: `.venv/bin/streamlit run website/Home.py`, pick **Data Structures & Algorithms** on Home, then open each page:
    - **Home:** the demo notice in plain words (no "sample topics" notice), the 4 steps.
    - **2 See your topics:** says how many topics were found, most-used first, 10 at a time. Each card has a one-line meaning and **Where to read**; **Read this part** opens the source text. **Next: Quick check** is at the end of the list.
-   - **3 Quick check** and **4 My study plan:** these two pages are still being redesigned, so their details are not in this script yet. Open each one and check that it works.
-   - **Topic map:** pick a topic, turn on the picture; the map draws, and a link expands to its evidence.
+   - **3 Quick check:** says **Topics ready for the quick check: 8 of 259**, then lists those 8. Type `zzz` and press Enter: it says the topic is not ready yet. Clear the box, tap **AVL Tree**. There is one question per screen, **Question 1** with a bar and no total. A wrong answer shows a kind message and the right answer, with no score. Keep answering: the plan opens by itself at the end.
+   - **4 My study plan:** starts with **Study this next: [topic]** and **Read: file, page**, then the numbered list with Done / Next / Later. Tap **Mark as done**: the next topic moves up.
+   - **Topic map:** says **Topics ready on the map: 8 of 259**. Learn before → this topic → Learn next, as cards; tap a card to move to it. Tap **See full map**: the map draws. Open a link under **Where these links come from** to see its evidence.
    - **For teachers → AI suggestions:** suggested links with quotes.
-   - **For teachers → AI checks and review:** Accepted / Rejected / Needs your review counts, then the links that need review, then **All links**; "Trial: really needed" (necessity) shows ➖ (skipped); no "Trial check" table (it only appears for graphs that ran it).
+   - **For teachers → AI checks and review:** Accepted / Rejected / Needs your review counts, **Topics students can use** (with the list of topics not ready yet), then the links that need review, then **All links**; "Trial: really needed" (necessity) shows ➖ (skipped); no "Trial check" table (it only appears for graphs that ran it).
 3. **Start the website after the runs finish.** If a page looks out of date, stop the website (Ctrl+C) and start it again.
 
 ### Test upload with a tiny notes file (tonight, about 5–10 min)
@@ -106,6 +107,7 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 1. Close other apps. `ollama stop qwen2.5:7b-instruct; ollama stop llama3.1:8b`.
 2. `cd` to the repo and run `.venv/bin/streamlit run website/Home.py`. On Home, pick **Data Structures & Algorithms**.
 3. Open each page once, so nothing loads for the first time on stage.
+4. Answers are saved to `outputs/ds101/student_answers.json`. After rehearsing and after the demo, move that file out of `outputs/ds101/`, so demo answers don't get mixed in with real student answers.
 
 ## The 5-minute demo
 
@@ -116,8 +118,8 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 | 1:20 | **1 Add your notes** | (Optional, live: only if the upload test above worked with the real LLM. It is untested until then.) Drop `demo_notes.md`, name it `Notes101 live`, tap **Read my notes**. It runs in the background; come back at 4:30. |
 | 1:40 | **For teachers → AI suggestions** | The discovery model (qwen) proposes prerequisite edges only for candidate pairs, with an evidence quote for each. |
 | 2:20 | **For teachers → AI checks and review** | A *different* model (llama) checks every edge: evidence in the material, teaching sense, graph consistency (cycles, redundant shortcuts) → Accepted / Rejected / Needs your review (technical terms in small text). Under **All links**, show Rejected and open one link and read its reason. Say that some edges were picked because they looked wrong, to show rejections, so these counts are not an accuracy figure. Necessity is ➖: an experimental check, skipped here. |
-| 3:00 | **Topic map** | Only accepted edges; turn on the picture, then open a link for its evidence. |
-| 3:30 | **3 Quick check, then 4 My study plan** | These two pages are still being redesigned: add the clicks and talking points here when they are finished. |
+| 3:00 | **Topic map** (opens on **AVL Tree**). Tap **See full map**, then open a link under **Where these links come from**. | Students see accepted links only. The line says 8 of 259 topics are ready: the other topics are still in the list on See your topics, but this demo subset has no accepted link for them, and the teacher page names them. Before AVL Tree: Binary Search Tree, Binary Tree and Rotation. Then read the quote and page behind one link. |
+| 3:30 | **3 Quick check:** tap **AVL Tree**. **Question 1 (Traversal):** tap "By starting at the root and visiting each node's left child, then its right child, and finally the node itself." **Question 2 (Binary Search Tree):** tap the first answer ("...left subtree are greater..."). Tap **Keep going**. On **Question 3**, tap **See my study plan**. On the plan, tap **Mark as done**. | The student picks what they want to learn, and the questions come from the topics leading up to it. No timer, no score: a wrong answer gets a kind message and the right answer. Read the "possible reason" line aloud; if it says "our best guess", say it did not come from the AI helper. The plan starts with **Study this next: Binary Tree**, with the file and page to read. Traversal is not on the list because this student answered it right; other answers give a different list. Say the questions are AI-written and not yet checked by a teacher, and that this is one short check, so the plan is an estimate. Do not say it is accurate or saves time: we have not measured that here. |
 | 4:30 | **1 Add your notes** (if started) | Show the progress, or pick the finished course on Home. |
 | 4:50 | **Home** | Recap: upload → graph → validation → adaptive quiz → personalized path. Every number shown comes from the files in `outputs/ds101/`. |
 
@@ -128,6 +130,7 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 | Before the demo: a chain link is missing, or nothing was rejected | Don't add or edit edges by hand. On stage, use a target whose path is in the graph, and say that discovery missed that link, which is why the pipeline is evaluated stage by stage. `outputs/ds101/validated_graph.demo_subset.json` lists what was chosen and what is missing. |
 | A page shows an error or odd data | Stop the website (Ctrl+C), start it again, reload. Still broken: `rm -rf outputs/ds101 && cp -R ~/Desktop/demo_backup/ds101 outputs/ds101`, then reload. |
 | The live upload is slow or fails | Don't wait: on Home, pick **Notes101** (built and backed up tonight, if the upload test worked). If that is missing too: `cp -R ~/Desktop/demo_backup/notes101 outputs/notes101`. |
-| Ollama is down or slow | Skip the live upload. **1 Add your notes** says the AI helper is off and offers **Try the sample course**. See your topics, Topic map and the teacher pages read saved files and need no model. |
+| Ollama is down or slow | Skip the live upload. **1 Add your notes** says the AI helper is off and offers **Try the sample course**. See your topics, Topic map and the teacher pages read saved files and need no model. In the Quick check, a wrong answer asks the AI helper for a reason, so with a slow model it can wait on "Looking at your answer...". With Ollama off it answers at once and labels the reason "our best guess, the AI helper was off". |
+| Question 1 is not about Traversal | The website was started without the seed. Any order is fine: answer one question right and one wrong, then tap **See my study plan**. The topic names on the plan may differ from the talking points. |
 | The website will not start | Show the screenshots in `~/Desktop/demo_backup/screens/`, in page order. |
 | `outputs/ds101` is gone and there is no backup | The pages fall back to the shared example data and show a blue notice, "These are sample topics". Say clearly that it is example data. |

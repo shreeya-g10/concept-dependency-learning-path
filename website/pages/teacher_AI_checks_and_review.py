@@ -12,6 +12,7 @@ Labels are plain words first; the technical term follows in smaller text.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 
@@ -20,6 +21,8 @@ import networkx as nx
 import streamlit as st
 import ui
 from common import OUTPUTS, ROOT, concept_names, get_active_course, load, resolve_path
+
+from cdlp.learning_path import api
 
 ui.page_header(
     "AI checks and review",
@@ -42,7 +45,8 @@ GRADE_ICON = {
 
 course = get_active_course()
 names = concept_names()
-edges = load("validated_graph.json")["edges"]
+graph_data = load("validated_graph.json")
+edges = graph_data["edges"]
 
 
 DECISION_WORDS = {"ACCEPT": "Accepted", "REJECT": "Rejected", "HUMAN_REVIEW": "Needs your review"}
@@ -53,6 +57,62 @@ CHECK_WORDS = {
     "graph": "Fits the topic map",
 }
 STRENGTH_WORDS = {"hard": "Must learn first", "soft": "Helps to learn first"}
+
+
+# The validator's own reason is built for the results files: plain sentences come first, from the
+# same check grades, and the raw text follows in small print.
+TECHNICAL_REASON = re.compile(
+    r"^(evidence|semantic|necessity) \w+|^no check ran|^Direction unclear:|^Redundant"
+    r"|^self-loop\.|^duplicate\."
+)
+EVIDENCE_WORDS = {
+    "strong": "The notes clearly support this link.",
+    "medium": "The notes partly support this link.",
+    "weak": "The notes barely support this link.",
+    "none": "We found nothing in the notes that supports this link.",
+}
+SEMANTIC_WORDS = {
+    "strong": "The AI says this teaching order makes sense.",
+    "medium": "The AI says this teaching order mostly makes sense.",
+    "weak": "The AI has doubts about this teaching order.",
+    "none": "The AI says this teaching order does not make sense.",
+}
+GRAPH_WORDS = {
+    "cycle": "This link is part of a circle of links, so a person has to decide.",
+    "contradiction": "The AI suggested this link in both directions, so a person has to decide.",
+    "redundant": "Other links already lead from the first topic to the second.",
+    "self_loop": "This link goes from a topic back to itself.",
+    "duplicate": "This link is listed twice.",
+}
+
+
+def plain_reason(edge: dict) -> tuple[str, str | None]:
+    """(reason in plain words, the technical part for the small print, or None if it was plain)."""
+    reason = edge["reason"]
+    if not TECHNICAL_REASON.match(reason):
+        return reason, None
+    checks = edge.get("checks", {})
+    sentences = [
+        EVIDENCE_WORDS.get(checks.get("evidence")),
+        SEMANTIC_WORDS.get(checks.get("semantic")),
+        GRAPH_WORDS.get(checks.get("graph")),
+    ]
+    technical, found, ai_words = reason.partition(" Semantic: ")
+    if found:
+        skipped = re.search(r"\s*\((skipped: [^)]*|necessity not in the sample)\)\s*$", ai_words)
+        if skipped:
+            technical += f" ({skipped.group(1)})"
+            ai_words = ai_words[: skipped.start()]
+        sentences.append(f"The AI's words: {ai_words}")
+    plain = " ".join(s for s in sentences if s)
+    return plain or "The checks did not give a clear answer, so a person has to decide.", technical
+
+
+def show_reason(edge: dict) -> None:
+    plain, technical = plain_reason(edge)
+    st.write(plain)
+    if technical:
+        st.caption(f"Technical details: {technical}")
 
 
 def label(concept_id: str) -> str:
@@ -94,6 +154,29 @@ st.metric(
 st.caption(
     "Every suggested link is kept with its decision. Students only see accepted links. "
     "Technical terms: ACCEPT, REJECT, HUMAN_REVIEW; the share is the human-review rate."
+)
+
+# ---- Which topics students can use -------------------------------------------
+# The Quick check and the Topic map list only ready topics. This is where the rest are named;
+# they all stay in concepts.json and on See your topics.
+st.subheader("Topics students can use")
+on_map = {e[end] for e in edges if e["decision"] == "ACCEPT" for end in ("source", "target")}
+quiz_items = load("quiz_items.json")
+in_quick_check = {
+    c for c in names if c in on_map and api.next_question(graph_data, quiz_items, {}, c) is not None
+}
+st.write(
+    f"Quick check: **{len(in_quick_check)} of {len(names)}** topics. "
+    f"Topic map: **{len(on_map & set(names))} of {len(names)}** topics."
+)
+not_ready = sorted((c for c in names if c not in in_quick_check), key=lambda c: names[c].lower())
+with st.expander(f"Topics not ready for students yet ({len(not_ready)})"):
+    for concept_id in not_ready:
+        reason = "No questions yet" if concept_id in on_map else "No accepted link yet"
+        st.markdown(f"- {label(concept_id)}: {reason}")
+st.caption(
+    "These topics are kept and still show on See your topics. Accepting a link or adding "
+    "questions makes them ready. Technical terms: in the ACCEPT graph, with quiz items."
 )
 
 # ---- Teacher review ---------------------------------------------------------
@@ -189,7 +272,7 @@ for edge in pending:
             f"**{label(edge['source'])} → {label(edge['target'])}**"
             + (" · ⛔ makes a circle" if blocking else "")
         )
-        st.write(edge["reason"])
+        show_reason(edge)
         st.caption(
             ("blocking · " if blocking else f"impact score {fmt(row.get('impact_score'))} · ")
             + f"AI confidence {edge['confidence']:.2f} · edge {edge['id']}"
@@ -332,7 +415,7 @@ with links_box:
     for e in shown:
         by = " · decided by teacher" if (e.get("review") or {}).get("status") == "applied" else ""
         with st.expander(f"{label(e['source'])} → {label(e['target'])}{by}"):
-            st.write(e["reason"])
+            show_reason(e)
             st.markdown(" · ".join(f"**{CHECK_WORDS[c]}** {grade(e['checks'][c])}" for c in CHECKS))
             st.caption(f"AI confidence {e['confidence']:.2f} · edge {e['id']}")
             row = necessity_rows.get(f"{e['source']}->{e['target']}")

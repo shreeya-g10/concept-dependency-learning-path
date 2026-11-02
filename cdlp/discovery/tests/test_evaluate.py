@@ -47,7 +47,8 @@ def test_raw_records_with_relationship_none_are_not_predictions():
 
 def test_cli_records_config(tmp_path, monkeypatch):
     rels = tmp_path / "relationships.json"
-    rels.write_text(json.dumps({"course_id": "x", "relationships": [edge("a", "b")]}))
+    rows = [{**edge("a", "b"), "method": "llm_discover_v2"}]
+    rels.write_text(json.dumps({"course_id": "x", "relationships": rows}))
     gold = tmp_path / "gold.csv"
     gold.write_text("source,target,label\na,b,hard\n")
     out = tmp_path / "evaluation.json"
@@ -62,3 +63,13 @@ def test_cli_records_config(tmp_path, monkeypatch):
     config = json.loads(out.read_text())["config"]
     assert {"model", "prompt_version", "seed", "date", "temperature"} <= config.keys()
     assert config["prompt_version"] == "discover_v2"
+
+
+def test_prompt_version_comes_from_the_edges_not_the_default():
+    assert evaluate_module.prompt_version_of([{"method": "llm_discover_v2"}]) == "discover_v2"
+    # never guess: mixed or missing methods are reported as unknown
+    assert evaluate_module.prompt_version_of([{"method": "other"}]) == "unknown"
+    assert evaluate_module.prompt_version_of([{}]) == "unknown"
+    assert evaluate_module.prompt_version_of([]) == "unknown"
+    mixed = [{"method": "llm_discover_v2"}, {"method": "llm_discover_v3"}]
+    assert evaluate_module.prompt_version_of(mixed) == "unknown"

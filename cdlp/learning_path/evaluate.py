@@ -53,7 +53,7 @@ def run_adaptive_diagnosis(
     quiz_items: list[dict],
     true_states: dict[str, float],
     target: str,
-    max_questions: int = 10,
+    max_questions: int = api.MAX_QUESTIONS_PER_TOPIC,
     rng: random.Random | None = None,
 ) -> tuple[dict[str, float], int]:
     """Run adaptive graph-guided diagnosis."""

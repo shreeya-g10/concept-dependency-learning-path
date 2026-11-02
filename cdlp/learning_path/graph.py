@@ -280,7 +280,14 @@ def dependents(graph: Any, concept: str) -> set[str]:
 
 
 def generic_path(graph: Any, target: str) -> list[str]:
-    """Baseline learning path for a student who knows nothing."""
+    """Baseline learning path for a student who knows nothing.
+
+    Ties are broken by sorted concept id. A NetworkX subgraph lists its nodes in hash order, so
+    a plain topological sort would change the question order with Python's hash seed. The
+    pure-Python topological_sort is already sorted, and gives the same order.
+    """
     prereqs = prerequisites(graph, target) | {target}
     subgraph = graph.subgraph(prereqs)
+    if nx is not None and isinstance(graph, nx.DiGraph):
+        return list(nx.lexicographical_topological_sort(subgraph))
     return topological_sort(subgraph)

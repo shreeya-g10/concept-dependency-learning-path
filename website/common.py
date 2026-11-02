@@ -153,6 +153,12 @@ def demo_subset_note(course_id: str | None = None) -> str | None:
     return S.DEMO_NOTICE.format(n=subset["n"], of=subset["of"]) if subset else None
 
 
+def demo_subset_short(course_id: str | None = None) -> str | None:
+    """The one-line notice for student pages. Same check as demo_subset_note."""
+    subset = _demo_subset(course_id)
+    return S.DEMO_NOTICE_SHORT.format(n=subset["n"], of=subset["of"]) if subset else None
+
+
 def demo_subset_rule(course_id: str | None = None) -> str | None:
     """The written rule that picked the demo subset (shown on the teacher pages)."""
     subset = _demo_subset(course_id)

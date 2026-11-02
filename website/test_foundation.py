@@ -104,8 +104,7 @@ def test_an_answer_in_the_quick_check_reaches_the_study_plan(demo_outputs):
     quiz = json.loads((common.EXAMPLES / "quiz_items.json").read_text())["items"]
     at = AppTest.from_file(str(SITE / "Home.py"), default_timeout=60).run()
     at.button(key="home_quiz").click().run()
-    at.selectbox[0].set_value("avl_tree").run()
-    at.button(key="quiz_start").click().run()
+    at.button(key="topic_avl_tree").click().run()
     shown = next(m.value for m in at.markdown if m.value.startswith("### "))
     item = next(q for q in quiz if q["question"] == shown[4:])
     at.button(key=f"answer_{item['id']}_{item['options'].index(item['answer'])}").click().run()
@@ -147,7 +146,47 @@ def test_strings_use_plain_words():
 )
 def test_demo_notice_stays_on_every_page_with_results(page, demo_outputs):
     at = AppTest.from_file(str(page), default_timeout=60).run()
-    assert any("This is a demo" in w.value and "3 of the 6" in w.value for w in at.warning)
+    assert [w.value for w in at.warning] == ["Sample map: 3 of 6 links checked."]
+
+
+def test_demo_notice_stays_on_every_quick_check_and_plan_screen(demo_outputs, monkeypatch):
+    from cdlp.root_cause import api as root_cause_api
+
+    monkeypatch.setattr(root_cause_api, "trace", lambda *a, **k: {"explanation": None})
+    line = "Sample map: 3 of 6 links checked."
+    at = AppTest.from_file(str(SITE / "Home.py"), default_timeout=60).run()
+    at.button(key="home_quiz").click().run()
+    assert line in [w.value for w in at.warning]  # pick a topic
+    at.button(key="topic_avl_tree").click().run()
+    assert line in [w.value for w in at.warning]  # question
+    quiz = json.loads((common.EXAMPLES / "quiz_items.json").read_text())["items"]
+    shown = next(m.value for m in at.markdown if m.value.startswith("### "))
+    item = next(q for q in quiz if q["question"] == shown[4:])
+    wrong = next(i for i, o in enumerate(item["options"]) if o != item["answer"])
+    at.button(key=f"answer_{item['id']}_{wrong}").click().run()
+    assert any(S.QUIZ_KIND in i.value for i in at.info)
+    assert line in [w.value for w in at.warning]  # the kind message
+    at.button(key="quiz_continue").click().run()
+    next(b for b in at.button if b.label == S.QUIZ_TO_PLAN).click().run()
+    assert at.title[0].value == S.PLAN_TITLE
+    assert line in [w.value for w in at.warning]  # the plan
+
+
+@pytest.mark.parametrize(
+    "page",
+    [SITE / ui.PAGES[k].path for k in [*ui.STUDENT_PAGES, *ui.TEACHER_PAGES]],
+    ids=lambda p: p.name,
+)
+def test_no_demo_notice_when_the_graph_is_not_a_subset(page, demo_outputs):
+    path = demo_outputs / "ds101" / "validated_graph.json"
+    graph = json.loads(path.read_text())
+    del graph["subset"]
+    path.write_text(json.dumps(graph))
+    at = AppTest.from_file(str(page), default_timeout=60).run()
+    assert not at.exception
+    text = visible_text(at)
+    assert "Sample map" not in text and "This is a demo" not in text
+    assert "How the demo links were picked" not in text
 
 
 @pytest.mark.parametrize(
@@ -155,10 +194,11 @@ def test_demo_notice_stays_on_every_page_with_results(page, demo_outputs):
     [SITE / ui.PAGES[k].path for k in ui.TEACHER_PAGES],
     ids=lambda p: p.name,
 )
-def test_teachers_also_see_the_written_rule(page, demo_outputs):
+def test_teachers_see_the_full_notice_and_the_written_rule(page, demo_outputs):
     at = AppTest.from_file(str(page), default_timeout=60).run()
     rule = common.demo_subset_rule("ds101")
     assert rule and any(rule in c.value for c in at.caption)
+    assert any("This is a demo" in w.value and "3 of the 6" in w.value for w in at.warning)
 
 
 def test_sample_notice_on_example_data(tmp_path, monkeypatch):
@@ -203,6 +243,22 @@ def test_topic_map_sends_the_heavy_picture_only_on_request(demo_outputs):
     assert not at.get("iframe")
     at.button(key="map_full_button").click().run()
     assert not at.exception
+
+
+def test_the_full_map_button_comes_before_the_topic_lists(demo_outputs):
+    at = AppTest.from_file(str(SITE / ui.PAGES["map"].path), default_timeout=60).run()
+    keys = [b.key for b in at.button]
+    assert keys[0] == "map_full_button"
+    assert at.button(key="map_full_button").label == S.MAP_SEE_FULL
+
+
+def test_phone_scripts_are_on_the_page(demo_outputs):
+    """Their effect is checked in a browser: AppTest does not run JavaScript."""
+    at = AppTest.from_file(str(SITE / "Home.py"), default_timeout=60).run()
+    assert any("stSidebarNavLink" in e.proto.body for e in at.get("html"))
+    at.button(key="home_quiz").click().run()
+    at.button(key="topic_avl_tree").click().run()
+    assert any("scrollTo(0, 0)" in e.proto.body for e in at.get("html"))
 
 
 # --- course picker ---------------------------------------------------------------------

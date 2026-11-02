@@ -1,0 +1,141 @@
+{
+  "config": {
+    "graph": "cdlp/shared/examples/validated_graph.json",
+    "quiz_items": "cdlp/shared/examples/quiz_items.json",
+    "target": "avl_tree",
+    "concepts_on_path": 5,
+    "num_students": 500,
+    "seed": 42,
+    "slip": 0.1,
+    "guess": 0.15,
+    "max_questions": 10,
+    "uses_llm": false
+  },
+  "ask_all_questions": {
+    "graph_consistent": 5.0,
+    "graph_independent": 5.0
+  },
+  "rule": [
+    "with a second question available, accuracy rises in both student conditions, and the 95% paired bootstrap interval of the rise is above 0 in both",
+    "with a second question available, topics wrongly marked as known fall in both conditions",
+    "in the graph-consistent condition it still asks fewer questions than asking every concept once; otherwise the saving that adaptive diagnosis exists for is gone"
+  ],
+  "rule_checks": [
+    true,
+    true,
+    false
+  ],
+  "keep": false,
+  "example_items_as_they_are": {
+    "graph_consistent": {
+      "without": {
+        "questions": 4.278,
+        "accuracy": 0.8656,
+        "wrongly_known": 0.1891,
+        "path_length": 2.354,
+        "gap_coverage": 0.8109
+      },
+      "with": {
+        "questions": 4.278,
+        "accuracy": 0.8656,
+        "wrongly_known": 0.1891,
+        "path_length": 2.354,
+        "gap_coverage": 0.8109
+      },
+      "accuracy_change": 0.0,
+      "accuracy_change_95": [
+        0.0,
+        0.0
+      ],
+      "other_answer_seeds_accuracy_change": {
+        "43": 0.0,
+        "44": 0.0,
+        "45": 0.0,
+        "46": 0.0
+      }
+    },
+    "graph_independent": {
+      "without": {
+        "questions": 3.642,
+        "accuracy": 0.7752,
+        "wrongly_known": 0.4068,
+        "path_length": 1.77,
+        "gap_coverage": 0.5932
+      },
+      "with": {
+        "questions": 3.642,
+        "accuracy": 0.7752,
+        "wrongly_known": 0.4068,
+        "path_length": 1.77,
+        "gap_coverage": 0.5932
+      },
+      "accuracy_change": 0.0,
+      "accuracy_change_95": [
+        0.0,
+        0.0
+      ],
+      "other_answer_seeds_accuracy_change": {
+        "43": 0.0,
+        "44": 0.0,
+        "45": 0.0,
+        "46": 0.0
+      }
+    }
+  },
+  "with_a_placeholder_second_item": {
+    "graph_consistent": {
+      "without": {
+        "questions": 4.278,
+        "accuracy": 0.8656,
+        "wrongly_known": 0.1891,
+        "path_length": 2.354,
+        "gap_coverage": 0.8109
+      },
+      "with": {
+        "questions": 6.682,
+        "accuracy": 0.9084,
+        "wrongly_known": 0.06,
+        "path_length": 2.908,
+        "gap_coverage": 0.94
+      },
+      "accuracy_change": 0.0428,
+      "accuracy_change_95": [
+        0.0296,
+        0.0564
+      ],
+      "other_answer_seeds_accuracy_change": {
+        "43": 0.0192,
+        "44": 0.0516,
+        "45": 0.05,
+        "46": 0.034
+      }
+    },
+    "graph_independent": {
+      "without": {
+        "questions": 3.642,
+        "accuracy": 0.7752,
+        "wrongly_known": 0.4068,
+        "path_length": 1.77,
+        "gap_coverage": 0.5932
+      },
+      "with": {
+        "questions": 6.05,
+        "accuracy": 0.81,
+        "wrongly_known": 0.2728,
+        "path_length": 2.308,
+        "gap_coverage": 0.7272
+      },
+      "accuracy_change": 0.0348,
+      "accuracy_change_95": [
+        0.0208,
+        0.0492
+      ],
+      "other_answer_seeds_accuracy_change": {
+        "43": 0.038,
+        "44": 0.0508,
+        "45": 0.036,
+        "46": 0.0336
+      }
+    }
+  }
+}

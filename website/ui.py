@@ -49,18 +49,39 @@ _CSS = """
 [data-testid="stSidebarNav"] a { min-height: 2.75rem; }
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
 [data-testid="stAlertContainer"] p, [data-testid="stAlertContainer"] strong {
-  color: #14202B !important; opacity: 1 !important;
+  color: #1F1B3D !important; opacity: 1 !important;
 }
 [data-testid="stMainBlockContainer"] { padding-top: 4rem; }
+[data-testid="stElementContainer"]:has(> [data-testid="stHtml"] script) { display: none; }
+.st-key-demo_line [data-testid="stAlertContainer"] { padding: 0.5rem 0.625rem; }
+.st-key-demo_line [data-testid="stAlertContainer"] p { font-size: 0.95rem; }
 h1 { font-size: 2.1rem !important; line-height: 1.2 !important; }
 [data-testid="stExpandSidebarButton"]::after {
   content: "__MENU__"; margin-left: 0.25rem; font-size: 1.05rem; font-weight: 600;
-  color: #14202B;
+  color: #1F1B3D;
 }
 [data-testid="stExpandSidebarButton"] { width: auto !important; min-height: 2.75rem; }
-:focus-visible { outline: 3px solid #0B4F8A !important; outline-offset: 2px; }
+:focus-visible { outline: 3px solid #4B3F8F !important; outline-offset: 2px; }
 </style>
 """.replace("__MENU__", S.MENU)
+
+
+# On a phone the open menu covers the whole page, and Streamlit leaves it open after a tap. The
+# listener sits on the document, so it is added once and survives page changes. 768px is the
+# width below which Streamlit draws the menu over the page.
+_CLOSE_MENU_ON_PHONE = """
+<script>
+if (!window.cdlpCloseMenu) {
+  window.cdlpCloseMenu = true;
+  document.addEventListener("click", (event) => {
+    if (window.innerWidth >= 768) return;
+    if (!event.target.closest('[data-testid="stSidebarNavLink"]')) return;
+    const close = document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+    if (close) close.click();
+  });
+}
+</script>
+"""
 
 
 def setup_page() -> None:
@@ -72,6 +93,7 @@ def setup_page() -> None:
         initial_sidebar_state="auto",
     )
     st.markdown(_CSS, unsafe_allow_html=True)
+    st.html(_CLOSE_MENU_ON_PHONE, unsafe_allow_javascript=True)
 
 
 def navigation():
@@ -110,7 +132,8 @@ def page_header(
 
     Pass `source_file` on every page that shows course results: it adds the sample notice
     (the file is example data) and the demo notice (the graph is only a demo subset).
-    `teacher=True` also shows the written rule that picked the demo subset.
+    Students get the notice in one short line. `teacher=True` shows it in full, with the
+    written rule that picked the demo subset.
     """
     if step is not None:
         step_indicator(step)
@@ -123,6 +146,23 @@ def page_header(
     if source_file:
         sample_notice(source_file)
         demo_notice(teacher=teacher)
+
+
+def scroll_to_top(screen: str) -> None:
+    """Start a new screen at its top. Call with text that changes when the screen does.
+
+    Streamlit keeps the scroll position, so on a phone the next question could start above the
+    fold. A script runs when its text changes, so the same screen drawn again does not jump. It
+    runs again shortly after, because the old screen's height can hold the position at first.
+    """
+    st.html(
+        f"""<script>/* {screen} */
+        for (const wait of [0, 150, 400]) setTimeout(() => {{
+          document.querySelector('[data-testid="stMain"]')?.scrollTo(0, 0);
+        }}, wait);
+        </script>""",
+        unsafe_allow_javascript=True,
+    )
 
 
 def action_button(
@@ -185,9 +225,12 @@ def empty_state(
 
 def demo_notice(course_id: str | None = None, *, teacher: bool = False) -> None:
     """Says so when the course's graph covers only a demo subset. Must never be removed."""
-    note = common.demo_subset_note(course_id)
-    if note:
+    note = common.demo_subset_note(course_id) if teacher else common.demo_subset_short(course_id)
+    if note and teacher:
         st.warning(note, icon="ℹ️")
+    elif note:
+        with st.container(key="demo_line"):  # tighter, so it stays one line on a small phone
+            st.warning(note, icon="ℹ️")
     rule = common.demo_subset_rule(course_id) if teacher else None
     if rule:
         st.caption(f"How the demo links were picked: {rule}")

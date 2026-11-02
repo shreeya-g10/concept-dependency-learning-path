@@ -335,3 +335,66 @@ def test_cli_markdown_only_folder_is_course_material(tmp_path, monkeypatch):
     assert run_cli(monkeypatch, "--input", tmp_path / "in", "--out-dir", tmp_path / "out") == 2
     assert "ch_trees_md_p1_0" in (tmp_path / "out" / "chunks.jsonl").read_text()
     assert not (tmp_path / "out" / "concepts.json").exists()
+
+
+def _write_course(folder, sections):
+    folder.mkdir()
+    (folder / "notes.md").write_text(
+        "\n\n".join(
+            f"# {name}\n\n{name} is explained here. " + "Filler words. " * 40 for name in sections
+        )
+    )
+
+
+def _run_cli_with_fake_concepts(monkeypatch, in_dir, out_dir, *flags):
+    from cdlp.extraction import __main__ as cli
+
+    def fake(chunks, **kwargs):
+        sources = [{"doc": c["doc"], "page": c["page"], "chunk_id": c["chunk_id"]} for c in chunks]
+        return {
+            "schema_version": "1.7",
+            "course_id": "t",
+            "concepts": [
+                {"id": "graphs", "name": "Graphs", "sources": sources[:1]},
+                {"id": "treque", "name": "Treque", "sources": sources[:1]},
+            ],
+        }
+
+    monkeypatch.setattr(cli, "extract_concepts_from_chunks", fake)
+    argv = ["x", "--input", str(in_dir), "--out-dir", str(out_dir), *flags]
+    monkeypatch.setattr("sys.argv", argv)
+    cli.main()
+
+
+def test_cli_writes_filtered_unfiltered_and_report(tmp_path, monkeypatch):
+    import json
+    from pathlib import Path
+
+    _write_course(tmp_path / "in", ["Graphs"])
+    config = json.loads((Path("cdlp/extraction/configs/concept_filter.json")).read_text())
+    config.update(min_chunks_to_apply=1, min_concepts_after=1)
+    config_file = tmp_path / "filter.json"
+    config_file.write_text(json.dumps(config))
+    out = tmp_path / "out"
+    _run_cli_with_fake_concepts(
+        monkeypatch, tmp_path / "in", out, "--filter-config", str(config_file)
+    )
+    ids = [c["id"] for c in json.loads((out / "concepts.json").read_text())["concepts"]]
+    all_ids = [
+        c["id"] for c in json.loads((out / "unfiltered_concepts.json").read_text())["concepts"]
+    ]
+    report = json.loads((out / "concept_filter_report.json").read_text())
+    assert ids == ["graphs"]
+    assert all_ids == ["graphs", "treque"]
+    assert report["concepts_after"] == 1
+
+
+def test_cli_can_skip_the_filter(tmp_path, monkeypatch):
+    import json
+
+    _write_course(tmp_path / "in", ["Graphs"])
+    out = tmp_path / "out"
+    _run_cli_with_fake_concepts(monkeypatch, tmp_path / "in", out, "--no-concept-filter")
+    ids = [c["id"] for c in json.loads((out / "concepts.json").read_text())["concepts"]]
+    assert ids == ["graphs", "treque"]
+    assert not (out / "concept_filter_report.json").exists()
