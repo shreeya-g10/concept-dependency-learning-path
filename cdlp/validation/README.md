@@ -33,3 +33,9 @@ Use a **different model** from discovery (`LLM_VALIDATOR_MODEL` in `.env`) so th
 
 ## Done when
 The full agent and every ablation run from one config each, results are in `cdlp/validation/results/`, and `pytest cdlp/validation` passes.
+
+## Review-queue experiment (code ready, not run yet)
+
+`python -m cdlp.validation.review_experiment --config cdlp/validation/configs/review_experiment/ds101.json`
+
+Graph F1 after k = 0…10 simulated teacher answers (answers from gold, applied with `apply_review.py`), for three orders of the HUMAN_REVIEW edges: impact-ranked, random (20 seeds, mean ± std) and lowest validator confidence. Blocking edges come first in every strategy, and every strategy re-ranks after each answer. No LLM call. Writes `results/review_experiment_<course>.json`. Needs the RQ1 full-agent graph (`outputs/rq1/<course>/validated_graph.json`) and `sim_students.json`. Caveats are in the module docstring: only accepted gold positives move F1, blocking-first spends budget without changing F1, and the oracle teacher makes each curve an upper bound.

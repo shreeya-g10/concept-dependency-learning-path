@@ -1,0 +1,15 @@
+{
+  "_comment": "Review-queue experiment (cdlp/validation/review_experiment.py): graph F1 after k = 0..10 simulated teacher answers from gold. graph is the full agent's validated_graph.json from the RQ1 run (before any teacher decision); students drive the impact ranking. Scoring matches configs/rq1/ml101.json. Set exclude_pairs to the threshold-tuning split, as for RQ1, before reporting numbers.",
+  "graph": "outputs/rq1/ml101/validated_graph.json",
+  "gold": "data/gold/gold_edges.csv",
+  "students": "outputs/ml101/sim_students.json",
+  "targets": null,
+  "k_max": 10,
+  "strategies": ["impact", "random", "lowest_confidence"],
+  "random_seeds": 20,
+  "seed": 0,
+  "unlabelled_answer": "REJECT",
+  "scoring": "direct",
+  "unlabelled_pairs": "false_positive",
+  "exclude_pairs": null
+}
