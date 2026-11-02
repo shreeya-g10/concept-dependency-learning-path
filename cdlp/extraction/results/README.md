@@ -1,5 +1,7 @@
 # Concept extraction results
 
+`concept_filter_ds101.md`: the evidence filter on ds101: counts, what was removed and kept, and the check against the gold list (`concept_filter_ds101.json` has the evidence for each concept).
+
 `evaluation_metrics.json`: concept extraction vs. the hand-annotated concept list (`data/gold/gold_concepts.json`), written by `python -m cdlp.extraction.evaluate --concepts outputs/<course>/concepts.json`.
 
 | Precision | Recall | F1 | TP | FP | FN |
