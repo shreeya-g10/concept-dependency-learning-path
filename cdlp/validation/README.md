@@ -27,6 +27,9 @@ Use a **different model** from discovery (`LLM_VALIDATOR_MODEL` in `.env`) so th
 - [ ] RQ1 ablations: discovery only · single LLM judge · full agent · agent minus each check → P / R / F1, HUMAN_REVIEW rate → `cdlp/validation/results/`
 - [ ] Website page 3: decisions, checks, evidence, necessity gap
 
+## Demo subset
+`--demo-subset N --demo-rule configs/demo_subset_ds101.json` picks the N edges by a written rule (`demo_rule.py`) and saves the chosen edges and the rule next to `--out` as `<out stem>.demo_subset.json`. It only ever keeps proposed edges. The subset includes edges picked because they look wrong, so its reject rate is not a result.
+
 ## Notes for the paper
 - **RQ1 on benchmarks reports the agent with the semantic and graph checks only** (decided 2026-11-02, revised the same day). AL-CPL and the University Course dataset give concept pairs only, no course text, so the evidence check has nothing to retrieve and the necessity test has no chunks to write questions on B from. On those datasets the reported agent is `minus_evidence_necessity`; on ds101 and ml101 it is `full_agent`. Each config in `configs/rq1/` names it in `reported_agent`, and the results files copy it. `full_agent` and `minus_evidence` are still scored on benchmarks but not reported. Suggested wording: *"The public benchmarks provide no course material, so on them we evaluate the agent with its semantic and graph-consistency checks only; the evidence check and the necessity test both need course text."*
 - **Scoring conventions** (`cdlp/validation/evaluate.py`): our gold is scored on direct edges, and an unlabelled predicted pair counts as a false positive. Benchmarks score only labelled pairs; AL-CPL uses the transitive closure of our predictions, and University Course uses it only if its gold positives imply each other (count recorded in each result). State the convention next to every number.
