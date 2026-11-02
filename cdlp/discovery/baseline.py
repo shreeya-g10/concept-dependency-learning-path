@@ -65,12 +65,16 @@ def _clean(raw, concept_ids: set) -> list[dict]:
 
 
 def discover_baseline(
-    concepts: list[dict], prompt_version: str = BASELINE_PROMPT_VERSION
+    concepts: list[dict],
+    prompt_version: str = BASELINE_PROMPT_VERSION,
+    num_ctx: int | None = None,
 ) -> list[dict]:
-    """One LLM call; returns contract-format edges (relationships.json items)."""
+    """One LLM call; returns contract-format edges (relationships.json items).
+    num_ctx: a full concept list plus its answer can exceed Ollama's default 4096 tokens."""
     prompt = load_prompt(prompt_version).format(concepts=_concept_lines(concepts))
+    extra = {"num_ctx": num_ctx} if num_ctx else {}
     try:
-        raw = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
+        raw = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE, **extra)
     except ValueError:  # not JSON
         raw = {}
     edges = []
