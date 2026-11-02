@@ -1,0 +1,10 @@
+source,target,label,agreement,note
+binary_search_tree,avl_tree,hard,3/3,AVL is a self-balancing BST; An AVL tree is a self-balancing binary search tree.
+binary_tree,avl_tree,none,2/2,shortcut pair via binary_search_tree; shortcut via binary_search_tree
+binary_tree,binary_search_tree,hard,3/3,BST is a binary tree with ordering invariant; A binary search tree is defined as a binary tree with an ordering property.
+graphs,avl_tree,none,3/3,unrelated data structures; Graphs are not a direct prerequisite for AVL trees.
+recursion,avl_tree,none,2/2,"indirect dependency via binary tree; shortcut via binary_tree, binary_search_tree"
+recursion,binary_tree,soft,3/3,recursive traversals; Binary tree traversals are commonly defined recursively
+trees,avl_tree,none,2/2,"shortcut pair via binary_tree and bst; shortcut via binary_tree, binary_search_tree"
+trees,binary_tree,hard,3/3,binary tree is a constrained tree; A binary tree is a specialized form of a tree.
+trees,graphs,soft,3/3,graph generalises tree structure; A graph generalizes a tree
