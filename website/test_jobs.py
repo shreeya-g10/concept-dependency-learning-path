@@ -22,7 +22,7 @@ import common  # noqa: E402
 import jobs  # noqa: E402
 
 PAGE = SITE / "pages" / "1_Course_Material.py"
-ALL_STAGES = "".join(f"print('==> {key}', flush=True)\n" for key, _ in jobs.STAGES[:4])
+ALL_STAGES = "".join(f"print('==> {key}', flush=True)\n" for key, _ in jobs.STAGES[:5])
 SUCCESS = ALL_STAGES + (
     "print('==> cdlp.root_cause skipped (no student_answers.json)')\nprint('==> contract check')\n"
 )
@@ -201,6 +201,7 @@ def test_successful_run_marks_every_stage(tmp_path):
         "cdlp.extraction": "done",
         "cdlp.discovery": "done",
         "cdlp.validation": "done",
+        "cdlp.learning_path.quiz": "done",
         "cdlp.learning_path": "done",
         "cdlp.root_cause": "skipped",
         "contract check": "done",
