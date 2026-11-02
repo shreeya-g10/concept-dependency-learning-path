@@ -196,8 +196,8 @@ def test_evaluate_scores_both_baselines_with_their_stats(mock_llm, inputs, tmp_p
     sj.main([*inputs, "--out", str(run_dir / "validated_single_judge.json")])
     llm.reset_stats()
     sc.main([*inputs, "--out", str(run_dir / "validated_self_consistency.json")])
-    (tmp_path / "data/gold").mkdir(parents=True)
-    (tmp_path / "data/gold/gold_edges.csv").write_text(
+    (tmp_path / "data/gold/ds101").mkdir(parents=True)
+    (tmp_path / "data/gold/ds101/gold_edges.csv").write_text(
         "source,target,label\ntrees,binary_tree,hard\nbinary_tree,binary_search_tree,hard\n"
         "binary_search_tree,avl_tree,hard\nrecursion,binary_tree,soft\ngraphs,avl_tree,none\n"
     )

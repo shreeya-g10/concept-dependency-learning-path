@@ -84,6 +84,19 @@ def test_run_reports_both_kappas_per_course_and_leaves_ties_out(tmp_path):
 
     # a->c tie (soft vs none) is unresolved; p->q tie is adjudicated
     assert [(u["source"], u["target"]) for u in report["merge"]["unresolved"]] == [("a", "c")]
+    with (tmp_path / "out/adjudication_needed.csv").open() as f:
+        needed = list(csv.DictReader(f))
+    assert needed == [
+        {
+            "course": "x",
+            "source": "a",
+            "target": "c",
+            "label_a": "soft",
+            "note_a": "",
+            "label_c": "none",
+            "note_c": "",
+        }
+    ]
     with (tmp_path / "out/y/gold_edges.csv").open() as f:
         y = {(r["source"], r["target"]): r for r in csv.DictReader(f)}
     assert y[("p", "q")]["label"] == "soft" and "adjudicated" in y[("p", "q")]["agreement"]
@@ -103,10 +116,15 @@ def test_pair_outside_every_course_is_an_error(tmp_path):
 
 
 def test_committed_agreement_matches_the_annotator_files(tmp_path):
-    """data/gold/merged/ is regenerated from the committed files (rerun merge_gold.py)."""
+    """data/gold/ agreement and per-course gold match the annotator files (rerun the script)."""
     gold = ROOT / "data/gold"
     report = mg.run(
         gold / "annotations", gold / "courses.json", gold / "adjudication.csv", tmp_path
     )
-    committed = json.loads((gold / "merged/agreement.json").read_text())
+    committed = json.loads((gold / "agreement.json").read_text())
     assert report == committed
+    for rel in [
+        *(f"{c}/gold_edges.csv" for c in report["merge"]["gold_rows"]),
+        "adjudication_needed.csv",
+    ]:
+        assert (tmp_path / rel).read_text() == (gold / rel).read_text(), rel

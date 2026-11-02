@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# Same columns as data/gold/gold_edges.csv; label is hard / soft / none.
+# Same columns as data/gold/<course>/gold_edges.csv; label is hard / soft / none.
 GOLD_COLUMNS = ["source", "target", "label", "agreement", "note"]
 CONCEPTS_SCHEMA_VERSION = "1.0"
 

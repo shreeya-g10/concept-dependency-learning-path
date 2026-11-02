@@ -136,7 +136,7 @@ Sources: `cdlp/learning_path/results/rq2_rq4_results.json`
 
 Shortcut rule: A pair labelled hard or soft becomes none if the same annotator's own hard/soft pairs already form a path from A to B through another concept. Labels changed by the rule: annotator a: 4. Unresolved ties before adjudication: 7.
 
-Sources: `data/gold/merged/agreement.json`
+Sources: `data/gold/agreement.json`
 
 ## Concept extraction vs. hand-annotated concepts
 

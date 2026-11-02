@@ -11,7 +11,7 @@
     {
       "course_id": "ds101",
       "concepts": "outputs/ds101/concepts.json",
-      "gold": "data/gold/gold_edges.csv",
+      "gold": "data/gold/ds101/gold_edges.csv",
       "run_dir": "outputs/rq1/ds101"
     }
   ]
