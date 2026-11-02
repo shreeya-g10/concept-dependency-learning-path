@@ -179,3 +179,41 @@ def test_allow_tfidf_reaches_extraction_only_when_given(allow, tmp_path, monkeyp
     with pytest.raises(Stop):
         pipeline.main()
     assert ("--allow-tfidf" in seen["cdlp.extraction"]) is allow
+
+
+def test_teacher_decisions_are_reapplied_after_validation(tmp_path, monkeypatch):
+    """review_decisions.json in the output folder: apply_review runs (for real) right
+    after validation, so a re-run keeps the teacher's decisions."""
+    pipeline = load_pipeline()
+    real_run = pipeline.run
+    calls = []
+    relabel(EXAMPLES / "review_decisions.json", tmp_path / "review_decisions.json", "ds101")
+
+    def fake_run(module, *args):
+        calls.append(module)
+        if module == "cdlp.extraction":
+            out = Path(arg(args, "--out-dir"))
+            relabel(EXAMPLES / "concepts.json", out / "concepts.json", "ds101")
+            relabel(EXAMPLES / "chunks.jsonl", out / "chunks.jsonl", "ds101")
+        elif module == "cdlp.discovery":
+            out = Path(arg(args, "--out-dir"))
+            relabel(EXAMPLES / "relationships.json", out / "relationships.json", "ds101")
+        elif module == "cdlp.validation":
+            relabel(EXAMPLES / "validated_graph.json", Path(arg(args, "--out")), "ds101")
+        else:  # apply_review and learning_path make no LLM call: run them for real
+            real_run(module, *args)
+
+    monkeypatch.setattr(pipeline, "run", fake_run)
+    monkeypatch.setattr(
+        "sys.argv", ["pipeline.py", "--course", "ds101", "--out-dir", str(tmp_path)]
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        pipeline.main()
+
+    assert exit_info.value.code == 0
+    assert calls[2:4] == ["cdlp.validation", "cdlp.validation.apply_review"]
+    edges = {
+        e["id"]: e for e in json.loads((tmp_path / "validated_graph.json").read_text())["edges"]
+    }
+    assert edges["r5"]["decision"] == "ACCEPT"
+    assert edges["r5"]["review"]["decided_by"] == "teacher"

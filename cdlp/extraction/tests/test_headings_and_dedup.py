@@ -325,3 +325,13 @@ def test_cli_without_course_files_writes_the_examples(tmp_path):
     )
     assert "ch_l5_p03" in (out / "chunks.jsonl").read_text()
     assert check_file(out / "concepts.json") == []
+
+
+def test_cli_markdown_only_folder_is_course_material(tmp_path, monkeypatch):
+    """MD / TXT / DOCX count as course files (is_course_file), so no example fallback."""
+    monkeypatch.setattr(extract, "is_llm_available", lambda: False)
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "trees.md").write_text("# Trees\nA tree has a root.\n")
+    assert run_cli(monkeypatch, "--input", tmp_path / "in", "--out-dir", tmp_path / "out") == 2
+    assert "ch_trees_md_p1_0" in (tmp_path / "out" / "chunks.jsonl").read_text()
+    assert not (tmp_path / "out" / "concepts.json").exists()

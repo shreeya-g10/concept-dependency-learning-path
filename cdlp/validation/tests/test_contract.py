@@ -40,6 +40,8 @@ def results(rels, make):
 
 @pytest.fixture(autouse=True)
 def mocked_checks(monkeypatch):
+    llm.reset_stats()  # the call counters are per process: start every test at zero
+
     def no_llm(*args, **kwargs):
         raise AssertionError("tests must mock the LLM")
 

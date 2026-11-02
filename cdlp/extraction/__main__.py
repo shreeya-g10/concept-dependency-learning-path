@@ -10,10 +10,8 @@ import sys
 from pathlib import Path
 
 from cdlp.extraction.extract import ExtractionError, extract_concepts_from_chunks
-from cdlp.extraction.parse import parse_directory
+from cdlp.extraction.parse import is_course_file, parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
-
-COURSE_SUFFIXES = (".pdf", ".pptx", ".ppt")  # what cdlp.extraction.parse reads
 
 
 def fail(message: str, code: int = 1) -> None:
@@ -23,7 +21,12 @@ def fail(message: str, code: int = 1) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, required=True, help="folder of PDF/PPTX files")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="folder of course files (PDF, PPTX, MD, TXT, DOCX)",
+    )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--course-id", "--course", dest="course_id", type=str, default=None)
     parser.add_argument(
@@ -57,12 +60,7 @@ def main() -> None:
     # Course files present: every failure is reported (exit 1 / 2), never replaced by the
     # shared examples. The examples are used only when the folder has no course file
     # (e.g. the contract test runs on data/raw/, which holds only a README).
-    course_files = input_dir.is_dir() and any(
-        p.is_file()
-        and p.suffix.lower() in COURSE_SUFFIXES
-        and not p.name.lower().startswith("readme")
-        for p in input_dir.iterdir()
-    )
+    course_files = input_dir.is_dir() and any(is_course_file(p) for p in input_dir.iterdir())
     if not course_files:
         print(f"note: no course files in {input_dir}; writing the shared example files")
         write_jsonl(out_dir / "chunks.jsonl", read_jsonl(EXAMPLES / "chunks.jsonl"))

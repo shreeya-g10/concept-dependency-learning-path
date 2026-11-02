@@ -19,6 +19,13 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - Not a contract change: without the embedding model, extraction now fails (exit 2) unless `--allow-tfidf` is given. Before, it silently compared names with TF-IDF. Without a reachable LLM, or when more than 20% of chunks fell back to the catalog, it fails (exit 2) unless `--allow-rule-based` is given. With course files present, a parse or extraction error exits 1 instead of writing the example files. `pipeline.py` passes both flags on.
 - Purely additive: four new optional fields. Older files stay valid.
 
+## 1.6
+
+- New `review_decisions.json` (example in `examples/`): a teacher's ACCEPT / REJECT on HUMAN_REVIEW edges, one row per edge (`edge_id`, `source`, `target`, `decision`, `decided_by`, `decided_at`, optional `comment`). Written from website page 3 through `python -m cdlp.validation.apply_review --decide <edge_id> <ACCEPT|REJECT>`. Registered in `FILE_SCHEMAS`.
+- `validated_graph.json` edges may carry a new optional `review` object: `decided_by` (`teacher`), `decision`, `validator_decision` (always `HUMAN_REVIEW`), `status` (`applied` or `refused_cycle`), and optional `comment`, `decided_at`, `cycle`. With `applied`, the edge's `decision` is the teacher's. With `refused_cycle`, the teacher's ACCEPT would have closed a cycle, so the edge stays `HUMAN_REVIEW` and the graph stays a DAG. The validator's `confidence`, `checks`, `evidence` and `reason` are never changed. Example: `examples/reviewed_validated_graph.json` (edge `r5` accepted by a teacher).
+- `cdlp/validation/apply_review.py` writes `validated_graph.json` at `schema_version` 1.6. It first undoes earlier teacher decisions (restores `validator_decision`), then applies all of them, so re-running it changes nothing. `pipeline.py` re-applies `outputs/<course>/review_decisions.json` right after validation, when that file exists.
+- Purely additive: a new file and one new optional field. 1.0–1.5 files stay valid.
+
 ## 1.5
 
 - `validated_graph.json`: every check (`evidence`, `semantic`, `necessity`, `graph`) may now be `skipped`, meaning the check was not run (an RQ1 ablation such as `--skip-evidence`, or a benchmark without course text). A skipped check never blocks ACCEPT and is left out of the decision score.

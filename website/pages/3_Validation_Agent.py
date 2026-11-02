@@ -1,16 +1,21 @@
 """Owner: Shreeya. Shows each validation decision with its checks, evidence and reason.
 
 Sections: counts per decision, the four checks for every edge, necessity-test details
-(control / without A / gap), the impact-ranked review queue when it exists, and RQ1 and
-necessity results from cdlp/validation/results/ when those files exist.
+(control / without A / gap), teacher review of HUMAN_REVIEW edges (Accept / Reject,
+blocking edges first, then by impact; applied through cdlp.validation.apply_review), and
+RQ1 and necessity results from cdlp/validation/results/ when those files exist.
 """
 
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 
+import networkx as nx
 import streamlit as st
 from common import (
+    OUTPUTS,
     ROOT,
     concept_names,
     get_active_course,
@@ -138,7 +143,8 @@ decision = st.radio("Show", DECISIONS, horizontal=True)
 for e in edges:
     if e["decision"] != decision:
         continue
-    with st.expander(f"{label(e['source'])} → {label(e['target'])} · {e['confidence']:.2f}"):
+    by = " · decided by teacher" if (e.get("review") or {}).get("status") == "applied" else ""
+    with st.expander(f"{label(e['source'])} → {label(e['target'])} · {e['confidence']:.2f}{by}"):
         st.write(e["reason"])
         st.markdown(" · ".join(f"**{check}** {grade(e['checks'][check])}" for check in CHECKS))
         row = necessity_rows.get(e["id"]) or necessity_rows.get(f"{e['source']}->{e['target']}")
@@ -169,41 +175,144 @@ for e in edges:
             st.markdown(f"> {ev.get('quote') or '(no quote)'}")
             st.caption(f"{ev.get('doc', '?')} p.{ev.get('page', '?')} · chunk `{ev['chunk_id']}`")
 
-# ---- Review queue -----------------------------------------------------------
-st.subheader("Human review queue")
-if not resolve_path("review_queue.json").exists():
-    st.info("No review_queue.json yet. Run validation with `--review-queue`.")
-else:
-    queue = load("review_queue.json")["queue"]
-    if not queue:
-        st.success("Nothing waits for review.")
-    blocking = [q for q in queue if q.get("blocking")]
-    if blocking:
-        st.error(
-            f"{len(blocking)} blocking edge(s): accepting them as they are would close a "
-            "cycle. Resolve these first, before any impact-ranked edge."
+# ---- Teacher review ---------------------------------------------------------
+# Every decision goes through `python -m cdlp.validation.apply_review` (a module CLI, not
+# an import): it records the decision in review_decisions.json, applies all decisions to
+# validated_graph.json (never accepting an edge that closes a cycle) and, when
+# sim_students.json exists, rebuilds review_queue.json on the updated graph.
+st.subheader("Teacher review")
+out_dir = OUTPUTS / course
+graph_path = resolve_path("validated_graph.json")
+live = graph_path == out_dir / "validated_graph.json"
+students_path = out_dir / "sim_students.json"
+queue_path = out_dir / "review_queue.json"
+
+
+def run_apply(*extra: str) -> subprocess.CompletedProcess:
+    command = [
+        sys.executable,
+        "-m",
+        "cdlp.validation.apply_review",
+        *["--graph", str(graph_path), "--decisions", str(out_dir / "review_decisions.json")],
+    ]
+    if students_path.exists():
+        command += ["--students", str(students_path), "--queue", str(queue_path)]
+    return subprocess.run([*command, *extra], cwd=ROOT, capture_output=True, text=True, timeout=120)
+
+
+def decide(edge_id: str, decision: str, comment: str | None = None) -> None:
+    """Button callback. The comment is read now, not when the button was drawn, so text
+    typed just before the click is kept."""
+    if comment is None:
+        comment = st.session_state.get(f"comment_{edge_id}", "")
+    result = run_apply("--decide", edge_id, decision, "--comment", comment)
+    if result.returncode != 0:
+        st.session_state["review_error"] = (result.stderr or result.stdout).strip()
+    else:
+        st.session_state["review_note"] = result.stdout.strip()
+        st.cache_data.clear()  # pages 4 and 5 read the updated graph
+
+
+def blocking_now(edge: dict) -> bool:
+    """Accepting the edge now would close a cycle with the current ACCEPT edges."""
+    accepted = nx.DiGraph((e["source"], e["target"]) for e in edges if e["decision"] == "ACCEPT")
+    source, target = edge["source"], edge["target"]
+    return source == target or (
+        source in accepted and target in accepted and nx.has_path(accepted, target, source)
+    )
+
+
+pending = [e for e in edges if e["decision"] == "HUMAN_REVIEW"]
+by_teacher = [e for e in edges if (e.get("review") or {}).get("status") == "applied"]
+if live and pending and students_path.exists():
+    stale = not queue_path.exists() or queue_path.stat().st_mtime < graph_path.stat().st_mtime
+    if stale and run_apply().returncode == 0:  # rank by impact on the current graph
+        st.cache_data.clear()
+queue_file = queue_path if live else resolve_path("review_queue.json")
+queue_rows = {}
+if queue_file.exists():
+    queue_rows = {q["edge_id"]: q for q in json.loads(queue_file.read_text())["queue"]}
+
+for key, show in (("review_error", st.error), ("review_note", st.success)):
+    if key in st.session_state:
+        show(st.session_state.pop(key))
+if not live:
+    st.info(
+        f"This page shows example data. Build `{course}` on page 1 first: teacher decisions "
+        f"are saved to `outputs/{course}/review_decisions.json`, never to the examples."
+    )
+if not pending:
+    st.success("Nothing waits for review.")
+
+
+def review_order(edge: dict) -> tuple:
+    """Blocking edges first, then by impact (highest first; unknown last), then by id."""
+    impact = (queue_rows.get(edge["id"]) or {}).get("impact_score")
+    return (not blocking_now(edge), impact is None, -(impact or 0.0), edge["id"])
+
+
+pending.sort(key=review_order)
+n_blocking = sum(blocking_now(e) for e in pending)
+if n_blocking:
+    st.error(
+        f"{n_blocking} blocking edge(s): accepting them would close a cycle, so they can only "
+        "be rejected (or resolved by rejecting another edge in the cycle). They come first."
+    )
+if pending and not queue_rows:
+    st.caption("No impact ranking yet (needs sim_students.json); ordered by blocking, then id.")
+for edge in pending:
+    blocking = blocking_now(edge)
+    row = queue_rows.get(edge["id"]) or {}
+    tag = "⛔ blocking" if blocking else f"impact {fmt(row.get('impact_score'))}"
+    with st.container(border=True):
+        st.markdown(
+            f"**{label(edge['source'])} → {label(edge['target'])}** · `{edge['id']}` · {tag} · "
+            f"validator confidence {edge['confidence']:.2f}"
         )
-    st.dataframe(
-        [
-            {
-                "edge": f"{label(q['source'])} → {label(q['target'])}",
-                "blocking": bool(q.get("blocking")),
-                "impact": q.get("impact_score"),
-                "paths affected": q.get("paths_affected"),
-                "reason": q.get("reason", ""),
-            }
-            for q in sorted(
-                queue,
-                key=lambda q: (not q.get("blocking"), -(q.get("impact_score") or 0)),
+        st.caption(edge["reason"])
+        if row.get("paths_affected") is not None:
+            st.caption(f"Accepting changes {row['paths_affected']} simulated learning path(s).")
+        review = edge.get("review") or {}
+        if review.get("status") == "refused_cycle":
+            st.warning(
+                "A teacher ACCEPT was refused: it would close the cycle "
+                + " → ".join(label(c) for c in review.get("cycle", []))
             )
-        ],
-        width="stretch",
-        hide_index=True,
-    )
-    st.caption(
-        "Blocking edges first, then highest impact: how many simulated students' paths "
-        "change if the edge is accepted. A blocking edge has no impact (null)."
-    )
+        st.text_input("Comment (optional)", key=f"comment_{edge['id']}")
+        c1, c2, _ = st.columns([1, 1, 4])
+        c1.button(
+            "✅ Accept",
+            key=f"accept_{edge['id']}",
+            disabled=not live or blocking,
+            on_click=decide,
+            args=(edge["id"], "ACCEPT"),
+            help="Disabled: accepting would close a cycle." if blocking else None,
+        )
+        c2.button(
+            "❌ Reject",
+            key=f"reject_{edge['id']}",
+            disabled=not live,
+            on_click=decide,
+            args=(edge["id"], "REJECT"),
+        )
+
+if by_teacher:
+    with st.expander(f"Decided by teacher ({len(by_teacher)})"):
+        for edge in by_teacher:
+            review = edge["review"]
+            other = "REJECT" if review["decision"] == "ACCEPT" else "ACCEPT"
+            st.markdown(
+                f"**{label(edge['source'])} → {label(edge['target'])}** · "
+                f"{review['decision']} by {review['decided_by']} · {review.get('decided_at', '')}"
+                + (f" · “{review['comment']}”" if review.get("comment") else "")
+            )
+            st.button(
+                f"Change to {other}",
+                key=f"change_{edge['id']}",
+                disabled=not live,
+                on_click=decide,
+                args=(edge["id"], other, review.get("comment", "")),
+            )
 
 # ---- RQ1 results ------------------------------------------------------------
 rq1 = {

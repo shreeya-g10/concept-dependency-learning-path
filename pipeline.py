@@ -4,6 +4,7 @@
 
 Reads course files from data/raw/<course>/ and writes to outputs/<course>/.
 Root-cause tracing runs only when outputs/<course>/student_answers.json exists.
+Teacher decisions (outputs/<course>/review_decisions.json) are re-applied after validation.
 Each step calls one module's CLI and checks its output against the contract.
 Modules never import each other; they only exchange the files in outputs/<course>/.
 """
@@ -117,6 +118,15 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
     )
+    # teacher decisions (website page 3) survive a re-run: apply them to the new graph
+    if (out / "review_decisions.json").exists():
+        run(
+            "cdlp.validation.apply_review",
+            "--graph",
+            str(out / "validated_graph.json"),
+            "--decisions",
+            str(out / "review_decisions.json"),
+        )
     # learning_path (cdlp/learning_path/sim_students.py) generates sim_students.json from
     # the validated graph itself.
     # It does not generate quiz_items.json yet, so fall back to the shared example
