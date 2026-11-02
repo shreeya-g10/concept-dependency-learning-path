@@ -1,13 +1,12 @@
 """Tests for quiz item validation and robustness.
 
-Owner: Vaidehi.
 Ensures malformed LLM outputs never raise KeyError and invalid items
 (missing fields, answer not in options) are safely skipped.
 """
 
 from __future__ import annotations
 
-from cdlp.discovery.quiz import (
+from cdlp.learning_path.quiz import (
     clean_and_filter_quiz_items,
     get_quiz_items,
     validate_quiz_item,

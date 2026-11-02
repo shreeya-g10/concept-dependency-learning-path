@@ -1,0 +1,134 @@
+{
+  "tables": {
+    "rq1_ds101": {
+      "title": "RQ1 \u2014 edge quality on ds101",
+      "sources": [],
+      "placeholders": 55
+    },
+    "rq1_ml101": {
+      "title": "RQ1 \u2014 edge quality on ml101",
+      "sources": [],
+      "placeholders": 55
+    },
+    "rq1_al_cpl_micro": {
+      "title": "RQ1 \u2014 edge quality on al_cpl (micro)",
+      "sources": [],
+      "placeholders": 55
+    },
+    "rq1_university_course": {
+      "title": "RQ1 \u2014 edge quality on university_course",
+      "sources": [],
+      "placeholders": 55
+    },
+    "rq2": {
+      "title": "RQ2 \u2014 diagnosis on simulated students",
+      "sources": [
+        "cdlp/learning_path/results/rq2_rq4_results.json"
+      ],
+      "placeholders": 0
+    },
+    "rq3": {
+      "title": "RQ3 \u2014 root-cause tracing on the gold test set",
+      "sources": [],
+      "placeholders": 15
+    },
+    "rq4": {
+      "title": "RQ4 \u2014 personalized vs. generic paths",
+      "sources": [
+        "cdlp/learning_path/results/rq2_rq4_results.json"
+      ],
+      "placeholders": 0
+    },
+    "kappa": {
+      "title": "Inter-annotator agreement (Cohen's \u03ba, before adjudication)",
+      "sources": [],
+      "placeholders": 12
+    },
+    "extraction": {
+      "title": "Concept extraction vs. hand-annotated concepts",
+      "sources": [
+        "cdlp/extraction/results/evaluation_metrics.json"
+      ],
+      "placeholders": 0
+    },
+    "necessity": {
+      "title": "Necessity-test stability (gap mean \u00b1 sd over seeds)",
+      "sources": [
+        "cdlp/validation/results/necessity_stability/summary.json",
+        "cdlp/validation/results/necessity_stability_open5_qt07/summary.json"
+      ],
+      "placeholders": 3
+    }
+  },
+  "figures": {
+    "figures/rq2_accuracy_vs_questions.png": [
+      "cdlp/learning_path/results/rq2_rq4_results.json"
+    ],
+    "figures/necessity_gap_stability.png": [
+      "cdlp/validation/results/necessity_stability/summary.json"
+    ]
+  },
+  "missing": [
+    "cdlp/root_cause/results/<run on data/gold/root_cause_testset.json>.json",
+    "cdlp/validation/results/rq1_al_cpl_micro.json",
+    "cdlp/validation/results/rq1_ds101.json",
+    "cdlp/validation/results/rq1_ml101.json",
+    "cdlp/validation/results/rq1_university_course.json",
+    "data/gold/merged/agreement.json",
+    "figures/kappa_raw_vs_rule.png",
+    "figures/rq1_al_cpl_micro_precision_recall.png",
+    "figures/rq1_ds101_precision_recall.png",
+    "figures/rq1_ml101_precision_recall.png",
+    "figures/rq1_university_course_precision_recall.png"
+  ],
+  "results_found": [
+    "cdlp/extraction/results/evaluation_metrics.json",
+    "cdlp/learning_path/results/rq2_rq4_results.json",
+    "cdlp/root_cause/results/dev_set_baselines_no_mastery.json",
+    "cdlp/root_cause/results/dev_set_baselines_with_mastery.json",
+    "cdlp/root_cause/results/dev_set_llm_no_mastery.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed44.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed44.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed44.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed42.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed43.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed44.json",
+    "cdlp/validation/results/necessity_stability/summary.json",
+    "cdlp/validation/results/necessity_stability_open5_qt07/open_n5_seed42.json",
+    "cdlp/validation/results/necessity_stability_open5_qt07/summary.json",
+    "cdlp/validation/results/necessity_v1_control_a_unlisted_examples.json",
+    "cdlp/validation/results/necessity_v1_control_examples.json",
+    "cdlp/validation/results/necessity_v1_examples.json",
+    "cdlp/validation/results/semantic_v1_examples.json",
+    "cdlp/validation/results/semantic_v2_examples.json"
+  ],
+  "results_not_used": [
+    "cdlp/root_cause/results/dev_set_baselines_no_mastery.json",
+    "cdlp/root_cause/results/dev_set_baselines_with_mastery.json",
+    "cdlp/root_cause/results/dev_set_llm_no_mastery.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n3_seed44.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n5_seed44.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed42.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed43.json",
+    "cdlp/validation/results/necessity_stability/mcq_n8_seed44.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed42.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed43.json",
+    "cdlp/validation/results/necessity_stability/open_n3_seed44.json",
+    "cdlp/validation/results/necessity_stability_open5_qt07/open_n5_seed42.json",
+    "cdlp/validation/results/necessity_v1_control_a_unlisted_examples.json",
+    "cdlp/validation/results/necessity_v1_control_examples.json",
+    "cdlp/validation/results/necessity_v1_examples.json",
+    "cdlp/validation/results/semantic_v1_examples.json",
+    "cdlp/validation/results/semantic_v2_examples.json"
+  ]
+}
