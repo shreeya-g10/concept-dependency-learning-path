@@ -1,4 +1,4 @@
-"""Page 3 teacher review: Accept / Reject buttons, ordering, and the applied graph.
+"""Teacher review: Accept / Reject buttons, ordering, and the applied graph.
 
 Runs on a copy of the example files in a temporary outputs/ folder. Each click runs the
 real `python -m cdlp.validation.apply_review` CLI (no LLM).
@@ -17,7 +17,7 @@ if str(SITE) not in sys.path:  # as `streamlit run website/Home.py` does
 
 import common  # noqa: E402
 
-PAGE = SITE / "pages" / "3_Validation_Agent.py"
+PAGE = SITE / "pages" / "teacher_AI_checks_and_review.py"
 EXAMPLES = common.EXAMPLES
 
 
@@ -69,7 +69,7 @@ def test_blocking_edges_come_first_and_cannot_be_accepted(outputs):
     accept = [b for b in at.button if b.key and b.key.startswith("accept_")]
     assert [b.key for b in accept] == ["accept_r7", "accept_r5"]  # blocking r7 first
     assert accept[0].disabled and not accept[1].disabled
-    assert any("blocking edge" in e.value for e in at.error)
+    assert any("blocking link" in e.value for e in at.error)
 
 
 def test_accept_saves_the_decision_and_updates_the_graph(outputs):

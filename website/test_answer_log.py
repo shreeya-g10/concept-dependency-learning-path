@@ -1,4 +1,4 @@
-"""Page 5 logs every answer anonymously and labels a non-LLM root cause.
+"""The quick check logs every answer anonymously and labels a non-LLM root cause.
 
 Nothing here calls an LLM: the root-cause tracer is faked, and outputs/ points to tmp_path.
 """
@@ -11,7 +11,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 SITE = Path(__file__).parent
-PAGE5 = SITE / "pages" / "5_My_Learning_Path.py"
+QUIZ = SITE / "pages" / "3_Quick_check.py"
 sys.path.insert(0, str(SITE))
 
 import common  # noqa: E402
@@ -49,7 +49,7 @@ def answer_wrong(at: AppTest) -> AppTest:
     return at.button[-1].click().run()
 
 
-def test_page5_logs_answer_and_labels_offline_root_cause(outputs, monkeypatch):
+def test_quick_check_logs_answer_and_labels_offline_root_cause(outputs, monkeypatch):
     calls = []
 
     def fake_trace(graph, quiz_item, answer, mastery, *, allow_fallback=False):
@@ -57,7 +57,7 @@ def test_page5_logs_answer_and_labels_offline_root_cause(outputs, monkeypatch):
         return {"explanation": "[fallback: offline estimate] Gap is likely in trees."}
 
     monkeypatch.setattr(root_cause_api, "trace", fake_trace)
-    at = answer_wrong(AppTest.from_file(str(PAGE5), default_timeout=60).run())
+    at = answer_wrong(AppTest.from_file(str(QUIZ), default_timeout=60).run())
     assert not at.exception
 
     assert calls == [True]  # the page asks for the fallback
@@ -68,5 +68,6 @@ def test_page5_logs_answer_and_labels_offline_root_cause(outputs, monkeypatch):
     assert rows[0]["student_id"].startswith("anon_")  # random id, nothing identifying
 
     shown = " ".join(c.value for c in at.caption)
-    assert "offline estimate" in shown and "[fallback:" not in shown
+    assert "our best guess" in shown and "not from the AI helper" in shown
+    assert "[fallback:" not in shown
     assert "Gap is likely in trees." in shown

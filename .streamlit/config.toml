@@ -1,0 +1,20 @@
+# Calm, high-contrast theme. website/test_foundation.py checks the contrast ratios.
+[theme]
+base = "light"
+primaryColor = "#0B4F8A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EEF3F8"
+textColor = "#14202B"
+linkColor = "#0B4F8A"
+borderColor = "#5B6B7A"
+font = "sans-serif"
+baseFontSize = 18
+baseRadius = "medium"
+buttonRadius = "medium"
+
+[client]
+# No developer menu for students.
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

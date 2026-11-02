@@ -1,8 +1,8 @@
-"""Owner: Shreeya. Shows each validation decision with its checks, evidence and reason.
+"""For teachers: what the AI checks decided for each link, and the teacher review.
 
-Sections: counts per decision, the four checks for every edge, necessity-test details
-(control / without A / gap), teacher review of HUMAN_REVIEW edges (Accept / Reject,
-blocking edges first, then by impact; applied through cdlp.validation.apply_review), and
+Sections: counts per decision, the four checks for every link, trial-check details
+(control / without A / gap), teacher review of HUMAN_REVIEW links (Accept / Reject,
+blocking links first, then by impact; applied through cdlp.validation.apply_review), and
 RQ1 and necessity results from cdlp/validation/results/ when those files exist.
 """
 
@@ -14,19 +14,15 @@ import sys
 
 import networkx as nx
 import streamlit as st
-from common import (
-    OUTPUTS,
-    ROOT,
-    concept_names,
-    get_active_course,
-    load,
-    page_header,
-    render_sidebar,
-    resolve_path,
-)
+import ui
+from common import OUTPUTS, ROOT, concept_names, get_active_course, load, resolve_path
 
-render_sidebar()
-page_header("Validation Agent", "Shreeya", "validated_graph.json")
+ui.page_header(
+    "AI checks and review",
+    "What the AI checks decided for each link between topics, and the links that need you.",
+    source_file="validated_graph.json",
+    teacher=True,
+)
 
 RESULTS = ROOT / "cdlp" / "validation" / "results"
 DECISIONS = ["ACCEPT", "REJECT", "HUMAN_REVIEW"]
@@ -45,8 +41,15 @@ names = concept_names()
 edges = load("validated_graph.json")["edges"]
 
 
+DECISION_WORDS = {"ACCEPT": "Accepted", "REJECT": "Rejected", "HUMAN_REVIEW": "Needs a teacher"}
+
+
 def label(concept_id: str) -> str:
     return names.get(concept_id, concept_id)
+
+
+def decision_word(decision: str) -> str:
+    return DECISION_WORDS.get(decision, decision)
 
 
 def grade(value: str) -> str:
@@ -71,23 +74,25 @@ def fmt(value) -> str:
 # ---- Counts per decision ----------------------------------------------------
 st.subheader("Decisions")
 counts = {d: sum(e["decision"] == d for e in edges) for d in DECISIONS}
-cols = st.columns(4)
-cols[0].metric("Accepted", counts["ACCEPT"])
-cols[1].metric("Rejected", counts["REJECT"])
-cols[2].metric("Human review", counts["HUMAN_REVIEW"])
-cols[3].metric("Human-review rate", f"{counts['HUMAN_REVIEW'] / len(edges):.0%}" if edges else "—")
-st.caption("Every proposed edge is kept with its decision; downstream pages use ACCEPT only.")
+st.metric("Accepted", counts["ACCEPT"])
+st.metric("Rejected", counts["REJECT"])
+st.metric("Needs a teacher", counts["HUMAN_REVIEW"])
+st.metric(
+    "Share that needs a teacher", f"{counts['HUMAN_REVIEW'] / len(edges):.0%}" if edges else "—"
+)
+st.caption("Every suggested link is kept with its decision. Students only see accepted links.")
 
 # ---- Four checks per edge ---------------------------------------------------
-st.subheader("Checks per edge")
-decision_filter = st.multiselect("Decision", DECISIONS, default=DECISIONS)
+st.subheader("Checks for each link")
+decision_filter = st.multiselect(
+    "Decision", DECISIONS, default=DECISIONS, format_func=decision_word
+)
 shown = [e for e in edges if e["decision"] in decision_filter]
 st.dataframe(
     [
         {
-            "id": e["id"],
-            "edge": f"{label(e['source'])} → {label(e['target'])}",
-            "decision": e["decision"],
+            "link": f"{label(e['source'])} → {label(e['target'])}",
+            "decision": decision_word(e["decision"]),
             "confidence": e["confidence"],
             **{check: grade(e["checks"][check]) for check in CHECKS},
             "necessity gap": e.get("necessity_gap"),
@@ -119,21 +124,21 @@ necessity_runs = {
 }
 necessity_rows: dict[str, dict] = {}
 if necessity_runs:
-    st.subheader("Necessity test")
-    run_name = st.selectbox("Necessity run", sorted(necessity_runs, reverse=True))
+    st.subheader("Trial check: can a learner manage without topic A?")
+    run_name = st.selectbox("Trial run", sorted(necessity_runs, reverse=True))
     run = necessity_runs[run_name]
     st.caption(
         f"model `{run.get('model', '?')}` · temperature {run.get('temperature', '?')} · "
         f"seed {run.get('seed', '?')} · leakage rate {run.get('leakage_rate', '?')}. "
         "Gap = control score − score without A. The control learner bans an unrelated "
-        "concept C instead of A. Experimental and report-only: it does not change any decision."
+        "topic C instead of A. This check is on trial: it does not change any decision."
     )
     for row in run["results"]:
         necessity_rows[f"{row['source']}->{row['target']}"] = row  # by pair, never by id
     st.dataframe(
         [
             {
-                "edge": f"{label(r.get('source', ''))} → {label(r.get('target', ''))}",
+                "link": f"{label(r.get('source', ''))} → {label(r.get('target', ''))}",
                 "control C": (r.get("control_concept") or {}).get("name"),
                 "control": r.get("score_control"),
                 "without A": r.get("score_without"),
@@ -149,8 +154,8 @@ if necessity_runs:
     )
 
 # ---- Edge details -----------------------------------------------------------
-st.subheader("Edge details")
-decision = st.radio("Show", DECISIONS, horizontal=True)
+st.subheader("Link details")
+decision = st.radio("Show", DECISIONS, format_func=decision_word)
 for e in edges:
     if e["decision"] != decision:
         continue
@@ -162,7 +167,7 @@ for e in edges:
         if row:
             control = (row.get("control_concept") or {}).get("name", "?")
             st.markdown(
-                f"Necessity: control (bans *{control}*) {fmt(row.get('score_control'))} · "
+                f"Trial check: control (bans *{control}*) {fmt(row.get('score_control'))} · "
                 f"without A {fmt(row.get('score_without'))} · "
                 f"gap **{fmt(row.get('necessity_gap'))}**"
             )
@@ -179,12 +184,12 @@ for e in edges:
                             )
                             st.caption(f"{side}: {answers[i]} → {graded}")
         else:
-            st.caption(f"Necessity gap: {fmt(e.get('necessity_gap'))} (no necessity-run details)")
+            st.caption(f"Trial-check gap: {fmt(e.get('necessity_gap'))} (no trial-run details)")
         if not e["evidence"]:
-            st.caption("No evidence chunk.")
+            st.caption("No quote.")
         for ev in e["evidence"]:
             st.markdown(f"> {ev.get('quote') or '(no quote)'}")
-            st.caption(f"{ev.get('doc', '?')} p.{ev.get('page', '?')} · chunk `{ev['chunk_id']}`")
+            st.caption(f"{ev.get('doc', '?')} p.{ev.get('page', '?')}")
 
 # ---- Teacher review ---------------------------------------------------------
 # Every decision goes through `python -m cdlp.validation.apply_review` (a module CLI, not
@@ -221,7 +226,7 @@ def decide(edge_id: str, decision: str, comment: str | None = None) -> None:
         st.session_state["review_error"] = (result.stderr or result.stdout).strip()
     else:
         st.session_state["review_note"] = result.stdout.strip()
-        st.cache_data.clear()  # pages 4 and 5 read the updated graph
+        st.cache_data.clear()  # the topic map and study plan read the updated graph
 
 
 def blocking_now(edge: dict) -> bool:
@@ -249,11 +254,11 @@ for key, show in (("review_error", st.error), ("review_note", st.success)):
         show(st.session_state.pop(key))
 if not live:
     st.info(
-        f"This page shows example data. Build `{course}` on page 1 first: teacher decisions "
-        f"are saved to `outputs/{course}/review_decisions.json`, never to the examples."
+        "This page shows example data, so review is off. To review real links, add the course "
+        "files on the Add your notes page first. Decisions are never saved to the examples."
     )
 if not pending:
-    st.success("Nothing waits for review.")
+    st.success("No links are waiting for you.")
 
 
 def review_order(edge: dict) -> tuple:
@@ -266,19 +271,19 @@ pending.sort(key=review_order)
 n_blocking = sum(blocking_now(e) for e in pending)
 if n_blocking:
     st.error(
-        f"{n_blocking} blocking edge(s): accepting them would close a cycle, so they can only "
-        "be rejected (or resolved by rejecting another edge in the cycle). They come first."
+        f"{n_blocking} blocking link(s): accepting one would make topics depend on each other in "
+        "a circle. Reject it, or reject another link in that circle. They come first."
     )
 if pending and not queue_rows:
-    st.caption("No impact ranking yet (needs sim_students.json); ordered by blocking, then id.")
+    st.caption("No impact ranking yet. Blocking links come first.")
 for edge in pending:
     blocking = blocking_now(edge)
     row = queue_rows.get(edge["id"]) or {}
     tag = "⛔ blocking" if blocking else f"impact {fmt(row.get('impact_score'))}"
     with st.container(border=True):
         st.markdown(
-            f"**{label(edge['source'])} → {label(edge['target'])}** · `{edge['id']}` · {tag} · "
-            f"validator confidence {edge['confidence']:.2f}"
+            f"**{label(edge['source'])} → {label(edge['target'])}** · {tag} · "
+            f"AI confidence {edge['confidence']:.2f}"
         )
         st.caption(edge["reason"])
         if row.get("paths_affected") is not None:
@@ -286,25 +291,26 @@ for edge in pending:
         review = edge.get("review") or {}
         if review.get("status") == "refused_cycle":
             st.warning(
-                "A teacher ACCEPT was refused: it would close the cycle "
+                "Your Accept was refused: it would make this circle of topics: "
                 + " → ".join(label(c) for c in review.get("cycle", []))
             )
         st.text_input("Comment (optional)", key=f"comment_{edge['id']}")
-        c1, c2, _ = st.columns([1, 1, 4])
-        c1.button(
+        st.button(
             "✅ Accept",
             key=f"accept_{edge['id']}",
             disabled=not live or blocking,
             on_click=decide,
             args=(edge["id"], "ACCEPT"),
-            help="Disabled: accepting would close a cycle." if blocking else None,
+            help="Off: accepting would make a circle of topics." if blocking else None,
+            width="stretch",
         )
-        c2.button(
+        st.button(
             "❌ Reject",
             key=f"reject_{edge['id']}",
             disabled=not live,
             on_click=decide,
             args=(edge["id"], "REJECT"),
+            width="stretch",
         )
 
 if by_teacher:
@@ -331,11 +337,10 @@ rq1 = {
     for name, data in read_results("rq1_*.json").items()
     if isinstance(data.get("rows"), list) and data["rows"]
 }
-st.subheader("RQ1 results")
+st.subheader("Test results for the AI checks")
 if not rq1:
     st.info(
-        "No RQ1 results yet. They appear here once "
-        "`python -m cdlp.validation.evaluate` writes `cdlp/validation/results/rq1_*.json`."
+        "No test results yet. They appear here after you run `python -m cdlp.validation.evaluate`."
     )
 else:
     name = st.selectbox("Results file", sorted(rq1))
@@ -366,9 +371,9 @@ else:
                 "precision": r.get("precision"),
                 "recall": r.get("recall"),
                 "F1": r.get("f1"),
-                "human review rate": r.get("human_review_rate"),
-                "LLM calls / edge": r.get("llm_calls_per_edge"),
-                "real calls / edge": r.get("real_llm_calls_per_edge"),
+                "share needing a teacher": r.get("human_review_rate"),
+                "AI calls / link": r.get("llm_calls_per_edge"),
+                "new calls / link": r.get("real_llm_calls_per_edge"),
             }
             for r in rows
         ],
@@ -376,9 +381,9 @@ else:
         hide_index=True,
     )
     st.caption(
-        "LLM calls / edge = (real calls + cache hits) / edges: the calls a setting needs, "
-        "the same on a cached re-run. Real calls / edge counts only requests the model "
-        "answered in that run. Both include discovery's calls for validator settings."
+        "AI calls / link = (new calls + saved answers) / links: the calls a setting needs, the "
+        "same on a re-run. New calls / link counts only requests the model answered in that "
+        "run. Both include the calls that first suggested the links."
     )
     with st.expander("Config"):
         st.json(config)
