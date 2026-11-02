@@ -127,6 +127,7 @@ Root-cause tracing lives in `cdlp/root_cause/` (Phase 2) and the real-student st
 - Graph: NetworkX
 - Parsing: PyMuPDF, python-pptx
 - Website: Streamlit (multi-page) + pyvis, hosted free on Streamlit Community Cloud
+- Paper figures: matplotlib (`scripts/make_results.py`)
 - Tooling: jsonschema, pytest, ruff, GitHub Actions
 
 Ask before adding anything not listed here.

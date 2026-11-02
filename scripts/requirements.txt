@@ -1,0 +1,2 @@
+# scripts/ (paper tables and figures). Add packages here.
+matplotlib==3.9.2

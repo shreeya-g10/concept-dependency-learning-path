@@ -1,5 +1,6 @@
 # Light install used by CI (no ML models). Lead-owned; ask before editing.
 -r cdlp/shared/requirements.txt
+matplotlib==3.9.2  # scripts/make_results.py figures (scripts/test_make_results.py)
 networkx  # pure Python; needed by cdlp/validation/graph_checks.py tests
 pytest
 ruff
