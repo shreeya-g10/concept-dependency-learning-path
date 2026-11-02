@@ -52,6 +52,48 @@
           }
         }
       }
+    },
+    "generation": {
+      "type": "object",
+      "description": "optional (1.6): how the items were generated: model, prompt_version, temperature, seed, skipped items per reason, concepts without chunks or items",
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "temperature": {
+          "type": "number"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "max_chunks_per_concept": {
+          "type": "integer"
+        },
+        "concepts": {
+          "type": "integer"
+        },
+        "concepts_without_chunks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "concepts_without_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skipped": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        }
+      }
     }
   }
 }
