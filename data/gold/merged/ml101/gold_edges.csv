@@ -1,0 +1,5 @@
+source,target,label,agreement,note
+linear_regression,loss_function,soft,2/2,linear regression introduces MSE loss
+linear_regression,neural_networks,none,2/2,"indirect foundational concept; shortcut via loss_function, gradient_descent"
+loss_function,regularization,soft,2/2,regularization augments loss with penalty term
+regularization,neural_networks,soft,2/2,regularization prevents overfitting in deep networks

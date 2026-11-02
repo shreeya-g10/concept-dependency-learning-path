@@ -69,9 +69,9 @@ def test_unknown_concept(graph):
 
 
 def test_evaluate_rq2_and_rq4():
-    from cdlp.discovery.quiz import get_quiz_items
-    from cdlp.discovery.sim_students import generate_simulated_students
     from cdlp.learning_path.evaluate import evaluate_rq2_and_rq4
+    from cdlp.learning_path.quiz import get_quiz_items
+    from cdlp.learning_path.sim_students import generate_simulated_students
 
     data = read_json(EXAMPLES / "validated_graph.json")
     sim = generate_simulated_students(data, num_students=10, seed=123)

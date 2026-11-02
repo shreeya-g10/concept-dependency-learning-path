@@ -1,4 +1,4 @@
-"""Helpers every page uses. Owner: Vaidehi. Everyone may use it; only Vaidehi edits it.
+"""Helpers every page uses.
 
 Pages read pipeline outputs from outputs/ and fall back to cdlp/shared/examples/,
 so every page works before the real pipeline exists.
@@ -22,8 +22,32 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+# Display names for the two built-in courses; any other course shows its id.
+COURSE_NAMES = {
+    "ds101": "Data Structures & Algorithms",
+    "ml101": "Introduction to Machine Learning",
+}
+
+
+def list_courses(outputs: Path | None = None) -> list[str]:
+    """Course ids with a folder in outputs/ (hidden folders such as outputs/.jobs/ excluded).
+
+    New courses built from page 1 appear automatically. With no outputs at all, the
+    built-in courses are listed so the pages still show the example data.
+    """
+    outputs = outputs or OUTPUTS
+    found = (
+        sorted(
+            p.name for p in outputs.iterdir() if p.is_dir() and not p.name.startswith((".", "_"))
+        )
+        if outputs.is_dir()
+        else []
+    )
+    return found or list(COURSE_NAMES)
+
+
 def get_active_course() -> str:
-    """Return the currently selected course id ('ds101' or 'ml101')."""
+    """Return the currently selected course id (default: ds101)."""
     return st.session_state.get("course_id", "ds101")
 
 
@@ -85,13 +109,17 @@ def render_sidebar():
     """Render common course selector and navigation info in sidebar."""
     with st.sidebar:
         st.markdown("### 📚 Course Selection")
-        courses = [
-            "ds101 — Data Structures & Algorithms",
-            "ml101 — Introduction to Machine Learning (Demo)",
-        ]
-        current_idx = 1 if st.session_state.get("course_id") == "ml101" else 0
-        selected_course = st.selectbox("Active Course", courses, index=current_idx)
-        course_id = selected_course.split(" ")[0]
+        courses = list_courses()
+        active = st.session_state.get("course_id")
+        if active and active not in courses:  # e.g. a course whose first run just started
+            courses.append(active)
+        index = courses.index(active) if active in courses else 0
+        course_id = st.selectbox(
+            "Active Course",
+            courses,
+            index=index,
+            format_func=lambda c: f"{c} — {COURSE_NAMES[c]}" if c in COURSE_NAMES else c,
+        )
         st.session_state["course_id"] = course_id
         st.caption(f"Target Course ID: `{course_id}`")
         st.divider()

@@ -1,0 +1,178 @@
+{
+  "computed_on": "labels as committed, before any adjudication",
+  "shortcut_rule": "A pair labelled hard or soft becomes none if the same annotator's own hard/soft pairs already form a path from A to B through another concept.",
+  "annotators": {
+    "a": 20,
+    "b": 6,
+    "c": 20,
+    "d": 0
+  },
+  "pairs": [
+    {
+      "annotators": [
+        "a",
+        "b"
+      ],
+      "scope": "all",
+      "n_pairs": 6,
+      "kappa_raw": 1.0,
+      "kappa_shortcut_rule": 1.0
+    },
+    {
+      "annotators": [
+        "a",
+        "b"
+      ],
+      "scope": "ds101",
+      "n_pairs": 6,
+      "kappa_raw": 1.0,
+      "kappa_shortcut_rule": 1.0
+    },
+    {
+      "annotators": [
+        "a",
+        "c"
+      ],
+      "scope": "all",
+      "n_pairs": 20,
+      "kappa_raw": 0.4909,
+      "kappa_shortcut_rule": 0.7701
+    },
+    {
+      "annotators": [
+        "a",
+        "c"
+      ],
+      "scope": "ds101",
+      "n_pairs": 10,
+      "kappa_raw": 0.8462,
+      "kappa_shortcut_rule": 1.0
+    },
+    {
+      "annotators": [
+        "a",
+        "c"
+      ],
+      "scope": "ml101",
+      "n_pairs": 10,
+      "kappa_raw": 0.1667,
+      "kappa_shortcut_rule": 0.5455
+    },
+    {
+      "annotators": [
+        "b",
+        "c"
+      ],
+      "scope": "all",
+      "n_pairs": 6,
+      "kappa_raw": 1.0,
+      "kappa_shortcut_rule": 1.0
+    },
+    {
+      "annotators": [
+        "b",
+        "c"
+      ],
+      "scope": "ds101",
+      "n_pairs": 6,
+      "kappa_raw": 1.0,
+      "kappa_shortcut_rule": 1.0
+    }
+  ],
+  "labels_changed_by_rule": {
+    "a": {
+      "ds101": [
+        "recursion->binary_search_tree: soft->none"
+      ],
+      "ml101": [
+        "linear_regression->logistic_regression: soft->none",
+        "loss_function->logistic_regression: hard->none",
+        "loss_function->neural_networks: hard->none"
+      ]
+    },
+    "b": {
+      "ds101": [],
+      "ml101": []
+    },
+    "c": {
+      "ds101": [],
+      "ml101": []
+    },
+    "d": {
+      "ds101": [],
+      "ml101": []
+    }
+  },
+  "merge": {
+    "rule": "majority of committed labels; ties only by the adjudication file",
+    "gold_rows": {
+      "ds101": 9,
+      "ml101": 4
+    },
+    "unresolved": [
+      {
+        "source": "gradient_descent",
+        "target": "logistic_regression",
+        "course": "ml101",
+        "labels": {
+          "a": "hard",
+          "c": "soft"
+        }
+      },
+      {
+        "source": "gradient_descent",
+        "target": "neural_networks",
+        "course": "ml101",
+        "labels": {
+          "a": "hard",
+          "c": "soft"
+        }
+      },
+      {
+        "source": "linear_regression",
+        "target": "logistic_regression",
+        "course": "ml101",
+        "labels": {
+          "a": "soft",
+          "c": "none"
+        }
+      },
+      {
+        "source": "loss_function",
+        "target": "gradient_descent",
+        "course": "ml101",
+        "labels": {
+          "a": "hard",
+          "c": "soft"
+        }
+      },
+      {
+        "source": "loss_function",
+        "target": "logistic_regression",
+        "course": "ml101",
+        "labels": {
+          "a": "hard",
+          "c": "none"
+        }
+      },
+      {
+        "source": "loss_function",
+        "target": "neural_networks",
+        "course": "ml101",
+        "labels": {
+          "a": "hard",
+          "c": "none"
+        }
+      },
+      {
+        "source": "recursion",
+        "target": "binary_search_tree",
+        "course": "ds101",
+        "labels": {
+          "a": "soft",
+          "c": "none"
+        }
+      }
+    ]
+  }
+}

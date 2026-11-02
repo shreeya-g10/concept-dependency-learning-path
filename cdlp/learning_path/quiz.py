@@ -1,6 +1,6 @@
 """Diagnostic quiz item generation and catalog management.
 
-Owner: Vaidehi.
+Initial code: Vaidehi (moved from cdlp/discovery/).
 Provides robust quiz item validation, skipping malformed LLM outputs safely
 without raising KeyError, and ensuring the correct answer is among the options.
 """
