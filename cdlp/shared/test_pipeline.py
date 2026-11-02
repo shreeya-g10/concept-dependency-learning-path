@@ -93,6 +93,9 @@ def test_pipeline_runs_and_keeps_course_id(course, tmp_path, monkeypatch, capsys
     assert quiz == str(tmp_path / "quiz_items.json")
     assert arg(args["cdlp.learning_path"], "--quiz") == quiz
     assert arg(args["cdlp.learning_path.quiz"], "--course-id") == course
+    # questions only for concepts on ACCEPT edges: all 259 ds101 concepts would be ~1,300 calls
+    graph = str(tmp_path / "validated_graph.json")
+    assert arg(args["cdlp.learning_path.quiz"], "--only-graph") == graph
     # no --target given: the example graph's deepest ACCEPT concept is chosen and printed
     assert arg(args["cdlp.learning_path"], "--target") == "avl_tree"
     assert "target: avl_tree (4 ancestors" in capsys.readouterr().out
