@@ -1,4 +1,4 @@
-"""Helpers every page uses. Owner: Vaidehi. Everyone may use it; only Vaidehi edits it.
+"""Helpers every page uses. Initial code: Vaidehi.
 
 Pages read pipeline outputs from outputs/ and fall back to cdlp/shared/examples/,
 so every page works before the real pipeline exists.
@@ -7,7 +7,10 @@ so every page works before the real pipeline exists.
 from __future__ import annotations
 
 import json
+import os
+import secrets
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -74,11 +77,55 @@ def get_chunks_map(course_id: str | None = None) -> dict[str, dict[str, Any]]:
 
 
 def page_header(title: str, owner: str, source_file: str) -> None:
+    """`owner` is kept for signature stability and no longer shown (single maintainer)."""
     st.title(title)
     course = get_active_course()
     is_example = using_examples(source_file, course_id=course)
     badge = "🟡 Example Mock Data" if is_example else f"🟢 Live Pipeline Data (outputs/{course}/)"
-    st.caption(f"Owner: **{owner}** · Course: `{course}` · Source: `{source_file}` · {badge}")
+    st.caption(f"Course: `{course}` · Source: `{source_file}` · {badge}")
+
+
+# ---- anonymous answer log ---------------------------------------------------------
+# Every quiz answer on page 5 is appended to outputs/<course>/student_answers.json
+# (contract student_answers.json), the input of root-cause tracing (pipeline.py runs
+# cdlp.root_cause when the file exists) and of the real-student study. The student is
+# identified only by a random per-browser-session id: no name, login or IP is stored.
+
+
+def session_id() -> str:
+    """Random anonymous id, stable for this browser session (survives a quiz restart)."""
+    if "anon_session_id" not in st.session_state:
+        st.session_state.anon_session_id = f"anon_{secrets.token_hex(6)}"
+    return st.session_state.anon_session_id
+
+
+def answers_path(course_id: str) -> Path:
+    return OUTPUTS / course_id / "student_answers.json"
+
+
+def log_answer(course_id: str, row: dict) -> Path:
+    """Append one answer {student_id, item_id, concept_id, answer, correct} to the log.
+
+    The file is validated against the contract (cdlp.shared.io) and replaced atomically,
+    so a crash never leaves half a file. Concurrent sessions are not locked against each
+    other (fine for a classroom study on one server; see website/README.md).
+    """
+    from cdlp.shared.validate import check
+
+    path = answers_path(course_id)
+    doc = {"schema_version": "1.1", "course_id": course_id, "answers": []}
+    if path.exists():
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["answers"].append(row)
+    errors = check(doc, "student_answers")
+    if errors:
+        raise ValueError("student_answers.json breaks the contract:\n  " + "\n  ".join(errors))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
+    os.replace(tmp, path)
+    return path
 
 
 def render_sidebar():
