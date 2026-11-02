@@ -100,6 +100,90 @@
             "minimum": 0,
             "maximum": 1,
             "description": "added in 1.2: confidence for target -> source (only with bidirectional)"
+          },
+          "pair_order": {
+            "type": "object",
+            "description": "optional (1.10): which concept the neutral prompt called A and which B, and what it answered",
+            "required": [
+              "a",
+              "b",
+              "rule",
+              "answer"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string"
+              },
+              "rule": {
+                "type": "string"
+              },
+              "answer": {
+                "type": "string",
+                "enum": [
+                  "A_BEFORE_B",
+                  "B_BEFORE_A",
+                  "NEITHER"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "description": "optional (1.10): written by neutral prompts such as discover_v3_1. Counts every answer of the run, including NEITHER, so a position bias can be measured.",
+      "required": [
+        "prompt_version",
+        "pair_order_rule",
+        "answers"
+      ],
+      "properties": {
+        "prompt_version": {
+          "type": "string"
+        },
+        "pair_order_rule": {
+          "type": "string",
+          "description": "how A and B were chosen: lower_id_first (discover_v3) or sha256_of_pair_v1 (discover_v3_1)"
+        },
+        "answers": {
+          "type": "object",
+          "description": "A_BEFORE_B, B_BEFORE_A, NEITHER, off_topic, hard and soft are counts over the run; confidence counts the proposed edges per confidence value",
+          "properties": {
+            "A_BEFORE_B": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "B_BEFORE_A": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "NEITHER": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "off_topic": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "hard": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "soft": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "confidence": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
           }
         }
       }

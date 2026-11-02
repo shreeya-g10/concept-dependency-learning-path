@@ -48,7 +48,7 @@ from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
-RELATIONSHIPS_SCHEMA_VERSION = "1.2"
+RELATIONSHIPS_SCHEMA_VERSION = "1.10"  # 1.10: discovery block, pair_order
 BASELINE_SCHEMA_VERSION = "1.3"  # relationships_baseline.json is new in 1.3
 
 
