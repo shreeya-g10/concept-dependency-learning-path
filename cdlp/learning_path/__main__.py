@@ -1,9 +1,11 @@
 """learning_path — graph + quiz -> sim_students.json + student_state.json + learning_path.json
 
-Owner: Vaidehi (inherited from Shrestha).
-Usage:
+Usage, with existing quiz items:
     python -m cdlp.learning_path --graph outputs/validated_graph.json \
         --quiz outputs/quiz_items.json --out-dir outputs
+or generating quiz_items.json for any course first (LLM, see quiz.py):
+    python -m cdlp.learning_path --graph outputs/validated_graph.json \
+        --concepts outputs/concepts.json --chunks outputs/chunks.jsonl --out-dir outputs
 """
 
 from __future__ import annotations
@@ -13,8 +15,9 @@ from pathlib import Path
 
 from cdlp.learning_path import api
 from cdlp.learning_path.graph import is_mastered
+from cdlp.learning_path.quiz import generate_quiz_items
 from cdlp.learning_path.sim_students import generate_simulated_students
-from cdlp.shared.io import read_json, write_json
+from cdlp.shared.io import read_json, read_jsonl, write_json
 
 
 def main() -> None:
@@ -28,9 +31,11 @@ def main() -> None:
     parser.add_argument(
         "--quiz",
         type=Path,
-        required=True,
-        help="path to quiz_items.json",
+        default=None,
+        help="path to quiz_items.json (omit to generate it from --concepts and --chunks)",
     )
+    parser.add_argument("--concepts", type=Path, help="concepts.json, to generate quiz items")
+    parser.add_argument("--chunks", type=Path, help="chunks.jsonl, to generate quiz items")
     parser.add_argument(
         "--students",
         type=Path,
@@ -58,14 +63,23 @@ def main() -> None:
         help="number of simulated students to generate",
     )
     args = parser.parse_args()
+    if args.quiz is None and not (args.concepts and args.chunks):
+        parser.error("give --quiz, or --concepts and --chunks to generate quiz items")
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     graph = read_json(args.graph)
-    quiz = read_json(args.quiz)
-
     course_id = graph.get("course_id") or "ds101"
+
+    if args.quiz is not None:
+        quiz = read_json(args.quiz)
+    else:
+        quiz = generate_quiz_items(
+            read_json(args.concepts), read_jsonl(args.chunks), course_id=course_id
+        )
+        write_json(out_dir / "quiz_items.json", quiz)
+        print(f"Generated {len(quiz['items'])} quiz items -> {out_dir / 'quiz_items.json'}")
 
     # Always ensure sim_students.json is generated from ACCEPT edges in validated_graph.json
     sim_students_out = out_dir / "sim_students.json"
