@@ -313,9 +313,9 @@ def test_page_shows_progress_of_a_running_job(page, tmp_path):
     at = page("c1")
     assert not at.exception
     text = " ".join(m.value for m in at.markdown)
-    assert (
-        "✅ Done: Finding topics" in text and "⏳ Working: Finding which topics come first" in text
-    )
+    assert "✅ Reading your file and finding topics" in text
+    assert "⏳ Finding which topics come first…" in text
+    assert "cdlp" not in text and "Dependency discovery" not in text  # no stage names
 
 
 def test_page_shows_why_a_job_failed(page, tmp_path):
