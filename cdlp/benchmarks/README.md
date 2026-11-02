@@ -12,7 +12,7 @@ Public prerequisite datasets, converted into our formats so discovery and valida
 |---|---|---|
 | Input | the downloaded dataset folder (`--raw`, default `data/benchmarks/<dataset>/`) | Never commit raw data: `data/benchmarks/` is gitignored |
 | Output | `<out-dir>/<course_id>/concepts.json` | Same contract as extraction |
-| Output | `<out-dir>/<course_id>/gold_edges.csv` | Same columns as `data/gold/gold_edges.csv` (`source,target,label,agreement,note`), `label` ∈ `hard` · `soft` · `none` |
+| Output | `<out-dir>/<course_id>/gold_edges.csv` | Same columns as `data/gold/<course>/gold_edges.csv` (`source,target,label,agreement,note`), `label` ∈ `hard` · `soft` · `none` |
 
 ```bash
 python -m cdlp.benchmarks --dataset al_cpl             # -> outputs/benchmarks/al_cpl_<domain>/ (4 domains)

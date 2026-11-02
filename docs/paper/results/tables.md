@@ -123,13 +123,17 @@ Sources: `cdlp/learning_path/results/rq2_rq4_results.json`
 
 | Annotators | Scope | Pairs | κ raw | κ shortcut rule |
 |---|---|---|---|---|
-| [RESULT] | all | [RESULT] | [RESULT] | [RESULT] |
-| [RESULT] | ds101 | [RESULT] | [RESULT] | [RESULT] |
-| [RESULT] | ml101 | [RESULT] | [RESULT] | [RESULT] |
+| a vs b | all | 6 | 1.00 | 1.00 |
+| a vs b | ds101 | 6 | 1.00 | 1.00 |
+| a vs c | all | 20 | 0.49 | 0.77 |
+| a vs c | ds101 | 10 | 0.85 | 1.00 |
+| a vs c | ml101 | 10 | 0.17 | 0.55 |
+| b vs c | all | 6 | 1.00 | 1.00 |
+| b vs c | ds101 | 6 | 1.00 | 1.00 |
 
-Missing: `data/gold/merged/agreement.json` (python data/gold/merge_gold.py).
+Shortcut rule: A pair labelled hard or soft becomes none if the same annotator's own hard/soft pairs already form a path from A to B through another concept. Labels changed by the rule: annotator a: 4. Unresolved ties before adjudication: 7.
 
-Sources: none yet
+Sources: `data/gold/agreement.json`
 
 ## Concept extraction vs. hand-annotated concepts
 
@@ -164,6 +168,8 @@ Examples graph (3 edges); expected order: gap(edge 1) > gap(edge 2) > gap(edge 3
 Sources: `cdlp/validation/results/necessity_stability/summary.json`, `cdlp/validation/results/necessity_stability_open5_qt07/summary.json`
 
 ## Figures
+
+![figures/kappa_raw_vs_rule.png](figures/kappa_raw_vs_rule.png)
 
 ![figures/necessity_gap_stability.png](figures/necessity_gap_stability.png)
 

@@ -1,7 +1,7 @@
 """Candidate recall: what share of gold prerequisite edges survive the candidate filter.
 
     python -m cdlp.discovery.candidate_recall --concepts outputs/ds101/concepts.json \
-        --chunks outputs/ds101/chunks.jsonl --gold data/gold/gold_edges.csv
+        --chunks outputs/ds101/chunks.jsonl [--gold data/gold/<course>/gold_edges.csv]
 
 Writes cdlp/discovery/results/candidate_recall_<course_id>.json. No LLM call is
 made; this is the recall ceiling of discovery, since an edge that is never a
@@ -68,7 +68,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--concepts", type=Path, required=True)
     parser.add_argument("--chunks", type=Path, required=True)
-    parser.add_argument("--gold", type=Path, default=Path("data/gold/gold_edges.csv"))
+    parser.add_argument("--gold", type=Path, help="default: data/gold/<course_id>/gold_edges.csv")
     parser.add_argument("--out-dir", type=Path, default=RESULTS)
     parser.add_argument("--embedding-threshold", type=float, default=0.55)
     parser.add_argument("--model", default=DEFAULT_MODEL, help="LLM the run is paired with")
@@ -78,6 +78,7 @@ def main() -> None:
 
     concepts_data = read_json(args.concepts)
     course_id = concepts_data["course_id"]
+    args.gold = args.gold or Path("data/gold") / course_id / "gold_edges.csv"
     candidates = generate_candidates(
         concepts_data, read_jsonl(args.chunks), embedding_threshold=args.embedding_threshold
     )
