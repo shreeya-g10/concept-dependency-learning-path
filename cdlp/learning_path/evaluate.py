@@ -4,6 +4,8 @@ Owner: Vaidehi (inherited from Shrestha).
 Measures:
 - RQ2: Adaptive diagnosis vs Ask-Every-Concept vs Random-Order on 500 simulated students.
 - RQ4: Personalized paths vs Generic baseline paths (length, gap coverage, order mistakes).
+- Second question: adaptive diagnosis with and without a second question after a right answer
+  (results in rq2_second_question.json; SECOND_QUESTION_RULE says when it is kept).
 
 Usage:
     python -m cdlp.learning_path.evaluate
@@ -53,7 +55,7 @@ def run_adaptive_diagnosis(
     quiz_items: list[dict],
     true_states: dict[str, float],
     target: str,
-    max_questions: int = 10,
+    max_questions: int = api.MAX_QUESTIONS_PER_TOPIC,
     rng: random.Random | None = None,
 ) -> tuple[dict[str, float], int]:
     """Run adaptive graph-guided diagnosis."""
@@ -74,6 +76,56 @@ def run_adaptive_diagnosis(
         questions_asked += 1
 
     return mastery, questions_asked
+
+
+def _item_id(item: dict) -> str:
+    return item.get("id", item.get("item_id"))
+
+
+def run_second_question_diagnosis(
+    graph_data: dict,
+    quiz_items: list[dict],
+    true_states: dict[str, float],
+    target: str,
+    max_questions: int = api.MAX_QUESTIONS_PER_TOPIC,
+    rng: random.Random | None = None,
+) -> tuple[dict[str, float], int]:
+    """Adaptive diagnosis, plus a second question on a concept after a right answer.
+
+    One lucky guess should not mark a concept as known. The second question is asked only when
+    the concept has another unasked item and the question limit allows it; the latest direct
+    answer wins (api.update_mastery), so right then wrong ends as not known.
+    """
+    rng = rng or random.Random(42)
+    mastery: dict[str, float] = {}
+    asked: list[str] = []
+
+    def ask(item: dict) -> bool:
+        nonlocal mastery
+        concept = item.get("concept_id", "")
+        correct = simulate_student_answer(rng, true_states.get(concept, 0.5))
+        mastery = api.update_mastery(graph_data, mastery, concept, correct)
+        asked.append(_item_id(item))
+        return correct
+
+    while len(asked) < max_questions:
+        first = api.next_question(graph_data, quiz_items, {**mastery, "__asked__": asked}, target)
+        if not first:
+            break
+        if not ask(first) or len(asked) >= max_questions:
+            continue
+        second = next(
+            (
+                item
+                for item in quiz_items
+                if item.get("concept_id") == first.get("concept_id") and _item_id(item) not in asked
+            ),
+            None,
+        )
+        if second:
+            ask(second)
+
+    return mastery, len(asked)
 
 
 def run_ask_all_diagnosis(
@@ -269,6 +321,139 @@ CONDITIONS = {
 }
 
 
+# Fixed before the strategy was first run. The second question is kept only if all three hold.
+SECOND_QUESTION_RULE = [
+    "with a second question available, accuracy rises in both student conditions, and the "
+    "95% paired bootstrap interval of the rise is above 0 in both",
+    "with a second question available, topics wrongly marked as known fall in both conditions",
+    "in the graph-consistent condition it still asks fewer questions than asking every concept "
+    "once; otherwise the saving that adaptive diagnosis exists for is gone",
+]
+
+
+def with_second_items(quiz_items: list[dict]) -> list[dict]:
+    """Add one placeholder second item per concept. Only for the simulation.
+
+    The example quiz has one item per concept, so the strategy has nothing to ask there. The
+    simulated answer depends on the concept, not on the question text, so a placeholder is
+    enough. It answers "what if a second item existed", on the example graph only.
+    """
+    return [*quiz_items, *({**item, "id": f"{_item_id(item)}__second"} for item in quiz_items)]
+
+
+def _student_scores(
+    graph_data: dict, estimate: dict, questions: int, truth: dict, target: str, path: list[str]
+) -> dict[str, float]:
+    known = {c for c in path if is_mastered(truth.get(c, 0.5))}
+    gaps = set(path) - known
+    believed = {c for c in path if is_mastered(estimate.get(c, 0.5))}
+    planned = {s["concept_id"] for s in api.personalized_path(graph_data, estimate, target)}
+    return {
+        "questions": questions,
+        "accuracy": evaluate_accuracy(estimate, truth, path),
+        "wrongly_known": len(believed & gaps) / len(gaps) if gaps else 0.0,
+        "path_length": len(planned),
+        "gap_coverage": len(gaps & planned) / len(gaps) if gaps else 1.0,
+    }
+
+
+def _paired_interval(diffs: list[float], seed: int, rounds: int = 2000) -> list[float]:
+    """95% bootstrap interval of the mean paired difference (resampling students)."""
+    rng = random.Random(f"{seed}:bootstrap")
+    means = sorted(_mean(rng.choices(diffs, k=len(diffs))) for _ in range(rounds))
+    return [round(means[int(rounds * 0.025)], 4), round(means[int(rounds * 0.975)], 4)]
+
+
+def compare_second_question(
+    graph_data: dict,
+    quiz_items: list[dict],
+    students: list[dict],
+    target: str = "avl_tree",
+    seed: int = 42,
+) -> dict[str, Any]:
+    """Adaptive with and without the second question, on the same students and answer model."""
+    path = generic_path(load_graph(graph_data), target)
+    runs = {"without": run_adaptive_diagnosis, "with": run_second_question_diagnosis}
+    scores: dict[str, list[dict[str, float]]] = {name: [] for name in runs}
+    for i, student in enumerate(students):
+        truth = student.get("mastery", {})
+        for name, run in runs.items():
+            # The same stream as the main adaptive run, for both: "without" reproduces the
+            # main table, and with one item per concept the two arms match exactly.
+            rng = random.Random(f"{seed}:{i}:adaptive")
+            estimate, questions = run(graph_data, quiz_items, truth, target, rng=rng)
+            scores[name].append(
+                _student_scores(graph_data, estimate, questions, truth, target, path)
+            )
+    summary: dict[str, Any] = {
+        name: {
+            metric: round(_mean([row[metric] for row in rows]), 4)
+            for metric in ("questions", "accuracy", "wrongly_known", "path_length", "gap_coverage")
+        }
+        for name, rows in scores.items()
+    }
+    diffs = [
+        a["accuracy"] - b["accuracy"]
+        for a, b in zip(scores["with"], scores["without"], strict=True)
+    ]
+    summary["accuracy_change"] = round(_mean(diffs), 4)
+    summary["accuracy_change_95"] = _paired_interval(diffs, seed)
+    return summary
+
+
+def second_question_results(graph_data: dict, quiz_items: list[dict], seed: int = 42) -> dict:
+    """Both item sets and both student conditions, with the rule's verdict."""
+    item_sets = {
+        "example_items_as_they_are": quiz_items,
+        "with_a_placeholder_second_item": with_second_items(quiz_items),
+    }
+    results: dict[str, Any] = {}
+    ask_all: dict[str, float] = {}
+    for item_name, items in item_sets.items():
+        results[item_name] = {}
+        for condition, make in CONDITIONS.items():
+            students = make(graph_data, num_students=500, seed=seed)["students"]
+            row = compare_second_question(graph_data, items, students, seed=seed)
+            row["other_answer_seeds_accuracy_change"] = {
+                str(other): compare_second_question(graph_data, items, students, seed=other)[
+                    "accuracy_change"
+                ]
+                for other in range(seed + 1, seed + 5)
+            }
+            results[item_name][condition] = row
+            diagnosis = evaluate_rq2_and_rq4(graph_data, items, students)["rq2_diagnosis"]
+            ask_all[condition] = diagnosis["ask_all"]["avg_questions"]
+
+    tested = results["with_a_placeholder_second_item"]
+    checks = [
+        all(tested[c]["accuracy_change_95"][0] > 0 for c in CONDITIONS),
+        all(
+            tested[c]["with"]["wrongly_known"] < tested[c]["without"]["wrongly_known"]
+            for c in CONDITIONS
+        ),
+        tested["graph_consistent"]["with"]["questions"] < ask_all["graph_consistent"],
+    ]
+    return {
+        "config": {
+            "graph": "cdlp/shared/examples/validated_graph.json",
+            "quiz_items": "cdlp/shared/examples/quiz_items.json",
+            "target": "avl_tree",
+            "concepts_on_path": 5,
+            "num_students": 500,
+            "seed": seed,
+            "slip": 0.10,
+            "guess": 0.15,
+            "max_questions": api.MAX_QUESTIONS_PER_TOPIC,
+            "uses_llm": False,
+        },
+        "ask_all_questions": ask_all,
+        "rule": SECOND_QUESTION_RULE,
+        "rule_checks": checks,
+        "keep": all(checks),
+        **results,
+    }
+
+
 def main() -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     graph_data = read_json(EXAMPLES / "validated_graph.json")
@@ -308,6 +493,12 @@ def main() -> None:
             )
         print(f"  question reduction vs ask-all: {d['question_reduction_pct']:.1f}%")
     print(f"Results saved to: {out_file}")
+
+    second = second_question_results(graph_data, quiz_items)
+    second_file = RESULTS_DIR / "rq2_second_question.json"
+    second_file.write_text(json.dumps(second, indent=2) + "\n", encoding="utf-8")
+    print(f"Second question, rule checks {second['rule_checks']}, keep: {second['keep']}")
+    print(f"Results saved to: {second_file}")
 
 
 if __name__ == "__main__":

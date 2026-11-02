@@ -13,7 +13,7 @@ Graph, adaptive diagnosis and personalized path (novelty 2).
 | Output | `quiz_items.json` | Multiple-choice items per concept (`quiz.py`, prompt `prompts/quiz_v1.txt`) |
 | Output | `student_state.json` | Estimated mastery per concept + questions asked |
 | Output | `learning_path.json` | Ordered steps with "why" and evidence page |
-| Public API | `api.py` | `next_question`, `update_mastery`, `personalized_path`. The website calls these; keep the signatures stable |
+| Public API | `api.py` | `next_question`, `update_mastery`, `personalized_path`. The website calls these; keep the signatures stable. `MAX_QUESTIONS_PER_TOPIC` is the quick-check limit (the page counts per topic) and `only_answered` makes a stopped quiz treat unasked topics as unknown |
 
 Use **ACCEPT edges only**. Ignore REJECT; HUMAN_REVIEW is excluded by default (make it a flag).
 

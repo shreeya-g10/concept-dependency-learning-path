@@ -28,3 +28,30 @@ Noise ceiling: answering each of the 5 concepts once with the answer model (slip
 | | random (matched budget) | 3.64 | 0.759 |
 
 Reading: when knowledge follows the graph, adaptive diagnosis saves 14% of the questions at practically the same accuracy (−0.4 points) and beats random questions at the same budget. When it does not, adaptive asks fewer questions (−27%) but loses 10 points of accuracy, i.e. its saving comes from the graph assumption. Both conditions should be reported. The example graph has only 5 concepts; rerun on the real course graphs.
+
+## A second question after a right answer (tried 2026-11-03, not kept)
+
+One lucky guess marks a topic as known, and with it every topic before it. So we tried asking a second question on a topic after a right answer, when one exists and the limit allows. `rq2_second_question.json`: 500 simulated students per condition, seed 42, example graph (5 concepts on the path), the limit of 10 never binds here, no LLM.
+
+The rule was written before the first run. Keep it only if, with a second question available: (1) accuracy rises in both conditions with the 95% paired bootstrap interval above 0, (2) topics wrongly marked as known fall in both conditions, and (3) with students who follow the graph, it still asks fewer questions than asking every concept once. Otherwise the saving that adaptive diagnosis exists for is gone.
+
+| Students | Quiz items | Strategy | Questions | Accuracy | Wrongly known | Gaps on the plan | Plan length |
+|---|---|---|---|---|---|---|---|
+| follow the graph | example (one per concept) | without | 4.28 | 0.866 | 0.189 | 0.811 | 2.35 |
+| | | with | 4.28 | 0.866 | 0.189 | 0.811 | 2.35 |
+| | one placeholder added per concept | without | 4.28 | 0.866 | 0.189 | 0.811 | 2.35 |
+| | | **with** | **6.68** | **0.908** | **0.060** | **0.940** | **2.91** |
+| ignore the graph | example (one per concept) | without | 3.64 | 0.775 | 0.407 | 0.593 | 1.77 |
+| | | with | 3.64 | 0.775 | 0.407 | 0.593 | 1.77 |
+| | one placeholder added per concept | without | 3.64 | 0.775 | 0.407 | 0.593 | 1.77 |
+| | | **with** | **6.05** | **0.810** | **0.273** | **0.727** | **2.31** |
+
+Accuracy rise with a second question: +0.043 (95% interval 0.030 to 0.056) when students follow the graph, +0.035 (0.021 to 0.049) when they ignore it. Other answer seeds (43 to 46) give +0.019 to +0.052 and +0.034 to +0.051. For comparison, asking every concept once: 5.00 questions, accuracy 0.870 and 0.874.
+
+Verdict: (1) and (2) pass, **(3) fails: 6.68 questions against 5.00**. Not kept, and the website does not use it.
+
+How to read this:
+- The example quiz has one item per concept, so as shipped the strategy has nothing to ask and matches plain adaptive exactly. The rows with a placeholder ask "what if a second item existed". The placeholder item has no text: the simulated answer depends only on the concept.
+- The simulated answers are independent given the concept. A real student who guesses one question may well get a similar one right too, so the gain here is probably an upper limit.
+- This is the example graph, with 5 concepts. Rerun on real course graphs before citing it in the paper. The real ds101 quiz has 2 to 3 items per concept, so the strategy could run there.
+- Asked to reproduce: the code is in commit __COMMIT__ (`python -m cdlp.learning_path.evaluate`), and was removed in the next commit because it was not kept.

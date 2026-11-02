@@ -62,7 +62,66 @@ def search(query: str) -> list[str]:
     ]
 
 
+def full_map_button_and_picture() -> None:
+    """Near the top, so it is easy to find. The drawing library loads only after the tap."""
+    showing = st.session_state.get("map_full", False)
+    if ui.action_button(
+        S.MAP_HIDE_FULL if showing else S.MAP_SEE_FULL,
+        icon="🗺️",
+        primary=False,
+        key="map_full_button",
+    ):
+        st.session_state.map_full = not showing
+        st.rerun()
+    if not showing:
+        return
+
+    try:
+        from pyvis.network import Network
+    except ImportError:
+        Network = None
+
+    st.caption(S.MAP_PICTURE_NOTE)
+    if Network is None:
+        for edge in accepted:
+            st.markdown(
+                S.MAP_LIST_ONLY.format(
+                    source=name(edge["source"]),
+                    target=name(edge["target"]),
+                    strength=strength_words(edge),
+                )
+            )
+        return
+
+    network = Network(
+        height="520px",
+        width="100%",
+        directed=True,
+        bgcolor="#ffffff",
+        font_color="#14202B",
+        cdn_resources="in_line",
+    )
+    for concept_id in sorted(linked):
+        network.add_node(
+            concept_id, label=name(concept_id), title=name(concept_id), color="#8DB9E8", size=22
+        )
+    for edge in accepted:
+        network.add_edge(
+            edge["source"],
+            edge["target"],
+            arrows="to",
+            color="#14202B",
+            dashes=edge.get("strength", "hard") != "hard",
+            title=strength_words(edge),
+        )
+    # A tight layout: spread wide, the map zooms out on a phone until the names disappear.
+    network.barnes_hut(gravity=-1500, central_gravity=0.8, spring_length=60, spring_strength=0.08)
+    components.html(network.generate_html(), height=540, scrolling=False)
+    st.caption(S.MAP_KEY)
+
+
 st.markdown(S.MAP_READY_COUNT.format(ready=len(ready), total=len(names)))
+full_map_button_and_picture()
 query = st.text_input(S.MAP_PICK, placeholder=S.MAP_SEARCH_HINT, key="map_search")
 if query.strip():
     found = search(query)
@@ -135,56 +194,3 @@ for edge in [*before, *after]:
             if ev.get("quote"):
                 st.markdown(f"> {ev['quote']}")
             st.caption(common.citation(ev.get("doc", ""), ev.get("page", "")))
-
-st.divider()
-showing = st.session_state.get("map_full", False)
-if ui.action_button(
-    S.MAP_HIDE_FULL if showing else S.MAP_SEE_FULL, icon="🗺️", primary=False, key="map_full_button"
-):
-    st.session_state.map_full = not showing
-    st.rerun()
-
-if showing:
-    try:
-        from pyvis.network import Network
-    except ImportError:
-        Network = None
-
-    st.caption(S.MAP_PICTURE_NOTE)
-    if Network is None:
-        for edge in accepted:
-            st.markdown(
-                S.MAP_LIST_ONLY.format(
-                    source=name(edge["source"]),
-                    target=name(edge["target"]),
-                    strength=strength_words(edge),
-                )
-            )
-    else:
-        network = Network(
-            height="520px",
-            width="100%",
-            directed=True,
-            bgcolor="#ffffff",
-            font_color="#14202B",
-            cdn_resources="in_line",
-        )
-        for concept_id in sorted(linked):
-            network.add_node(
-                concept_id, label=name(concept_id), title=name(concept_id), color="#8DB9E8", size=22
-            )
-        for edge in accepted:
-            network.add_edge(
-                edge["source"],
-                edge["target"],
-                arrows="to",
-                color="#14202B",
-                dashes=edge.get("strength", "hard") != "hard",
-                title=strength_words(edge),
-            )
-        # A tight layout: spread wide, the map zooms out on a phone until the names disappear.
-        network.barnes_hut(
-            gravity=-1500, central_gravity=0.8, spring_length=60, spring_strength=0.08
-        )
-        components.html(network.generate_html(), height=540, scrolling=False)
-        st.caption(S.MAP_KEY)

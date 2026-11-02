@@ -62,6 +62,10 @@ def test_banner_renders_in_the_page_header(tmp_path, monkeypatch):
 
     ui.page_header("Topic map", source_file="validated_graph.json")
 
+    assert shown == ["Sample map: 3 of 6 links checked."]
+
+    shown.clear()
+    ui.page_header("AI checks", source_file="validated_graph.json", teacher=True)
     assert shown and shown[0].startswith("**This is a demo.**")
 
 

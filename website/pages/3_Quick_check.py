@@ -7,7 +7,9 @@ for step 4 (pages/4_My_study_plan.py), which this page opens by itself when it r
 questions.
 
 The screens: pick a topic -> question -> (after a wrong answer) a kind message -> question ...
-The number of questions depends on the answers, so no total is ever shown.
+The number of questions depends on the answers, so no total is ever shown. Each chosen topic
+gets at most api.MAX_QUESTIONS_PER_TOPIC questions, counted in quiz_topic_counts: quiz_asked and
+quiz_answers carry across topics in a session, so their length is not the count for a topic.
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ def reset_quiz() -> None:
     st.session_state.quiz_asked = []
     st.session_state.quiz_answers = []
     st.session_state.quiz_picking = True  # on the pick-a-topic screen
-    st.session_state.quiz_first_answer = 0  # questions are numbered per topic
+    st.session_state.quiz_topic_counts = {}  # questions answered per chosen topic
     st.session_state.quiz_progress = 0.0
     st.session_state.quiz_feedback = None  # the kind message waiting to be read
     st.session_state.quiz_just_right = False
@@ -90,7 +92,13 @@ if "quiz_mastery" not in st.session_state or st.session_state.get("quiz_course")
     st.session_state.quiz_course = course
 
 
+def asked_for(target: str) -> int:
+    return st.session_state.get("quiz_topic_counts", {}).get(target, 0)
+
+
 def next_item(target: str) -> dict | None:
+    if asked_for(target) >= api.MAX_QUESTIONS_PER_TOPIC:
+        return None
     return api.next_question(
         graph_data,
         valid_items,
@@ -114,8 +122,9 @@ def go_on(target: str) -> None:
 def progress_so_far(target: str) -> float:
     """How far along, for the bar only: an estimate, so no number is ever shown with it.
 
-    Answered / (answered + topics that could still be asked). A wrong answer can make earlier
-    topics uncertain again, so the estimate can drop; the bar keeps its highest value.
+    Answered / (answered + topics that could still be asked, within the limit). A wrong answer
+    can make earlier topics uncertain again, so the estimate can drop; the bar keeps its highest
+    value.
     """
     mastery = st.session_state.quiz_mastery
     with_question = {q.get("concept_id") for q in valid_items}
@@ -125,8 +134,9 @@ def progress_so_far(target: str) -> float:
         if step["concept_id"] in with_question
         and step["concept_id"] not in mastery.get("__observed__", {})
     ]
-    answered = len(st.session_state.quiz_answers) - st.session_state.quiz_first_answer
-    value = answered / (answered + max(len(left), 1))
+    answered = asked_for(target)
+    still_to_ask = min(len(left), api.MAX_QUESTIONS_PER_TOPIC - answered)
+    value = answered / (answered + max(still_to_ask, 1))
     st.session_state.quiz_progress = max(st.session_state.quiz_progress, value)
     return st.session_state.quiz_progress
 
@@ -164,7 +174,7 @@ def root_cause_line(info: dict, concept_id: str) -> str | None:
     return S.QUIZ_WHY_AI.format(why=why) if why else None
 
 
-def record_answer(question: dict, choice: str) -> None:
+def record_answer(target: str, question: dict, choice: str) -> None:
     """Log and score first: a second tap during the slow step below must not lose this answer."""
     concept_id = question.get("concept_id", "")
     q_id = question.get("id", question.get("item_id", f"q_{len(st.session_state.quiz_asked)}"))
@@ -190,6 +200,8 @@ def record_answer(question: dict, choice: str) -> None:
         graph_data, mastery_before, concept_id, is_correct
     )
     st.session_state.quiz_asked.append(q_id)
+    counts = st.session_state.setdefault("quiz_topic_counts", {})
+    counts[target] = counts.get(target, 0) + 1
     answer = {
         "item_id": q_id,
         "concept_id": concept_id,
@@ -253,7 +265,6 @@ def pick_topic_screen() -> None:
         if ui.action_button(names[concept_id], key=f"topic_{concept_id}", primary=False):
             st.session_state.study_target = concept_id  # a plain key: survives other pages
             st.session_state.quiz_picking = False
-            st.session_state.quiz_first_answer = len(st.session_state.quiz_answers)
             st.session_state.quiz_progress = 0.0
             go_on(concept_id)
     if len(found) > MAX_LISTED:
@@ -265,6 +276,7 @@ def pick_topic_screen() -> None:
 def feedback_screen(target: str) -> None:
     ui.page_header(S.QUIZ_TITLE, source_file="quiz_items.json")
     show_not_saved()
+    ui.scroll_to_top(f"feedback {len(st.session_state.quiz_answers)}")
     feedback = st.session_state.quiz_feedback
     st.info(S.QUIZ_KIND, icon="💛")
     st.markdown(S.QUIZ_THE_ANSWER.format(answer=feedback["answer"]))
@@ -277,12 +289,13 @@ def feedback_screen(target: str) -> None:
 
 def question_screen(target: str, question: dict) -> None:
     ui.page_header(S.QUIZ_TITLE, source_file="quiz_items.json")
+    ui.scroll_to_top(f"question {question.get('id', question.get('item_id'))}")
     show_not_saved()
     if st.session_state.quiz_just_right:
         st.success(S.QUIZ_RIGHT_NOTE)
         st.session_state.quiz_just_right = False
 
-    answered = len(st.session_state.quiz_answers) - st.session_state.quiz_first_answer
+    answered = asked_for(target)
     concept_id = question.get("concept_id", "")
     st.markdown(S.QUIZ_QUESTION.format(number=answered + 1))
     st.progress(progress_so_far(target))
@@ -309,7 +322,7 @@ def question_screen(target: str, question: dict) -> None:
         # stay, so `w` shows as code, just as it does in the question above the buttons.
         label = re.sub(r"([\\*_~$\[\]:])", r"\\\1", option)
         if ui.action_button(label, key=f"answer_{q_id}_{index}", primary=False):
-            record_answer(question, option)
+            record_answer(target, question, option)
             if st.session_state.quiz_just_right:
                 go_on(target)
             st.rerun()

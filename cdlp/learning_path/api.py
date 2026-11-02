@@ -17,6 +17,10 @@ from cdlp.learning_path.graph import (
     load_graph,
 )
 
+# At most this many quick-check questions per chosen topic. The caller counts per topic: the
+# list of asked questions carries across topics in a session, so its length is not the count.
+MAX_QUESTIONS_PER_TOPIC = 10
+
 
 def prerequisite_order(graph: dict, target: str) -> list[str]:
     """Return prerequisites followed by the target in learning order."""
@@ -121,6 +125,36 @@ def update_mastery(
     return updated
 
 
+def only_answered(mastery: dict[str, float]) -> dict[str, float]:
+    """Keep only what the student answered directly; every other topic goes back to unknown.
+
+    For a quiz that the question limit stopped early: a topic that was never asked is unknown,
+    even when a right answer elsewhere suggested it is known. personalized_path keeps unknown
+    topics on the plan, so the mistake this can make is extra study, not a missed gap.
+    """
+    observed = mastery.get("__observed__", {})
+    kept = {concept: value for concept, value in mastery.items() if concept in observed}
+    return {**kept, "__observed__": dict(observed)}
+
+
+def _display_name(G, concept: str) -> str:
+    """The concept's name from the graph, or its id in words. Never a raw id."""
+    name = G.nodes[concept].get("name") if concept in G else None
+    return name or concept.replace("_", " ").capitalize()
+
+
+def _why(G, concept: str, target: str, later: list[str]) -> str:
+    """One sentence, about the nearest later topic in this student's own path."""
+    if concept == target:
+        return "This is the topic you want to learn."
+    nearest = next((c for c in later if G.has_edge(concept, c)), None)
+    if nearest is None:  # the topic between them is already known: it still leads to the target
+        return f"This leads to {_display_name(G, target)}."
+    if G.edges[concept, nearest].get("strength", "hard") == "hard":
+        return f"You need this before {_display_name(G, nearest)}."
+    return f"This helps you learn {_display_name(G, nearest)}."
+
+
 def personalized_path(
     graph: dict,
     mastery: dict[str, float],
@@ -130,24 +164,20 @@ def personalized_path(
 
     1. All ancestors of target in DAG.
     2. Remove mastered concepts (mastery > MASTERY_THRESHOLD = 0.8).
-    3. Topological ordering.
-    4. Attach evidence citations (doc, page) and rationale.
+    3. Topological ordering, ties by sorted concept id.
+    4. Attach evidence citations (doc, page) and a plain reason: what this topic is needed
+       for later in the path, using topic names.
     """
     G = load_graph(graph)
-    order = generic_path(G, target)
+    # Skip concepts student already mastered
+    order = [c for c in generic_path(G, target) if not is_mastered(mastery.get(c, 0.5))]
     steps = []
 
-    for concept in order:
-        # Skip concepts student already mastered
-        if is_mastered(mastery.get(concept, 0.5)):
-            continue
-
+    for index, concept in enumerate(order):
         evidence = []
-        direct_prereqs = []
 
         if concept in G:
             for source in G.predecessors(concept):
-                direct_prereqs.append(source)
                 edge_data = G.edges[source, concept]
                 raw_ev = edge_data.get("evidence", [])
                 if isinstance(raw_ev, list):
@@ -161,17 +191,10 @@ def personalized_path(
                                 }
                             )
 
-        if concept == target:
-            why = "This is your target learning concept."
-        elif direct_prereqs:
-            why = f"Essential foundation required for: {', '.join(direct_prereqs)}."
-        else:
-            why = "Build foundational knowledge before advancing."
-
         steps.append(
             {
                 "concept_id": concept,
-                "why": why,
+                "why": _why(G, concept, target, order[index + 1 :]),
                 "evidence": evidence,
             }
         )

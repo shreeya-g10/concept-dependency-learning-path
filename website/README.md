@@ -34,5 +34,5 @@ A new page must be added to `ui.PAGES`: `st.navigation` ignores files it is not 
 - The only module code a page may import is `cdlp/learning_path/api.py` (live quiz) and `cdlp/root_cause/api.py`.
 - Shared page parts go in `ui.py`, data helpers in `common.py`.
 - **Student pages:** one column; one main action per screen; plain words at about a 6th-grade level; an icon always with a word; no team names, research terms or course IDs; every error says what to do next (`ui.friendly_error`). All their text lives in `strings.py`.
-- **Honesty:** `ui.page_header(source_file=...)` shows the sample and demo notices. Keep them. Never state anything we have not measured.
+- **Honesty:** `ui.page_header(source_file=...)` shows the sample and demo notices: one short line for students, the full notice and the written rule with `teacher=True`. Keep them. Never state anything we have not measured.
 - CI renders every page on example data (`website/test_pages.py`), so keep every page working before you open a PR.

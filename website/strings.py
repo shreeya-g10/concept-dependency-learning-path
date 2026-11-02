@@ -35,6 +35,7 @@ DEMO_NOTICE = (
     "them just for this demo. Your map and plan use only these links, so topics may be "
     "missing. This does not show how good the full map is."
 )
+DEMO_NOTICE_SHORT = "Sample map: {n} of {of} links checked."
 ERROR_PAGE = "Something went wrong on this page."
 ERROR_PAGE_NEXT = "Reload the page. If you see this again, go to Home and try once more."
 
@@ -198,10 +199,7 @@ PLAN_STATUS_DONE = "✅ Done"
 PLAN_STATUS_NEXT = "👉 Next"
 PLAN_STATUS_LATER = "⏳ Later"
 PLAN_MARK_DONE = "Mark as done"
-PLAN_WHY_TARGET = "This is the topic you want to learn."
-PLAN_WHY_NEED = "You need this before {topic}."
-PLAN_WHY_HELPS = "This helps you learn {topic}."
-PLAN_WHY_LEADS = "This leads to {topic}."
+PLAN_LIMIT_NOTE = "We stopped after {n} questions. Topics we did not ask about stay on your plan."
 PLAN_MORE_QUESTIONS = "Answer more questions"
 PLAN_OTHER_TOPIC = "Pick another topic"
 

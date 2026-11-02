@@ -157,7 +157,6 @@ def test_a_student_is_not_sent_back_to_a_topic_they_just_got_right(outputs, monk
     at.session_state["quiz_asked"] = []
     at.session_state["quiz_answers"] = [{"concept_id": "trees", "correct": True}]
     at.session_state["quiz_picking"] = True
-    at.session_state["quiz_first_answer"] = 1
     at.session_state["quiz_progress"] = 0.0
     at.session_state["quiz_feedback"] = None
     at.session_state["quiz_just_right"] = False

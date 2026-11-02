@@ -1,8 +1,10 @@
 """Step 4: the personal study plan, from the answers given in step 3.
 
 Reads the answers from session state (pages/3_Quick_check.py writes them) and the path from
-cdlp/learning_path/api.py. The reasons are worded here, from the graph: the path's own `why`
-text carries raw concept ids and reads backwards.
+cdlp/learning_path/api.py, reasons included.
+
+When the question limit stopped the quick check, topics the student was not asked count as
+unknown, so they stay on the plan even if a right answer elsewhere suggested they are known.
 
 What a student marks as done stays in session state only. It does not change what we think
 they know, and it is not written to the answer log.
@@ -43,7 +45,17 @@ if (
     st.stop()
 
 mastery = st.session_state.quiz_mastery
-steps = api.personalized_path(graph_data, mastery, target)
+more_questions = api.next_question(
+    graph_data,
+    common.load("quiz_items.json"),
+    {**mastery, "__asked__": list(st.session_state.get("quiz_asked", []))},
+    target,
+)
+asked_for_target = st.session_state.get("quiz_topic_counts", {}).get(target, 0)
+limit_stopped = more_questions is not None and asked_for_target >= api.MAX_QUESTIONS_PER_TOPIC
+steps = api.personalized_path(
+    graph_data, api.only_answered(mastery) if limit_stopped else mastery, target
+)
 plan_order = [step["concept_id"] for step in steps]
 done = st.session_state.setdefault("plan_done", {}).setdefault(course, [])
 next_up = next((c for c in plan_order if c not in done), None)
@@ -51,19 +63,6 @@ next_up = next((c for c in plan_order if c not in done), None)
 
 def name(concept_id: str) -> str:
     return names.get(concept_id, concept_id)
-
-
-def why(concept_id: str) -> str:
-    """One short sentence, about the nearest later topic in this student's plan."""
-    if concept_id == target:
-        return S.PLAN_WHY_TARGET
-    later = plan_order[plan_order.index(concept_id) + 1 :]
-    links = {e["target"]: e for e in accepted if e["source"] == concept_id}
-    nearest = next((c for c in later if c in links), None)
-    if nearest is None:  # the topic between them is already known: it still leads to the target
-        return S.PLAN_WHY_LEADS.format(topic=name(target))
-    needed = links[nearest].get("strength", "hard") == "hard"
-    return (S.PLAN_WHY_NEED if needed else S.PLAN_WHY_HELPS).format(topic=name(nearest))
 
 
 def where_to_read(step: dict) -> str:
@@ -103,6 +102,8 @@ else:
 
 header()
 st.markdown(S.PLAN_FOR.format(topic=name(target)))
+if limit_stopped:
+    st.info(S.PLAN_LIMIT_NOTE.format(n=api.MAX_QUESTIONS_PER_TOPIC), icon="ℹ️")
 
 STATUS = {"done": S.PLAN_STATUS_DONE, "next": S.PLAN_STATUS_NEXT, "later": S.PLAN_STATUS_LATER}
 for number, step in enumerate(steps, start=1):
@@ -111,7 +112,7 @@ for number, step in enumerate(steps, start=1):
     with st.container(border=True):
         title = S.PLAN_STEP.format(number=number, topic=name(concept_id))
         st.markdown(f"**{title}** · {STATUS[status]}")
-        st.write(why(concept_id))
+        st.write(step["why"])
         st.caption(where_to_read(step))
         if status == "next" and ui.action_button(
             S.PLAN_MARK_DONE, icon="✅", key=f"done_{concept_id}"
@@ -119,14 +120,10 @@ for number, step in enumerate(steps, start=1):
             done.append(concept_id)
             st.rerun()
 
-more_questions = api.next_question(
-    graph_data,
-    common.load("quiz_items.json"),
-    {**mastery, "__asked__": list(st.session_state.get("quiz_asked", []))},
-    target,
-)
-if more_questions and ui.action_button(
-    S.PLAN_MORE_QUESTIONS, icon="✏️", primary=False, key="plan_more"
+if (
+    more_questions
+    and not limit_stopped
+    and ui.action_button(S.PLAN_MORE_QUESTIONS, icon="✏️", primary=False, key="plan_more")
 ):
     st.session_state.quiz_picking = False
     st.switch_page(ui.PAGES["quiz"].path)

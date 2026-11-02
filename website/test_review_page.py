@@ -161,3 +161,50 @@ def test_ai_suggestions_page_uses_plain_labels():
     assert not at.exception
     assert at.multiselect[0].format_func("hard") == "Must learn first"
     assert any("candidate prerequisite edge" in c.value for c in at.caption)
+
+
+# --- validator reasons on the review cards ---------------------------------------------
+
+
+def with_reason(course, edge_id, reason, **checks):
+    path = course / "validated_graph.json"
+    graph = json.loads(path.read_text())
+    edge = next(e for e in graph["edges"] if e["id"] == edge_id)
+    edge["reason"] = reason
+    edge["checks"].update(checks)
+    path.write_text(json.dumps(graph))
+
+
+def test_a_review_card_shows_the_reason_in_plain_words_with_the_raw_text_small(outputs):
+    raw = (
+        "evidence strong, semantic none (score 0.50). Semantic: A binary tree is more general. "
+        "(skipped: necessity)"
+    )
+    with_reason(outputs, "r5", raw, evidence="strong", semantic="none", graph="ok")
+    at = open_page()
+    assert not at.exception
+    said = " ".join(m.value for m in at.markdown)
+    assert "The notes clearly support this link." in said
+    assert "The AI says this teaching order does not make sense." in said
+    assert "The AI's words: A binary tree is more general." in said
+    assert "evidence strong, semantic none" not in said and "(skipped" not in said
+    small = " ".join(c.value for c in at.caption)
+    assert "evidence strong, semantic none (score 0.50). (skipped: necessity)" in small
+    assert "A binary tree is more general" not in small  # said once, in the plain text
+
+
+def test_a_circle_is_explained_in_plain_words(outputs):
+    raw = "evidence weak, semantic strong (score 0.67; lies on a cycle, so never accepted)."
+    with_reason(outputs, "r5", raw, evidence="weak", semantic="strong", graph="cycle")
+    at = open_page()
+    said = " ".join(m.value for m in at.markdown)
+    assert "part of a circle of links" in said
+    assert "lies on a cycle" not in said
+
+
+def test_a_reason_that_is_already_plain_is_left_alone(outputs):
+    at = open_page()
+    assert "validator unsure" in " ".join(m.value for m in at.markdown)
+    assert not any(
+        "Technical details" in c.value and "validator unsure" in c.value for c in at.caption
+    )
