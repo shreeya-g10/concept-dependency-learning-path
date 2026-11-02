@@ -175,7 +175,7 @@ def test_start_job_launches_a_detached_runner(tmp_path):
 
 def test_default_command_is_the_pipeline_for_the_course():
     command = jobs.pipeline_command("os101")
-    assert command[-3:] == [str(jobs.ROOT / "pipeline.py"), "--course", "os101"]
+    assert command[-4:] == [str(jobs.ROOT / "pipeline.py"), "--course", "os101", "--skip-necessity"]
 
 
 def test_successful_run_marks_every_stage(tmp_path):
@@ -318,3 +318,9 @@ def test_page_rejects_a_bad_course_id(page):
     at = page("Bad Id")
     assert not at.exception
     assert any("Course ID" in e.value for e in at.error)
+
+
+def test_website_builds_skip_the_necessity_test():
+    cmd = jobs.pipeline_command("notes101")
+    assert cmd[-2:] == ["notes101", "--skip-necessity"]
+    assert jobs.VALIDATION_S_PER_EDGE == 2 * jobs.VALIDATOR_S  # evidence + semantic only

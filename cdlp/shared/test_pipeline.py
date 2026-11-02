@@ -236,3 +236,46 @@ def test_teacher_decisions_are_reapplied_after_validation(tmp_path, monkeypatch)
     }
     assert edges["r5"]["decision"] == "ACCEPT"
     assert edges["r5"]["review"]["decided_by"] == "teacher"
+
+
+def test_pipeline_passes_quick_build_flags_to_validation(tmp_path, monkeypatch):
+    pipeline = load_pipeline()
+    seen = {}
+
+    def fake_run(module, *args):
+        seen[module] = args
+        raise SystemExit(0)  # stop after the first stage that matters
+
+    def stop_after_validation(module, *args):
+        if module == "cdlp.validation":
+            fake_run(module, *args)
+        elif module == "cdlp.extraction":
+            out = Path(arg(args, "--out-dir"))
+            relabel(EXAMPLES / "concepts.json", out / "concepts.json", "ds101")
+            relabel(EXAMPLES / "chunks.jsonl", out / "chunks.jsonl", "ds101")
+        elif module == "cdlp.discovery":
+            relabel(
+                EXAMPLES / "relationships.json",
+                Path(arg(args, "--out-dir")) / "relationships.json",
+                "ds101",
+            )
+
+    monkeypatch.setattr(pipeline, "run", stop_after_validation)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pipeline.py",
+            "--course",
+            "ds101",
+            "--out-dir",
+            str(tmp_path),
+            "--skip-necessity",
+            "--demo-subset",
+            "25",
+        ],
+    )
+    with pytest.raises(SystemExit):
+        pipeline.main()
+
+    v = seen["cdlp.validation"]
+    assert "--skip-necessity" in v and arg(v, "--demo-subset") == "25"

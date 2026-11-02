@@ -101,10 +101,21 @@ st.dataframe(
 # ---- Necessity details ------------------------------------------------------
 # validated_graph.json carries only necessity_gap. The control and "without A" scores
 # come from the necessity-test results file (cdlp/validation/results/necessity_*.json).
+# Shown only when this graph ran the necessity test and every edge of the run is an edge
+# of this graph: results files are tagged only by course id, so an experiment on the
+# shared example edges must never be shown as if it belonged to a live course.
+graph_pairs = {(e["source"], e["target"]) for e in edges}
+graph_ran_necessity = any(
+    e.get("checks", {}).get("necessity") not in (None, "skipped") for e in edges
+)
 necessity_runs = {
     name: data
     for name, data in read_results("necessity_*.json").items()
-    if data.get("course_id", course) == course and isinstance(data.get("results"), list)
+    if graph_ran_necessity
+    and data.get("course_id", course) == course
+    and isinstance(data.get("results"), list)
+    and data["results"]
+    and {(r.get("source"), r.get("target")) for r in data["results"]} <= graph_pairs
 }
 necessity_rows: dict[str, dict] = {}
 if necessity_runs:
@@ -115,10 +126,10 @@ if necessity_runs:
         f"model `{run.get('model', '?')}` · temperature {run.get('temperature', '?')} · "
         f"seed {run.get('seed', '?')} · leakage rate {run.get('leakage_rate', '?')}. "
         "Gap = control score − score without A. The control learner bans an unrelated "
-        "concept C instead of A."
+        "concept C instead of A. Experimental and report-only: it does not change any decision."
     )
     for row in run["results"]:
-        necessity_rows[row.get("relationship_id") or f"{row['source']}->{row['target']}"] = row
+        necessity_rows[f"{row['source']}->{row['target']}"] = row  # by pair, never by id
     st.dataframe(
         [
             {
@@ -147,7 +158,7 @@ for e in edges:
     with st.expander(f"{label(e['source'])} → {label(e['target'])} · {e['confidence']:.2f}{by}"):
         st.write(e["reason"])
         st.markdown(" · ".join(f"**{check}** {grade(e['checks'][check])}" for check in CHECKS))
-        row = necessity_rows.get(e["id"]) or necessity_rows.get(f"{e['source']}->{e['target']}")
+        row = necessity_rows.get(f"{e['source']}->{e['target']}")
         if row:
             control = (row.get("control_concept") or {}).get("name", "?")
             st.markdown(

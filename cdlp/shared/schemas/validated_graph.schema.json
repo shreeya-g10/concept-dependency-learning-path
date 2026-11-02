@@ -266,6 +266,34 @@
       },
       "uniqueItems": true,
       "description": "added in 1.5: checks this run skipped; each is written as 'skipped' on every edge."
+    },
+    "subset": {
+      "type": "object",
+      "required": [
+        "kind",
+        "n",
+        "of",
+        "selection"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "demo"
+          ]
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "of": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selection": {
+          "type": "string"
+        }
+      },
+      "description": "added in 1.8: present only when the run validated a subset of the proposed edges (e.g. --demo-subset); such a graph is a demo, not an evaluation."
     }
   }
 }

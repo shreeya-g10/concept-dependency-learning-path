@@ -6,7 +6,7 @@ streamlit run website/Home.py
 from __future__ import annotations
 
 import streamlit as st
-from common import load, render_sidebar, using_examples
+from common import demo_subset_note, load, render_sidebar, using_examples
 
 st.set_page_config(
     page_title="Concept Dependency Learning Path",
@@ -47,6 +47,8 @@ status_badge = (
     else "🟡 Shared Examples (`cdlp/shared/examples/`)"
 )
 st.markdown(f"**Current Status:** {status_badge}")
+if note := demo_subset_note():
+    st.warning(note)
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Concepts Extracted", len(concepts_list))
@@ -82,13 +84,13 @@ st.caption(
 exp1, exp2, exp3 = st.columns(3)
 
 with exp1:
-    st.markdown("#### 1. Necessity-testing validation agent")
+    st.markdown("#### 1. Validation agent")
     st.write(
-        "Before an edge $A \\rightarrow B$ enters the graph, an LLM plays a student who does "
-        "not know $A$ and answers questions on $B$, then tries again knowing $A$. The score "
-        "difference (the necessity gap) shows whether $A$ is truly needed. It is combined with "
-        "evidence retrieval, semantic and graph-consistency checks: ACCEPT / REJECT / "
-        "HUMAN_REVIEW."
+        "Before an edge $A \\rightarrow B$ enters the graph, a separate validator model checks "
+        "it against the course material (evidence), for teaching sense (semantic) and for graph "
+        "consistency (cycles, redundant shortcuts), then decides ACCEPT / REJECT / HUMAN_REVIEW. "
+        "An experimental necessity test (an LLM plays a student who does not know $A$) is "
+        "recorded but does not affect decisions: in our first runs its score was unstable."
     )
 
 with exp2:
@@ -96,7 +98,7 @@ with exp2:
     st.write(
         "The validated graph chooses the most informative next quiz question: a correct answer "
         "on BST implies its prerequisites are known. The aim is to find a student's gaps with "
-        "fewer questions than testing every concept."
+        "fewer questions than testing every concept (not yet measured)."
     )
 
 with exp3:
