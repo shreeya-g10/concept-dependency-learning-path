@@ -68,6 +68,19 @@ def test_quick_check_logs_answer_and_labels_offline_root_cause(outputs, monkeypa
     assert rows[0]["student_id"].startswith("anon_")  # random id, nothing identifying
 
     shown = " ".join(c.value for c in at.caption)
-    assert "our best guess" in shown and "not from the AI helper" in shown
+    assert "the AI helper was off" in shown and "not from the AI helper" in shown
     assert "[fallback:" not in shown
     assert "Gap is likely in trees." in shown
+
+
+def test_quick_check_labels_an_unusable_ai_reply(outputs, monkeypatch):
+    def fake_trace(graph, quiz_item, answer, mastery, *, allow_fallback=False):
+        return {"explanation": "[fallback: nearest prerequisite] Gap is likely in trees."}
+
+    monkeypatch.setattr(root_cause_api, "trace", fake_trace)
+    at = answer_wrong(AppTest.from_file(str(QUIZ), default_timeout=60).run())
+    assert not at.exception
+
+    shown = " ".join(c.value for c in at.caption)
+    assert "answer could not be used" in shown and "not from the AI helper" in shown
+    assert "[fallback:" not in shown
