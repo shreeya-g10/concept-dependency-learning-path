@@ -7,7 +7,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from cdlp.learning_path.graph import ancestors, generic_path, load_graph, prerequisites
+from cdlp.learning_path.graph import (
+    MASTERY_THRESHOLD,
+    ancestors,
+    generic_path,
+    is_mastered,
+    load_graph,
+    prerequisites,
+)
 
 
 def initial_mastery(graph: Any) -> dict[str, float]:
@@ -42,7 +49,7 @@ def update_mastery(
         updated[concept_id] = 0.1
         for prerequisite in ancestors(graph, concept_id):
             # Prioritize prerequisites for diagnosis
-            if prerequisite not in updated or updated[prerequisite] > 0.8:
+            if prerequisite not in updated or is_mastered(updated[prerequisite]):
                 updated[prerequisite] = 0.5
 
     return updated
@@ -61,7 +68,9 @@ def next_question(
     where mastery is still uncertain (around 0.5).
     """
     order = generic_path(graph, target)
-    uncertain = [concept for concept in order if 0.2 <= mastery.get(concept, 0.5) <= 0.8]
+    uncertain = [
+        concept for concept in order if 0.2 <= mastery.get(concept, 0.5) <= MASTERY_THRESHOLD
+    ]
 
     if not uncertain:
         return None
@@ -93,8 +102,8 @@ def personalized_path(
 
     for concept in full_path:
         score = mastery.get(concept, 0.5)
-        # Skip if student already mastered it (>= 0.8)
-        if score >= 0.8:
+        # Skip if the student already mastered it (strictly above the threshold)
+        if is_mastered(score):
             continue
 
         node_data = graph.nodes.get(concept, {}) if hasattr(graph, "nodes") else {}

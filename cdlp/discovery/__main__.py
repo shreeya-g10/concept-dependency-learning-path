@@ -17,7 +17,8 @@ concept list and no candidate filter (the RQ1 baseline), in the same format.
 filter and every per-pair call (cheap ablation runs).
 
 Discovery writes only relationships.json. Quiz items and simulated students are
-built by the learning_path module. --stats writes the run's LLM call counts.
+built by the learning_path module (cdlp/learning_path/quiz.py, sim_students.py).
+--stats writes the run's LLM call counts.
 """
 
 import argparse

@@ -1,4 +1,4 @@
-# Benchmarks · owner: Shreeya
+# Benchmarks · maintainer: Shreeya
 
 Public prerequisite datasets, converted into our formats so discovery and validation can be scored beyond our own course.
 
@@ -6,7 +6,7 @@ Public prerequisite datasets, converted into our formats so discovery and valida
 
 **Evaluation benchmarks: AL-CPL and University Course.** LectureBank has a loader and tests, but it is **not used in evaluation: licence not stated** (decided 2026-11-02; see "Notes for the paper").
 
-**You own (only you edit):** `cdlp/benchmarks/`
+**Files:** `cdlp/benchmarks/`
 
 | | File | Notes |
 |---|---|---|

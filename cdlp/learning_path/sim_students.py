@@ -1,6 +1,6 @@
 """Synthetic student generation for adaptive diagnosis evaluation (RQ2).
 
-Owner: Vaidehi.
+Initial code: Vaidehi (moved from cdlp/discovery/).
 Generates simulated students with known ground-truth mastery respecting prerequisite DAGs
 using a level-independent frontier sampler from ACCEPT edges in validated_graph.json.
 """
