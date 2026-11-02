@@ -150,3 +150,36 @@ def test_speed_uses_a_throwaway_cache_and_mocked_llm():
 def test_unknown_stage_fails():
     with pytest.raises(ValueError):
         cr.plan("night9")
+
+
+NOTEBOOK = ROOT / "notebooks" / "colab_validator.ipynb"
+
+
+def test_notebook_has_one_cell_per_step_and_no_outputs():
+    import re
+
+    nb = json.loads(NOTEBOOK.read_text())
+    code = ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
+    assert all(
+        not c.get("outputs") and c.get("execution_count") is None
+        for c in nb["cells"]
+        if c["cell_type"] == "code"
+    )
+    steps = [int(m.group(1)) for src in code if (m := re.match(r"# Step (\d+)", src))]
+    assert steps == list(range(9))
+    assert nb["metadata"]["accelerator"] == "GPU"
+
+
+def test_notebook_pins_a_commit_with_the_runner():
+    import re
+
+    first = "".join(json.loads(NOTEBOOK.read_text())["cells"][1]["source"])
+    commit = re.search(r'COMMIT = "([0-9a-f]+)"', first).group(1)
+    stages = re.search(r'STAGE = "(\w+)"', first).group(1)
+    assert len(commit) == 40 and stages in cr.STAGES
+    found = subprocess.run(
+        ["git", "-C", str(ROOT), "cat-file", "-e", f"{commit}:scripts/colab_run.py"],
+        capture_output=True,
+    )
+    if found.returncode != 0:  # e.g. a shallow CI clone without that commit
+        pytest.skip("pinned commit not in this clone's history")
