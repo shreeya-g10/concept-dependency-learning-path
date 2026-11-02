@@ -39,6 +39,7 @@ JOBS = OUTPUTS / ".jobs"
 UPLOAD_TYPES = ["pdf", "pptx", "txt", "md", "docx"]
 READABLE = {f".{t}" for t in UPLOAD_TYPES}  # read by cdlp.extraction as they are
 COURSE_ID = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
+BUILT_IN_COURSES = frozenset({"ds101", "ml101"})  # the same ids as common.COURSE_NAMES
 
 # (marker printed by pipeline.py as "==> <marker>", label shown on the page)
 STAGES = [
@@ -109,6 +110,37 @@ def save_uploads(
     for name, (_, data) in zip(names, files, strict=True):
         (folder / name).write_bytes(data)
     return [folder / name for name in names]
+
+
+def remove_upload(
+    course_id: str, name: str, raw: Path | None = None, jobs: Path | None = None
+) -> bool:
+    """Delete one uploaded file from raw/<course_id>/. False if it was already gone.
+
+    Only ever deletes a regular file directly inside that folder. Raises ValueError for a
+    built-in course, a name that is not a plain readable file name, or a symlink, and
+    RuntimeError while a job is reading the course.
+    """
+    if not valid_course_id(course_id):
+        raise ValueError(f"invalid course id {course_id!r}")
+    if course_id in BUILT_IN_COURSES:
+        raise ValueError(f"{course_id} is a built-in course: its files cannot be removed")
+    if "/" in name or "\\" in name or name != Path(name).name or name.startswith("."):
+        raise ValueError(f"not a plain file name: {name!r}")
+    if Path(name).suffix.lower() not in READABLE or name.lower().startswith("readme"):
+        raise ValueError(f"not an uploaded file: {name!r}")
+    if read_status(course_id, jobs)["state"] in ("starting", "running"):
+        raise RuntimeError(f"a pipeline job for {course_id} is running")
+    folder = (raw or RAW) / course_id
+    target = folder / name
+    if folder.is_symlink() or target.is_symlink():
+        raise ValueError(f"refusing to follow a link: {name!r}")
+    if not target.exists():
+        return False
+    if not target.is_file() or target.resolve().parent != folder.resolve():
+        raise ValueError(f"not a file in the upload folder: {name!r}")
+    target.unlink()
+    return True
 
 
 # --- estimate -----------------------------------------------------------------------

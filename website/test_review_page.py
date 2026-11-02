@@ -69,7 +69,8 @@ def test_blocking_edges_come_first_and_cannot_be_accepted(outputs):
     accept = [b for b in at.button if b.key and b.key.startswith("accept_")]
     assert [b.key for b in accept] == ["accept_r7", "accept_r5"]  # blocking r7 first
     assert accept[0].disabled and not accept[1].disabled
-    assert any("blocking link" in e.value for e in at.error)
+    message = next(e.value for e in at.error if "blocking link" in e.value)
+    assert "in a circle" in message and "Reject it" in message  # why, and what to do next
 
 
 def test_accept_saves_the_decision_and_updates_the_graph(outputs):
@@ -97,6 +98,7 @@ def test_reject_and_change_of_mind(outputs):
     assert not at.exception
     r7 = edges_of(outputs)["r7"]
     assert r7["decision"] == "HUMAN_REVIEW" and r7["review"]["status"] == "refused_cycle"
+    assert any("Your Accept was refused" in w.value for w in at.warning)
 
 
 def test_example_data_is_read_only(tmp_path, monkeypatch):
@@ -106,3 +108,56 @@ def test_example_data_is_read_only(tmp_path, monkeypatch):
     assert all(b.disabled for b in at.button if b.key and b.key.startswith(("accept_", "reject_")))
     assert any("example data" in i.value for i in at.info)
     assert list(tmp_path.iterdir()) == []
+
+
+# --- plain labels first, technical terms in smaller text ---------------------------------
+
+
+def test_plain_decision_labels_with_the_technical_terms_in_small_text(outputs):
+    at = open_page()
+    assert [m.label for m in at.metric][:3] == ["Accepted", "Rejected", "Needs your review"]
+    assert "Needs your review" in [s.value for s in at.subheader]
+    assert any("HUMAN_REVIEW" in c.value for c in at.caption)
+    # never a raw decision name or check name as a label
+    assert not any(m.label in ("ACCEPT", "REJECT", "HUMAN_REVIEW") for m in at.metric)
+    assert any("evidence check" in c.value and "confidence" in c.value for c in at.caption)
+
+
+def test_links_that_need_the_teacher_come_before_the_full_list(outputs):
+    at = open_page()
+    headings = [s.value for s in at.subheader]
+    assert headings.index("Decisions") < headings.index("Needs your review")
+    assert headings.index("Needs your review") < headings.index("All links")
+
+
+def test_the_list_shows_one_decision_at_a_time(outputs):
+    at = open_page()
+    assert at.radio[0].format_func("REJECT").startswith("Rejected (")
+    at.radio[0].set_value("HUMAN_REVIEW").run()
+    assert not at.exception
+    labels = [e.label for e in at.expander]
+    assert any("AVL" in text and "Trees" in text for text in labels)  # the added r7
+
+
+def test_the_last_build_details_are_on_the_teacher_page(outputs, tmp_path, monkeypatch):
+    import jobs
+
+    folder = tmp_path / "jobs" / "ds101"
+    folder.mkdir(parents=True)
+    (folder / "job.json").write_text(json.dumps({"state": "failed", "returncode": 1}))
+    (folder / "pipeline.log").write_text("==> cdlp.extraction\nValueError: bad pdf\n")
+    monkeypatch.setattr(jobs, "JOBS", tmp_path / "jobs")
+    at = open_page()
+    assert not at.exception
+    assert "Last time the notes were read" in [s.value for s in at.subheader]
+    assert any("ValueError: bad pdf" in c.value for c in at.code)
+
+
+def test_ai_suggestions_page_uses_plain_labels():
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(SITE / "pages" / "teacher_AI_suggestions.py"), default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert at.multiselect[0].format_func("hard") == "Must learn first"
+    assert any("candidate prerequisite edge" in c.value for c in at.caption)
