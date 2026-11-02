@@ -1,13 +1,22 @@
 """LLM-based concept extraction, canonicalization, deduplication, and granularity filtering.
 
-Owner: Vaidehi.
 Conforms to cdlp/shared/schemas/concepts.schema.json.
+
+Deduplication compares concept names with sentence embeddings (all-MiniLM-L6-v2, local
+files only). If the model cannot be loaded or fails while encoding (e.g. out of GPU
+memory while Ollama holds a model), names are compared with character TF-IDF (or word
+Jaccard without scikit-learn). That changes which concepts merge, so it is never silent:
+extract_concepts_from_chunks() raises DedupError unless allow_tfidf=True (CLI:
+--allow-tfidf), prints a loud warning when it is allowed, and records the method used in
+concepts.json (`dedup_method`, `dedup_comparisons`; contract 1.7).
 """
 
 from __future__ import annotations
 
 import logging
 import re
+import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -64,11 +73,19 @@ ACRONYMS = {
 }
 
 _EMBEDDER = None
+_EMBEDDER_ERROR = ""  # why the embedder is unavailable (for the DedupError message)
+# fuzzy name comparisons per method in the current run: embedding / tfidf / jaccard
+DEDUP_COUNTS: Counter = Counter()
+SCHEMA_VERSION = "1.7"  # 1.7: dedup_method, dedup_comparisons
+
+
+class DedupError(RuntimeError):
+    """Embedding-based deduplication is unavailable and the fallback was not allowed."""
 
 
 def get_embedder():
     """Load sentence-transformers model if cached locally, else None."""
-    global _EMBEDDER
+    global _EMBEDDER, _EMBEDDER_ERROR
     if _EMBEDDER is None:
         model_path = (
             Path.home()
@@ -83,10 +100,11 @@ def get_embedder():
                 from sentence_transformers import SentenceTransformer
 
                 _EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
-            except Exception:
-                _EMBEDDER = False
+            except Exception as exc:
+                _EMBEDDER, _EMBEDDER_ERROR = False, f"loading the model failed: {exc}"
         else:
             _EMBEDDER = False
+            _EMBEDDER_ERROR = f"all-MiniLM-L6-v2 is not downloaded (no {model_path})"
     return _EMBEDDER if _EMBEDDER is not False else None
 
 
@@ -185,9 +203,11 @@ def semantic_similarity(name1: str, name2: str) -> float:
             norm1 = np.linalg.norm(embeddings[0])
             norm2 = np.linalg.norm(embeddings[1])
             if norm1 > 0 and norm2 > 0:
+                DEDUP_COUNTS["embedding"] += 1
                 return float(np.dot(embeddings[0], embeddings[1]) / (norm1 * norm2))
-        except Exception:
-            pass
+        except Exception as exc:  # e.g. out of GPU memory: counted, never silent
+            logger.warning("embedding failed for %r / %r (%s); using TF-IDF", name1, name2, exc)
+            DEDUP_COUNTS["embedding_failed"] += 1
 
     # High-precision character n-gram cosine similarity (fast, local, TF-IDF style)
     try:
@@ -197,6 +217,7 @@ def semantic_similarity(name1: str, name2: str) -> float:
         vec = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 4))
         tfidf = vec.fit_transform([name1, name2])
         score = float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0])
+        DEDUP_COUNTS["tfidf"] += 1
         return score
     except Exception:
         pass
@@ -205,6 +226,7 @@ def semantic_similarity(name1: str, name2: str) -> float:
     w1 = set(to_slug(name1).split("_"))
     w2 = set(to_slug(name2).split("_"))
     union = w1 | w2
+    DEDUP_COUNTS["jaccard"] += 1
     if not union:
         return 0.0
     return len(w1 & w2) / len(union)
@@ -378,14 +400,46 @@ def merge_and_canonicalize(
     return canonical_list
 
 
+def dedup_method(counts: Counter, embedder_loaded: bool) -> str:
+    """embedding / tfidf / jaccard, or mixed when one run used more than one."""
+    used = [m for m in ("embedding", "tfidf", "jaccard") if counts.get(m)]
+    if not used:  # every merge was exact or an acronym: the method that would have run
+        return "embedding" if embedder_loaded else "tfidf"
+    return used[0] if len(used) == 1 else "mixed"
+
+
+def _loud(message: str) -> None:
+    bar = "!" * 78
+    print(f"\n{bar}\n{message}\n{bar}\n", file=sys.stderr, flush=True)
+
+
 def extract_concepts_from_chunks(
     chunks: list[dict[str, Any]],
     course_id: str = "ds101",
     similarity_threshold: float = 0.85,
+    allow_tfidf: bool = False,
 ) -> dict[str, Any]:
-    """Run extraction across all chunks, merge duplicates, and return concepts contract dict."""
-    raw_with_sources: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    """Run extraction across all chunks, merge duplicates, and return concepts contract dict.
 
+    Raises DedupError before any LLM call when the embedding model is unavailable, and
+    after merging when an encode failed during the run, unless allow_tfidf is True.
+    """
+    embedder_loaded = get_embedder() is not None
+    if not embedder_loaded:
+        message = (
+            "Concept deduplication cannot use sentence embeddings: "
+            f"{_EMBEDDER_ERROR or 'the model did not load'}.\n"
+            "Names would be compared with character TF-IDF instead, which merges different "
+            "concepts than an embedding run."
+        )
+        if not allow_tfidf:
+            raise DedupError(
+                message + "\nFix the embedding model (download all-MiniLM-L6-v2; stop Ollama "
+                "models with `ollama stop <model>` if the GPU is full), or pass --allow-tfidf."
+            )
+        _loud("WARNING: " + message + "\nAllowed by --allow-tfidf; recorded as dedup_method.")
+
+    raw_with_sources: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for chunk in chunks:
         source_meta = {
             "doc": chunk["doc"],
@@ -396,14 +450,30 @@ def extract_concepts_from_chunks(
         for concept in extracted:
             raw_with_sources.append((concept, source_meta))
 
+    DEDUP_COUNTS.clear()
     canonical_concepts = merge_and_canonicalize(
         raw_with_sources,
         similarity_threshold=similarity_threshold,
     )
+    counts = {k: v for k, v in sorted(DEDUP_COUNTS.items()) if v}
+    method = dedup_method(DEDUP_COUNTS, embedder_loaded)
+    if embedder_loaded and method != "embedding":
+        message = (
+            f"Embedding failed during deduplication for {counts.get('embedding_failed', 0)} "
+            f"name pair(s), which were compared with TF-IDF instead (comparisons: {counts})."
+        )
+        if not allow_tfidf:
+            raise DedupError(
+                message + "\nFree the GPU (`ollama stop <model>`) and re-run (LLM answers are "
+                "cached), or pass --allow-tfidf."
+            )
+        _loud("WARNING: " + message + f"\nAllowed by --allow-tfidf; dedup_method={method}.")
 
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "course_id": course_id,
+        "dedup_method": method,
+        "dedup_comparisons": counts,
         "concepts": canonical_concepts,
     }
 

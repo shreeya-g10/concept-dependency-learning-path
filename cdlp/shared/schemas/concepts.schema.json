@@ -66,6 +66,23 @@
           }
         }
       }
+    },
+    "dedup_method": {
+      "enum": [
+        "embedding",
+        "tfidf",
+        "jaccard",
+        "mixed"
+      ],
+      "description": "added in 1.7: how concept names were compared when merging duplicates. embedding = sentence embeddings (all-MiniLM-L6-v2); tfidf / jaccard = fallbacks, used only with --allow-tfidf; mixed = more than one in one run."
+    },
+    "dedup_comparisons": {
+      "type": "object",
+      "description": "added in 1.7: number of fuzzy name comparisons per method (embedding, tfidf, jaccard) and failed embedding attempts (embedding_failed). Exact and acronym matches are not counted.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     }
   }
 }

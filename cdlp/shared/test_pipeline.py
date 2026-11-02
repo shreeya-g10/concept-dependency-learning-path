@@ -159,3 +159,23 @@ def test_root_cause_gets_student_state_when_it_exists(state_written, tmp_path, m
         assert arg(root_cause, "--state") == str(tmp_path / "student_state.json")
     else:
         assert "--state" not in root_cause
+
+
+@pytest.mark.parametrize("allow", [True, False])
+def test_allow_tfidf_reaches_extraction_only_when_given(allow, tmp_path, monkeypatch):
+    pipeline = load_pipeline()
+    seen = {}
+
+    class Stop(Exception):
+        pass
+
+    def fake_run(module, *args):
+        seen[module] = args
+        raise Stop  # only the extraction call matters here
+
+    monkeypatch.setattr(pipeline, "run", fake_run)
+    argv = ["pipeline.py", "--course", "ds101", "--out-dir", str(tmp_path)]
+    monkeypatch.setattr("sys.argv", argv + (["--allow-tfidf"] if allow else []))
+    with pytest.raises(Stop):
+        pipeline.main()
+    assert ("--allow-tfidf" in seen["cdlp.extraction"]) is allow

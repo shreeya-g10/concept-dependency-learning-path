@@ -7,6 +7,7 @@ chunks, and outputs structured records conforming to chunk.schema.json.
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -102,31 +103,136 @@ def chunk_text(
     return chunks
 
 
+# ---- running headers and footers (PDF) ----------------------------------------------
+# Book PDFs repeat a header and footer on every page: page numbers, "§6.1", the chapter
+# or section title, "(continued from previous page)". Those lines are never a chunk's
+# heading and are removed from the top / bottom of each page's text.
+HEADER_ZONE, FOOTER_ZONE = 4, 2  # lines checked at the top / bottom of a page
+_PAGE_NOISE = re.compile(
+    r"^(\d{1,4}|[ivxlcdm]{1,7}|§\s?\d+(\.\d+)*|chapter \d+"
+    r"|\(continued from previous page\)|\(continues on next page\))$",
+    re.IGNORECASE,
+)
+_NOT_HEADING = re.compile(r"^(fig\.|figure|table|algorithm|listing|example)\b", re.IGNORECASE)
+
+
+def _norm(line: str) -> str:
+    return re.sub(r"\d+", "#", re.sub(r"\s+", " ", line.strip().lower()))
+
+
+def running_lines(pages: list[list[str]], min_share: float = 0.2) -> set[str]:
+    """Normalised lines in the header / footer zone of at least max(3, 20%) of pages."""
+    counts: dict[str, int] = {}
+    for lines in pages:
+        zone = {_norm(x) for x in lines[:HEADER_ZONE] + lines[-FOOTER_ZONE:] if x.strip()}
+        for line in zone:
+            counts[line] = counts.get(line, 0) + 1
+    need = max(3, math.ceil(min_share * len(pages)))
+    return {line for line, n in counts.items() if n >= need}
+
+
+def is_page_noise(line: str) -> bool:
+    return bool(_PAGE_NOISE.match(line.strip()))
+
+
+def looks_like_heading(line: str) -> bool:
+    """A title, not prose, code, maths or a figure caption: short, title case or
+    numbered ("12.3.2 Multivariate Gradient Descent"), no code or maths characters."""
+    line = line.strip()
+    letters = sum(ch.isalpha() for ch in line)
+    return (
+        3 <= len(line) <= 80
+        and (line[0].isupper() or line[0].isdigit())
+        and not line.endswith((".", ",", ";", ":"))
+        and not _NOT_HEADING.match(line)
+        and not any(ch in line for ch in "=()[]{}<>")
+        and letters >= 3
+        and letters / len(line) >= 0.6
+        and len(line.split()) <= 12
+        and not is_page_noise(line)
+        and (_SECTION_NUMBER.match(line) is not None or _title_case(line))
+    )
+
+
+_SECTION_NUMBER = re.compile(r"^\d+(\.\d+)+\s+\S")
+
+
+def _title_case(line: str) -> bool:
+    """Most words of 4+ letters capitalised ("Graph Traversal"), unlike a wrapped prose
+    line ("To find the block that contains a particular element, we proceed the")."""
+    long = [w for w in re.findall(r"[^\W\d_][\w'-]*", line) if len(w) > 3]
+    return not long or sum(w[0].isupper() for w in long) / len(long) >= 0.6
+
+
+def clean_page(lines: list[str], running: set[str]) -> tuple[str | None, list[str], list[str]]:
+    """(heading, running titles, body lines) of one page, headers and footers removed.
+
+    heading: the first title-like line near the top that is not a running title (a
+    section heading printed on this page), else None. running titles: the title-like
+    running header lines of this page (chapter or section titles).
+    """
+    lines = [x for x in lines if x.strip()]
+    top = len(lines[:HEADER_ZONE])
+    keep, titles = [], []
+    for i, line in enumerate(lines):
+        in_zone = i < top or i >= len(lines) - FOOTER_ZONE
+        if in_zone and is_page_noise(line):
+            continue
+        if in_zone and _norm(line) in running:
+            if i < top and looks_like_heading(line):
+                titles.append(line.strip())
+            continue
+        keep.append(line)
+    heading = None
+    for line in keep[:3]:
+        if looks_like_heading(line):
+            heading = line.strip()
+            keep.remove(line)
+            break
+        if len(line.split()) > 12:  # prose has started: no heading further down
+            break
+    return heading, titles, keep
+
+
 def parse_pdf(path: Path, course_id: str = "ds101") -> list[dict[str, Any]]:
-    """Parse a PDF document using PyMuPDF and return structured chunk dictionaries."""
+    """Parse a PDF with PyMuPDF; running headers / footers are removed.
+
+    Heading per page: a section heading printed on the page; else a running title seen
+    for the first time in this file (a new section started); else the previous page's
+    heading when it was one of those two (the section continues); else this
+    page's running title; else the previous heading; else "<file> Page n".
+    """
     if fitz is None:
         return []
     doc = fitz.open(path)
-    chunks: list[dict[str, Any]] = []
-
+    pages = [doc[i].get_text().splitlines() for i in range(len(doc))]
+    doc.close()
+    running = running_lines(pages)
     clean_stem = re.sub(r"[^a-zA-Z0-9_]", "_", path.stem).lower()
-
-    for page_idx in range(len(doc)):
-        page = doc[page_idx]
+    chunks: list[dict[str, Any]] = []
+    previous, previous_specific, seen_titles = None, False, set()
+    for page_idx, lines in enumerate(pages):
         page_num = page_idx + 1
-        raw_text = page.get_text()
-        default_heading = f"{path.stem} Page {page_num}"
-        heading, body = extract_heading_and_body(raw_text, default_heading)
-
+        found, titles, body_lines = clean_page(lines, running)
+        new_titles = [t for t in titles if t not in seen_titles]
+        seen_titles.update(titles)
+        if found:
+            heading, previous_specific = found, True
+        elif new_titles:  # a running title not seen before in this file: a new section
+            heading, previous_specific = new_titles[-1], True
+        elif previous and previous_specific:
+            heading = previous
+        else:
+            heading = (titles[-1] if titles else None) or previous
+            heading, previous_specific = heading or f"{path.stem} Page {page_num}", False
+        previous = heading
+        body = "\n".join(body_lines).strip()
         if not body:
             continue
-
-        text_pieces = chunk_text(body)
-        for chunk_idx, piece in enumerate(text_pieces):
-            chunk_id = f"ch_{clean_stem}_p{page_num}_{chunk_idx}"
+        for chunk_idx, piece in enumerate(chunk_text(body)):
             chunks.append(
                 {
-                    "chunk_id": chunk_id,
+                    "chunk_id": f"ch_{clean_stem}_p{page_num}_{chunk_idx}",
                     "course_id": course_id,
                     "doc": path.name,
                     "page": page_num,
@@ -134,8 +240,6 @@ def parse_pdf(path: Path, course_id: str = "ds101") -> list[dict[str, Any]]:
                     "text": piece,
                 }
             )
-
-    doc.close()
     return chunks
 
 

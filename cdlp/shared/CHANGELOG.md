@@ -8,6 +8,15 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.7
+
+- `concepts.json` may carry two new optional top-level fields written by `cdlp.extraction`:
+  - `dedup_method`: `embedding` (sentence embeddings, the default), `tfidf` or `jaccard` (fallbacks, used only with `--allow-tfidf`), or `mixed` (more than one in a run).
+  - `dedup_comparisons`: fuzzy name comparisons per method, plus `embedding_failed`.
+  Extraction writes `schema_version` 1.7. Example: `examples/concepts.json`.
+- Not a contract change: without the embedding model, extraction now fails (exit 2) unless `--allow-tfidf` is given (`pipeline.py --allow-tfidf` passes it on). Before, it silently compared names with TF-IDF.
+- Purely additive: two new optional fields. Older files stay valid.
+
 ## 1.5
 
 - `validated_graph.json`: every check (`evidence`, `semantic`, `necessity`, `graph`) may now be `skipped`, meaning the check was not run (an RQ1 ablation such as `--skip-evidence`, or a benchmark without course text). A skipped check never blocks ACCEPT and is left out of the decision score.

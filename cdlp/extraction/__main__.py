@@ -6,9 +6,10 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
-from cdlp.extraction.extract import extract_concepts_from_chunks
+from cdlp.extraction.extract import DedupError, extract_concepts_from_chunks
 from cdlp.extraction.parse import parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
 
@@ -18,6 +19,12 @@ def main() -> None:
     parser.add_argument("--input", type=Path, required=True, help="folder of PDF/PPTX files")
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--course-id", "--course", dest="course_id", type=str, default=None)
+    parser.add_argument(
+        "--allow-tfidf",
+        action="store_true",
+        help="deduplicate with TF-IDF when the embedding model is unavailable (loud warning; "
+        "recorded as dedup_method in concepts.json). Default: fail.",
+    )
     args = parser.parse_args()
 
     input_dir = Path(args.input)
@@ -53,7 +60,12 @@ def main() -> None:
     concepts_data = None
     if input_dir.exists() and any(input_dir.glob("*.pdf")):
         try:
-            concepts_data = extract_concepts_from_chunks(chunks, course_id=course_id)
+            concepts_data = extract_concepts_from_chunks(
+                chunks, course_id=course_id, allow_tfidf=args.allow_tfidf
+            )
+        except DedupError as exc:  # never hidden behind the example fallback below
+            print(f"extraction failed: {exc}", file=sys.stderr)
+            sys.exit(2)
         except Exception:
             concepts_data = None
 
