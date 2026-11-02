@@ -57,7 +57,7 @@ def make_pdf(path: Path, pages: list[str]) -> None:
     doc.save(path)
 
 
-# --- course ids, uploads, conversion -------------------------------------------------
+# --- course ids and uploads -------------------------------------------------------
 
 
 @pytest.mark.parametrize("course", ["ds101", "os_2026", "ab"])
@@ -83,55 +83,40 @@ def test_save_uploads_rejects_bad_input_before_writing(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_pdf_and_pptx_are_saved_unchanged(tmp_path):
-    saved = jobs.save_uploads("c1", [("lec1.pdf", b"%PDF-1"), ("s.pptx", b"PK")], raw=tmp_path)
-    assert [p.name for p in saved] == ["lec1.pdf", "s.pptx"]
-    assert (tmp_path / "c1" / "lec1.pdf").read_bytes() == b"%PDF-1"
-
-
-def test_markdown_blocks_split_headings_and_paragraphs():
-    md = b"# Trees\nA tree has a root.\n\n## Binary trees\n\nAt most two children."
-    assert jobs.blocks_of("n.md", md) == [
-        ("h", "Trees"),
-        ("p", "A tree has a root."),
-        ("h", "Binary trees"),
-        ("p", "At most two children."),
+def test_every_format_is_saved_unchanged(tmp_path):
+    files = [
+        ("lec1.pdf", b"%PDF-1"),
+        ("s.pptx", b"PK"),
+        ("notes.md", b"# Graphs\n\nA graph has vertices."),
+        ("notes.txt", b"Recursion."),
+        ("week 3.docx", b"PK-docx"),
     ]
-    assert jobs.blocks_of("n.txt", b"# not a heading in txt") == [("p", "# not a heading in txt")]
+    saved = jobs.save_uploads("c1", files, raw=tmp_path)
+    assert [p.name for p in saved] == ["lec1.pdf", "s.pptx", "notes.md", "notes.txt", "week_3.docx"]
+    course = tmp_path / "c1"
+    assert (course / "notes.md").read_bytes() == b"# Graphs\n\nA graph has vertices."
+    assert sorted(p.name for p in course.iterdir()) == sorted(p.name for p in saved)  # no PDFs
 
 
-def test_txt_md_docx_become_pdfs_extraction_can_read(tmp_path):
-    pymupdf = pytest.importorskip("pymupdf")
+def test_readme_uploads_are_refused(tmp_path):
+    with pytest.raises(ValueError, match="README"):
+        jobs.save_uploads("c1", [("README.md", b"# notes")], raw=tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_estimate_counts_sections_of_text_formats(tmp_path):
     docx = pytest.importorskip("docx")
+    (tmp_path / "a.md").write_text("# One\n" + "w " * 600 + "\n## Two\nshort\n")
+    (tmp_path / "b.txt").write_text("page one\fpage two")
+    (tmp_path / "README.md").write_text("# skipped\nnot course material")
     document = docx.Document()
     document.add_heading("Heaps", level=1)
     document.add_paragraph("A heap keeps the smallest key at the root.")
-    docx_path = tmp_path / "in.docx"
-    document.save(docx_path)
-    files = [
-        ("notes.txt", b"Recursion calls itself on a smaller input."),
-        ("notes.md", b"# Graphs\n\nA graph has vertices and edges."),
-        ("week 3.docx", docx_path.read_bytes()),
-    ]
-    saved = jobs.save_uploads("c1", files, raw=tmp_path / "raw")
-    course = tmp_path / "raw" / "c1"
-    assert [p.name for p in saved] == ["notes.txt.pdf", "notes.md.pdf", "week_3.docx.pdf"]
-    assert sorted(p.name for p in (course / "originals").iterdir()) == [
-        "notes.md",
-        "notes.txt",
-        "week_3.docx",
-    ]
-    texts = [pymupdf.open(p)[0].get_text() for p in saved]
-    assert "smaller input" in texts[0]
-    assert "Graphs" in texts[1] and "vertices" in texts[1]
-    assert "Heaps" in texts[2] and "smallest key" in texts[2]
-
-
-def test_long_text_is_laid_out_on_several_pages(tmp_path):
-    pymupdf = pytest.importorskip("pymupdf")
-    out = tmp_path / "long.pdf"
-    pages = jobs.text_to_pdf([("p", "word " * 400)] * 6, out, title="long")
-    assert pages > 1 and pymupdf.open(out).page_count == pages
+    document.save(tmp_path / "c.docx")
+    est = jobs.estimate(tmp_path)
+    assert est["files"] == 3
+    # md: 2 sections (600 words -> 2 chunks, 1 word -> 1); txt: 2 pages; docx: 1 section
+    assert est["chunks"] == 2 + 1 + 2 + 1
 
 
 # --- estimate and LLM check ---------------------------------------------------------
@@ -139,7 +124,7 @@ def test_long_text_is_laid_out_on_several_pages(tmp_path):
 
 def test_estimate_counts_pages_chunks_and_llm_time(tmp_path):
     make_pdf(tmp_path / "a.pdf", ["Trees and binary trees", "Binary search trees"])
-    (tmp_path / "skip.txt").write_text("not read by extraction")
+    (tmp_path / "skip.csv").write_text("not read by extraction")
     est = jobs.estimate(tmp_path)
     assert (est["files"], est["pages"], est["chunks"]) == (1, 2, 2)
     assert est["extraction_calls"] == 2

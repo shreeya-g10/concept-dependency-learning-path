@@ -1,18 +1,45 @@
-"""Owner: Vaidehi (inherited from Shrestha). Adaptive quiz and personalized learning path.
+"""Adaptive quiz and personalized learning path (initial code: Shrestha, then Vaidehi).
 
-Interacts with the learning path module exclusively via cdlp/learning_path/api.py.
+Interacts with the learning path module exclusively via cdlp/learning_path/api.py, and
+with root-cause tracing via cdlp/root_cause/api.py. Every answer is logged anonymously
+to outputs/<course>/student_answers.json (common.log_answer).
 """
 
 from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
-from common import concept_names, load, page_header, render_sidebar
+from common import (
+    concept_names,
+    get_active_course,
+    load,
+    log_answer,
+    page_header,
+    render_sidebar,
+    session_id,
+)
 
 from cdlp.learning_path import api
 
-page_header("My Learning Path", "Vaidehi", "quiz_items.json")
+page_header("My Learning Path", "Shreeya", "quiz_items.json")
 render_sidebar()
+
+# Prefixes cdlp/root_cause/tracer.py puts on a non-LLM explanation, and how we label them.
+FALLBACK_LABELS = {
+    "[fallback: offline estimate]": "offline estimate",  # LLM unreachable
+    "[fallback: nearest prerequisite]": "baseline estimate",  # LLM reply unusable
+}
+
+
+def split_explanation(text: str | None) -> tuple[str | None, str | None]:
+    """(label, explanation without the prefix); label is None for an LLM explanation."""
+    if not text:
+        return None, None
+    for prefix, label in FALLBACK_LABELS.items():
+        if text.startswith(prefix):
+            return label, text[len(prefix) :].strip()
+    return None, text
+
 
 names = concept_names()
 graph_data = load("validated_graph.json")
@@ -125,10 +152,28 @@ if question is not None and not st.session_state.get("quiz_done", False):
                             from cdlp.root_cause import api as root_cause_api
 
                             root_cause_info = root_cause_api.trace(
-                                graph_data, question, str(choice), current_mastery
+                                graph_data,
+                                question,
+                                str(choice),
+                                current_mastery,
+                                allow_fallback=True,
                             )
                         except Exception:
                             root_cause_info = None
+
+                    try:
+                        log_answer(
+                            get_active_course(),
+                            {
+                                "student_id": session_id(),
+                                "item_id": str(q_id),
+                                "concept_id": concept_id,
+                                "answer": str(choice),
+                                "correct": is_correct,
+                            },
+                        )
+                    except Exception as err:  # never block the quiz on logging
+                        st.warning(f"Your answer could not be saved: {err}")
 
                     # Update mastery through api.py
                     new_mastery = api.update_mastery(
@@ -165,15 +210,20 @@ if answers:
     col1, col2, col3 = st.columns(3)
     col1.metric("Questions Asked", len(answers))
     col2.metric("Correct Answers", f"{correct_count} / {len(answers)}")
-    col3.metric("Diagnosis Accuracy", f"{acc:.0f}%")
+    col3.metric("Score", f"{acc:.0f}%")
 
     with st.expander("🔍 View Question Responses"):
         for a in answers:
             c_name = names.get(a["concept_id"], a["concept_id"])
             status = "✅ Correct" if a["correct"] else "❌ Incorrect"
             st.markdown(f"- **{c_name}**: {status} (Answered: `{a['selected']}`)")
-            if a.get("root_cause"):
-                st.caption(f"  🔍 Root-cause diagnosis: {a['root_cause']}")
+            label, explanation = split_explanation(a.get("root_cause"))
+            if explanation and label:
+                st.caption(
+                    f"  🔍 Likely root cause ({label}, not an LLM explanation): {explanation}"
+                )
+            elif explanation:
+                st.caption(f"  🔍 Root-cause diagnosis: {explanation}")
 
     # Generate Personalized Path via api.py
     st.divider()
