@@ -79,9 +79,21 @@ def update_mastery(
     concept_id: str,
     correct: bool,
 ) -> dict[str, float]:
-    """Update mastery after a student answer, propagating upstream through the graph."""
+    """Update mastery after a student answer, propagating upstream through the graph.
+
+    Correct: the concept -> 0.9, its ancestors -> at least 0.85. Wrong: the concept -> 0.1,
+    its ancestors that looked mastered (or were unknown) -> 0.5, i.e. uncertain again.
+
+    **A direct answer always beats propagation.** The latest answer per concept is kept
+    under "__observed__" ({concept: correct}) and re-applied after propagating, so a wrong
+    answer on BST no longer erases a correct answer the student just gave on binary
+    trees (nor does a correct answer lift a concept the student got wrong). Before this
+    rule, asking every concept in order destroyed its own evidence and scored below
+    adaptive diagnosis in RQ2 (cdlp/learning_path/results/README.md).
+    """
     G = load_graph(graph)
     updated = {k: v for k, v in mastery.items() if not k.startswith("__")}
+    observed = {**mastery.get("__observed__", {}), concept_id: bool(correct)}
 
     if correct:
         updated[concept_id] = 0.9
@@ -97,6 +109,10 @@ def update_mastery(
             for prerequisite in ancestors(G, concept_id):
                 if prerequisite not in updated or is_mastered(updated[prerequisite]):
                     updated[prerequisite] = 0.5
+
+    for concept, was_correct in observed.items():
+        updated[concept] = 0.9 if was_correct else 0.1
+    updated["__observed__"] = observed
 
     # Retain __asked__ tracker if present
     if "__asked__" in mastery:

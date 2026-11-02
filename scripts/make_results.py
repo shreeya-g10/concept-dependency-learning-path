@@ -151,35 +151,57 @@ def rq1_tables(r: Report) -> list[tuple[Table, dict | None]]:
 RQ24 = "cdlp/learning_path/results/rq2_rq4_results.json"
 
 
+CONDITIONS = [  # (suffix in rq2_rq4_results.json, label)
+    ("", "follows the graph"),
+    ("_independent", "ignores the graph"),
+]
+
+
 def rq2_table(r: Report) -> tuple[Table, dict | None]:
     data = r.load(RQ24)
     t = Table(
-        "rq2", "RQ2 — diagnosis on simulated students", ["Strategy", "Avg. questions", "Accuracy"]
+        "rq2",
+        "RQ2 — diagnosis on simulated students",
+        ["Students", "Strategy", "Avg. questions", "Accuracy"],
     )
     names = {
         "adaptive": "Graph-guided adaptive",
         "ask_all": "Ask every concept",
         "random": "Random order (matched budget)",
     }
-    diag = (data or {}).get("rq2_diagnosis", {})
     if data is None:
         r.missing.append(RQ24)
         t.note = f"Missing: `{RQ24}` (python -m cdlp.learning_path.evaluate)."
     else:
         t.sources.append(RQ24)
-        t.note = (
-            f"{data.get('num_students')} simulated students, target {data.get('target_concept')}, "
-            f"mastery threshold {data.get('mastery_threshold', placeholder('mastery threshold'))}."
+        closure = ", ".join(
+            f"{label}: {fmt(data[f'rq2_diagnosis{suffix}'].get('students_violating_closure'))}"
+            for suffix, label in CONDITIONS
+            if f"rq2_diagnosis{suffix}" in data
         )
-    for key, label in names.items():
-        row = diag.get(key, {})
-        t.add([label, fmt(row.get("avg_questions")), fmt(row.get("accuracy"))], f"RQ2 {label}")
+        t.note = (
+            f"{data.get('num_students')} simulated students per condition, target "
+            f"{data.get('target_concept')}, mastery threshold "
+            f"{data.get('mastery_threshold', placeholder('mastery threshold'))}; every strategy "
+            f"is scored on the same concepts with the same estimator. Share of students "
+            f"mastering a concept without all its prerequisites: {closure or CELL}."
+        )
+    for suffix, cond in CONDITIONS:
+        diag = (data or {}).get(f"rq2_diagnosis{suffix}", {})
+        for key, label in names.items():
+            row = diag.get(key, {})
+            t.add(
+                [cond, label, fmt(row.get("avg_questions")), fmt(row.get("accuracy"), 3)],
+                f"RQ2 {cond} {label}",
+            )
     return t, data
 
 
 def rq4_table(r: Report, data: dict | None) -> Table:
-    t = Table("rq4", "RQ4 — personalized vs. generic paths", ["Measure", "Value"])
-    p = (data or {}).get("rq4_learning_path", {})
+    t = Table(
+        "rq4", "RQ4 — personalized vs. generic paths", ["Measure"] + [c for _, c in CONDITIONS]
+    )
+    blocks = [(data or {}).get(f"rq4_learning_path{suffix}", {}) for suffix, _ in CONDITIONS]
     if data is not None:
         t.sources.append(RQ24)
     for label, key, pct in [
@@ -189,7 +211,7 @@ def rq4_table(r: Report, data: dict | None) -> Table:
         ("Gap coverage", "avg_gap_coverage", False),
         ("Order violations (total)", "total_order_mistakes", False),
     ]:
-        t.add([label, fmt(p.get(key), pct=pct)], f"RQ4 {label}")
+        t.add([label] + [fmt(b.get(key), pct=pct) for b in blocks], f"RQ4 {label}")
     return t
 
 

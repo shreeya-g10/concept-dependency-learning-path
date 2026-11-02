@@ -85,13 +85,16 @@ Sources: none yet
 
 ## RQ2 — diagnosis on simulated students
 
-| Strategy | Avg. questions | Accuracy |
-|---|---|---|
-| Graph-guided adaptive | 4.86 | 0.85 |
-| Ask every concept | 5.00 | 0.62 |
-| Random order (matched budget) | 4.26 | 0.72 |
+| Students | Strategy | Avg. questions | Accuracy |
+|---|---|---|---|
+| follows the graph | Graph-guided adaptive | 4.28 | 0.866 |
+| follows the graph | Ask every concept | 5.00 | 0.870 |
+| follows the graph | Random order (matched budget) | 4.28 | 0.824 |
+| ignores the graph | Graph-guided adaptive | 3.64 | 0.775 |
+| ignores the graph | Ask every concept | 5.00 | 0.874 |
+| ignores the graph | Random order (matched budget) | 3.64 | 0.759 |
 
-500 simulated students, target avl_tree, mastery threshold 0.8.
+500 simulated students per condition, target avl_tree, mastery threshold 0.8; every strategy is scored on the same concepts with the same estimator. Share of students mastering a concept without all its prerequisites: follows the graph: 0.14, ignores the graph: 0.78.
 
 Sources: `cdlp/learning_path/results/rq2_rq4_results.json`
 
@@ -109,13 +112,13 @@ Sources: none yet
 
 ## RQ4 — personalized vs. generic paths
 
-| Measure | Value |
-|---|---|
-| Generic path length (avg.) | 5.00 |
-| Personalized path length (avg.) | 2.26 |
-| Path length reduction | 54.8% |
-| Gap coverage | 0.77 |
-| Order violations (total) | 0 |
+| Measure | follows the graph | ignores the graph |
+|---|---|---|
+| Generic path length (avg.) | 5.00 | 5.00 |
+| Personalized path length (avg.) | 2.35 | 1.77 |
+| Path length reduction | 52.9% | 64.6% |
+| Gap coverage | 0.81 | 0.59 |
+| Order violations (total) | 0 | 0 |
 
 Sources: `cdlp/learning_path/results/rq2_rq4_results.json`
 

@@ -2,26 +2,62 @@
   "num_students": 500,
   "target_concept": "avl_tree",
   "mastery_threshold": 0.8,
+  "seed": 42,
+  "scored_concepts": [
+    "recursion",
+    "trees",
+    "binary_tree",
+    "binary_search_tree",
+    "avl_tree"
+  ],
   "rq2_diagnosis": {
     "adaptive": {
-      "avg_questions": 4.86,
-      "accuracy": 0.8536
+      "avg_questions": 4.278,
+      "accuracy": 0.8656
     },
     "ask_all": {
       "avg_questions": 5.0,
-      "accuracy": 0.618
+      "accuracy": 0.87
     },
     "random": {
-      "avg_questions": 4.256,
-      "accuracy": 0.7179666666666666
+      "avg_questions": 4.278,
+      "accuracy": 0.8236
     },
-    "question_reduction_pct": 2.8000000000000003
+    "question_reduction_pct": 14.44,
+    "students_violating_closure": 0.138
   },
   "rq4_learning_path": {
     "generic_avg_length": 5.0,
-    "personalized_avg_length": 2.258,
-    "path_length_reduction_pct": 54.84,
-    "avg_gap_coverage": 0.7684333333333333,
+    "personalized_avg_length": 2.354,
+    "path_length_reduction_pct": 52.92,
+    "avg_gap_coverage": 0.8109,
     "total_order_mistakes": 0
+  },
+  "rq2_diagnosis_independent": {
+    "adaptive": {
+      "avg_questions": 3.642,
+      "accuracy": 0.7752
+    },
+    "ask_all": {
+      "avg_questions": 5.0,
+      "accuracy": 0.8736
+    },
+    "random": {
+      "avg_questions": 3.642,
+      "accuracy": 0.7592
+    },
+    "question_reduction_pct": 27.16,
+    "students_violating_closure": 0.784
+  },
+  "rq4_learning_path_independent": {
+    "generic_avg_length": 5.0,
+    "personalized_avg_length": 1.77,
+    "path_length_reduction_pct": 64.6,
+    "avg_gap_coverage": 0.5932,
+    "total_order_mistakes": 0
+  },
+  "conditions": {
+    "graph_consistent": "generate_simulated_students: knowledge closed under the graph (frontier sampler) plus slip/guess noise in the true mastery",
+    "graph_independent": "generate_independent_students: each concept mastered independently with p = 0.5, ignoring the graph"
   }
 }
