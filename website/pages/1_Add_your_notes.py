@@ -70,7 +70,12 @@ if not llm_ok:
         st.switch_page(ui.PAGES["topics"].path)
 
 st.markdown(S.ADD_FILE_TYPES)
-uploaded = st.file_uploader(S.ADD_FILES, type=jobs.UPLOAD_TYPES, accept_multiple_files=True)
+uploaded = st.file_uploader(
+    S.ADD_FILES,
+    type=jobs.UPLOAD_TYPES,
+    accept_multiple_files=True,
+    key=f"uploader_{st.session_state.get('uploader_round', 0)}",
+)
 
 name = st.text_input(
     S.ADD_NAME,
@@ -122,7 +127,25 @@ if not readable:
     st.info(S.ADD_NO_FILES, icon="ℹ️")
     st.stop()
 
-st.markdown(S.ADD_FILES_HERE.format(files=", ".join(readable)))
+if "removed_file" in st.session_state:
+    st.success(S.ADD_REMOVED.format(file=st.session_state.pop("removed_file")))
+st.markdown(S.ADD_FILES_HERE)
+for file_name in readable:
+    name_column, button_column = st.columns([3, 2], vertical_alignment="center")
+    name_column.markdown(f"📄 {file_name}")
+    with button_column:
+        remove = ui.action_button(S.ADD_REMOVE, icon="🗑️", key=f"remove_{file_name}", primary=False)
+    if remove:
+        try:
+            jobs.remove_upload(course_id, file_name)
+        except (ValueError, RuntimeError, OSError) as exc:
+            ui.friendly_error(S.ADD_REMOVE_FAILED, S.ADD_REMOVE_FAILED_NEXT, details=str(exc))
+        else:
+            # A new uploader: the old one still holds the file and would save it again.
+            st.session_state["uploader_round"] = st.session_state.get("uploader_round", 0) + 1
+            st.session_state.pop("saved_batch", None)
+            st.session_state["removed_file"] = file_name
+            st.rerun()
 has_text = True
 try:
     estimate = jobs.estimate(folder)

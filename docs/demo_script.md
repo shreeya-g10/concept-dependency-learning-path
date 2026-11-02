@@ -77,20 +77,21 @@ cd /Users/shreeyakhairnar/Desktop/PREP/projects/GenAI/concept-dependency-learnin
    ```
 2. By eye: `.venv/bin/streamlit run website/Home.py`, pick **Data Structures & Algorithms** on Home, then open each page:
    - **Home:** the demo notice in plain words (no "sample topics" notice), the 4 steps.
-   - **2 See your topics:** lists topics with their source file and page.
-   - **3 Quick check:** a question appears; answer a few.
-   - **4 My study plan:** lists topics in order with 📄 file and page.
+   - **2 See your topics:** says how many topics were found, most-used first, 10 at a time. Each card has a one-line meaning and **Where to read**; **Read this part** opens the source text. **Next: Quick check** is at the end of the list.
+   - **3 Quick check** and **4 My study plan:** these two pages are still being redesigned, so their details are not in this script yet. Open each one and check that it works.
    - **Topic map:** pick a topic, turn on the picture; the map draws, and a link expands to its evidence.
    - **For teachers → AI suggestions:** suggested links with quotes.
-   - **For teachers → AI checks and review:** Accepted / Rejected / Needs a teacher counts; necessity shows ➖ (skipped); no "Trial check" table (it only appears for graphs that ran it).
-3. **Start the website after the runs finish** (or use ☰ → **Clear cache**): pages cache the files they read.
+   - **For teachers → AI checks and review:** Accepted / Rejected / Needs your review counts, then the links that need review, then **All links**; "Trial: really needed" (necessity) shows ➖ (skipped); no "Trial check" table (it only appears for graphs that ran it).
+3. **Start the website after the runs finish.** If a page looks out of date, stop the website (Ctrl+C) and start it again.
 
 ### Test upload with a tiny notes file (tonight, about 5–10 min)
 
+> **Not tested yet: the upload has not been run with a real LLM since the page was redesigned.** The automated tests use fake job files and no model. Treat the steps below as the first real test: do not rely on the live upload in the demo until they have worked on this laptop.
+
 1. Create `~/Desktop/demo_notes.md` with three short paragraphs, e.g. one each on *Stacks*, *Queues* and *Breadth-first search (uses a queue)*.
-2. **1 Add your notes** → name `Notes101` → drop the file → **Save my files** → **Read my notes**.
-3. The status shows each stage. Website builds skip the report-only necessity test to stay quick; the time estimate on the page is a rough range (only the validator speed, ≈48 s per call on this laptop, is measured).
-4. When it finishes, pick **Notes101** on Home and look at each page.
+2. **1 Add your notes** → drop the file in the upload area → name it `Notes101`. The file saves by itself and appears under **Your files**. To take out a wrong file, tap **Remove** next to it.
+3. Check the time estimate, then tap **Read my notes**. Progress shows in plain words ("Checking links…"); the stage names and log are on **For teachers → AI checks and review**. Website builds skip the report-only necessity test to stay quick; the time estimate is a rough range (only the validator speed, ≈48 s per call on this laptop, is measured).
+4. When it finishes, tap **Next: See your topics**, then look at each page.
 
 ### Backups (after everything works)
 
@@ -111,12 +112,12 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 | Time | Click | Say |
 |---|---|---|
 | 0:00 | **Home** | The problem: "I don't understand AVL trees." One course graph, a different path per student. The yellow notice says this is a demo: only 28 of the 64 links were checked, picked by a written rule (shown on the teacher pages). |
-| 0:40 | **2 See your topics** | Concepts extracted from the real ds101 textbook chapters, each with its source file and page. Search "binary search tree". |
-| 1:20 | **1 Add your notes** | (Optional, live) Name `Notes101 live`, drop `demo_notes.md`, **Save my files**, **Read my notes**. It runs in the background; come back at 4:30. |
+| 0:40 | **2 See your topics** | Concepts extracted from the real ds101 textbook chapters, most-used first, each with where to read it. Search "binary search tree", then tap **Read this part**. |
+| 1:20 | **1 Add your notes** | (Optional, live: only if the upload test above worked with the real LLM. It is untested until then.) Drop `demo_notes.md`, name it `Notes101 live`, tap **Read my notes**. It runs in the background; come back at 4:30. |
 | 1:40 | **For teachers → AI suggestions** | The discovery model (qwen) proposes prerequisite edges only for candidate pairs, with an evidence quote for each. |
-| 2:20 | **For teachers → AI checks and review** | A *different* model (llama) checks every edge: evidence in the material, teaching sense, graph consistency (cycles, redundant shortcuts) → Accepted / Rejected / Needs a teacher. Open one rejected link and read its reason. Say that some edges were picked because they looked wrong, to show rejections, so these counts are not an accuracy figure. Necessity is ➖: an experimental check, skipped here. |
+| 2:20 | **For teachers → AI checks and review** | A *different* model (llama) checks every edge: evidence in the material, teaching sense, graph consistency (cycles, redundant shortcuts) → Accepted / Rejected / Needs your review (technical terms in small text). Under **All links**, show Rejected and open one link and read its reason. Say that some edges were picked because they looked wrong, to show rejections, so these counts are not an accuracy figure. Necessity is ➖: an experimental check, skipped here. |
 | 3:00 | **Topic map** | Only accepted edges; turn on the picture, then open a link for its evidence. |
-| 3:30 | **3 Quick check, then 4 My study plan** | Answer one question right and one wrong. A wrong answer is traced to a likely missing prerequisite. The plan lists the steps in order, each with 📄 file and page. |
+| 3:30 | **3 Quick check, then 4 My study plan** | These two pages are still being redesigned: add the clicks and talking points here when they are finished. |
 | 4:30 | **1 Add your notes** (if started) | Show the progress, or pick the finished course on Home. |
 | 4:50 | **Home** | Recap: upload → graph → validation → adaptive quiz → personalized path. Every number shown comes from the files in `outputs/ds101/`. |
 
@@ -125,8 +126,8 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 | If this fails live | Do this |
 |---|---|
 | Before the demo: a chain link is missing, or nothing was rejected | Don't add or edit edges by hand. On stage, use a target whose path is in the graph, and say that discovery missed that link, which is why the pipeline is evaluated stage by stage. `outputs/ds101/validated_graph.demo_subset.json` lists what was chosen and what is missing. |
-| A page shows an error or odd data | ☰ → **Clear cache**, reload. Still broken: `rm -rf outputs/ds101 && cp -R ~/Desktop/demo_backup/ds101 outputs/ds101`, then reload. |
-| The live upload is slow or fails | Don't wait: switch the sidebar to `notes101` (built and backed up tonight). If that is missing too: `cp -R ~/Desktop/demo_backup/notes101 outputs/notes101`. |
-| Ollama is down or slow | Pages 1–4 read saved files and need no model. On page 5 a wrong answer still works: the trace is labelled **offline estimate**. Skip the live upload. |
+| A page shows an error or odd data | Stop the website (Ctrl+C), start it again, reload. Still broken: `rm -rf outputs/ds101 && cp -R ~/Desktop/demo_backup/ds101 outputs/ds101`, then reload. |
+| The live upload is slow or fails | Don't wait: on Home, pick **Notes101** (built and backed up tonight, if the upload test worked). If that is missing too: `cp -R ~/Desktop/demo_backup/notes101 outputs/notes101`. |
+| Ollama is down or slow | Skip the live upload. **1 Add your notes** says the AI helper is off and offers **Try the sample course**. See your topics, Topic map and the teacher pages read saved files and need no model. |
 | The website will not start | Show the screenshots in `~/Desktop/demo_backup/screens/`, in page order. |
-| `outputs/ds101` is gone and there is no backup | Select a course with no outputs: the pages fall back to the shared example data and show a 🟡 **Example Mock Data** badge. Say clearly that it is example data. |
+| `outputs/ds101` is gone and there is no backup | The pages fall back to the shared example data and show a blue notice, "These are sample topics". Say clearly that it is example data. |

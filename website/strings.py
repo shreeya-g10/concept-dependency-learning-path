@@ -74,7 +74,11 @@ ADD_SAVE_FAILED_NEXT = (
     "Check that each file is a PDF, PowerPoint, Word, or text file. Then add it again."
 )
 ADD_NO_FILES = "No files here yet. Add your files above."
-ADD_FILES_HERE = "**Your files:** {files}"
+ADD_FILES_HERE = "**Your files**"
+ADD_REMOVE = "Remove"
+ADD_REMOVED = "Removed: {file}"
+ADD_REMOVE_FAILED = "We could not remove that file."
+ADD_REMOVE_FAILED_NEXT = "Reload the page and try again. If it still stays, show your teacher."
 ADD_NO_TEXT = "We could not find any words in these files."
 ADD_NO_TEXT_NEXT = "Use a file with text you can select, not a scan or a photo."
 ADD_TIME = (

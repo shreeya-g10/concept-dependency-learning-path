@@ -203,6 +203,173 @@ def test_failure_says_what_to_do_and_can_be_retried(add_page, tmp_path):
     assert not at.button(key="build").disabled
 
 
+# --- step 1: removing a file -------------------------------------------------------------
+
+
+def test_each_file_has_a_remove_button_that_removes_only_that_file(add_page, tmp_path):
+    folder = notes(tmp_path)
+    (folder / "other.txt").write_text("Queues wait in line.")
+    at = add_page("c1")
+    assert at.button(key="remove_notes.txt").label == S.ADD_REMOVE
+    at.button(key="remove_notes.txt").click().run()
+    assert not at.exception
+    assert [p.name for p in folder.iterdir()] == ["other.txt"]
+    assert "remove_notes.txt" not in [b.key for b in at.button]
+    assert any("Removed: notes.txt" in s.value for s in at.success)
+    assert not at.button(key="build").disabled  # the other file can still be read
+
+
+def test_removing_the_last_file_blocks_reading(add_page, tmp_path):
+    notes(tmp_path)
+    at = add_page("c1")
+    at.button(key="remove_notes.txt").click().run()
+    assert any(S.ADD_NO_FILES in i.value for i in at.info)
+    assert "build" not in [b.key for b in at.button]
+
+
+def test_a_removed_file_does_not_come_back_with_the_next_upload(add_page, tmp_path):
+    at = add_page("c1")
+    at.file_uploader[0].set_value(("wrong.txt", b"Wrong file", "text/plain")).run()
+    at.button(key="remove_wrong.txt").click().run()
+    folder = tmp_path / "raw" / "c1"
+    assert not (folder / "wrong.txt").exists()
+    at.file_uploader[0].set_value(("right.txt", b"Right file", "text/plain")).run()
+    assert not at.exception
+    assert [p.name for p in folder.iterdir()] == ["right.txt"]
+
+
+def test_the_same_file_can_be_added_again_after_removing_it(add_page, tmp_path):
+    at = add_page("c1")
+    at.file_uploader[0].set_value(("notes.txt", b"Trees", "text/plain")).run()
+    at.button(key="remove_notes.txt").click().run()
+    at.file_uploader[0].set_value(("notes.txt", b"Trees", "text/plain")).run()
+    assert (tmp_path / "raw" / "c1" / "notes.txt").read_bytes() == b"Trees"
+
+
+def test_no_remove_button_while_reading(add_page, tmp_path):
+    notes(tmp_path)
+    write_job(tmp_path, {"state": "running", "pid": os.getpid()})
+    assert "remove_notes.txt" not in [b.key for b in add_page("c1").button]
+
+
+def test_a_failed_remove_says_what_to_do_and_keeps_the_file(add_page, tmp_path, monkeypatch):
+    def refuse(*a, **k):
+        raise ValueError("refused (test)")
+
+    folder = notes(tmp_path)
+    monkeypatch.setattr(jobs, "remove_upload", refuse)
+    at = add_page("c1")
+    at.button(key="remove_notes.txt").click().run()
+    assert not at.exception
+    assert any(S.ADD_REMOVE_FAILED in e.value and S.WHAT_TO_DO in e.value for e in at.error)
+    assert (folder / "notes.txt").exists()
+
+
+def test_built_in_course_list_matches_the_display_names():
+    assert jobs.BUILT_IN_COURSES == set(common.COURSE_NAMES)
+
+
+@pytest.mark.parametrize("course", sorted(jobs.BUILT_IN_COURSES))
+def test_remove_never_touches_a_built_in_course(tmp_path, course):
+    (tmp_path / "raw" / course).mkdir(parents=True)
+    keep = tmp_path / "raw" / course / "chapter.pdf"
+    keep.write_bytes(b"x")
+    with pytest.raises(ValueError, match="built-in"):
+        jobs.remove_upload(course, "chapter.pdf", tmp_path / "raw", tmp_path / "jobs")
+    assert keep.exists()
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../outside.txt",
+        "../c2/notes.txt",
+        "..\\outside.txt",
+        "sub/notes.txt",
+        "..",
+        ".hidden.txt",
+        "",
+        "script.py",
+        "README.md",
+    ],
+)
+def test_remove_refuses_anything_but_a_plain_uploaded_file(tmp_path, name):
+    raw = tmp_path / "raw"
+    (raw / "c1" / "sub").mkdir(parents=True)
+    (raw / "c2").mkdir()
+    files = [
+        tmp_path / "raw" / "outside.txt",
+        raw / "c2" / "notes.txt",
+        raw / "c1" / "sub" / "notes.txt",
+        raw / "c1" / ".hidden.txt",
+        raw / "c1" / "script.py",
+        raw / "c1" / "README.md",
+    ]
+    for file in files:
+        file.write_text("keep")
+    with pytest.raises(ValueError):
+        jobs.remove_upload("c1", name, raw, tmp_path / "jobs")
+    assert all(file.exists() for file in files)
+
+
+def test_remove_refuses_a_bad_course_id(tmp_path):
+    victim = tmp_path / "notes.txt"
+    victim.write_text("keep")
+    with pytest.raises(ValueError):
+        jobs.remove_upload("../..", "notes.txt", tmp_path / "raw" / "a", tmp_path / "jobs")
+    assert victim.exists()
+
+
+def test_remove_does_not_follow_a_link_out_of_the_folder(tmp_path):
+    raw = tmp_path / "raw"
+    (raw / "c1").mkdir(parents=True)
+    outside = tmp_path / "secret.txt"
+    outside.write_text("keep")
+    (raw / "c1" / "link.txt").symlink_to(outside)
+    with pytest.raises(ValueError, match="link"):
+        jobs.remove_upload("c1", "link.txt", raw, tmp_path / "jobs")
+    assert outside.exists() and (raw / "c1" / "link.txt").is_symlink()
+
+
+def test_remove_does_not_follow_a_linked_course_folder(tmp_path):
+    raw = tmp_path / "raw"
+    (raw / "real").mkdir(parents=True)
+    keep = raw / "real" / "notes.txt"
+    keep.write_text("keep")
+    (raw / "c1").symlink_to(raw / "real", target_is_directory=True)
+    with pytest.raises(ValueError, match="link"):
+        jobs.remove_upload("c1", "notes.txt", raw, tmp_path / "jobs")
+    assert keep.exists()
+
+
+def test_remove_refuses_a_folder_with_a_file_name(tmp_path):
+    folder = tmp_path / "raw" / "c1" / "odd.txt"
+    folder.mkdir(parents=True)
+    with pytest.raises(ValueError):
+        jobs.remove_upload("c1", "odd.txt", tmp_path / "raw", tmp_path / "jobs")
+    assert folder.is_dir()
+
+
+def test_remove_waits_for_a_running_job(tmp_path):
+    keep = tmp_path / "raw" / "c1" / "notes.txt"
+    keep.parent.mkdir(parents=True)
+    keep.write_text("keep")
+    state = tmp_path / "jobs" / "c1"
+    state.mkdir(parents=True)
+    (state / "job.json").write_text(json.dumps({"state": "running", "pid": os.getpid()}))
+    with pytest.raises(RuntimeError, match="running"):
+        jobs.remove_upload("c1", "notes.txt", tmp_path / "raw", tmp_path / "jobs")
+    assert keep.exists()
+
+
+def test_removing_a_file_twice_is_harmless(tmp_path):
+    file = tmp_path / "raw" / "c1" / "notes.txt"
+    file.parent.mkdir(parents=True)
+    file.write_text("x")
+    assert jobs.remove_upload("c1", "notes.txt", tmp_path / "raw", tmp_path / "jobs") is True
+    assert jobs.remove_upload("c1", "notes.txt", tmp_path / "raw", tmp_path / "jobs") is False
+
+
 # --- step 2 ----------------------------------------------------------------------------
 
 
