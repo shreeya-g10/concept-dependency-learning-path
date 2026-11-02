@@ -164,12 +164,12 @@ Every graph is scored on a seeded, stratified sample (`python -m cdlp.benchmarks
 
 University Course has 3,544 annotation rows but 2,828 distinct pairs: some pairs are annotated more than once (in either order), and the converter keeps one row per pair.
 
-Discovery on a sample uses `--pairs` (benchmarks have no course text, so the candidate filter cannot run) and asks each pair **in both directions**, so the gold file's orientation never gives the answer away:
+Discovery on a sample uses `--pairs` (benchmarks have no course text, so the candidate filter cannot run) with **`--pairs-direction given`**: the standard pairwise benchmark protocol (decided 2026-11-02). Each sampled pair is asked once, in the dataset's own orientation, and compared with its label. The model sees that orientation; direction errors are still measured where negatives include reversed pairs (AL-CPL). `--pairs-direction both` (the CLI default) asks each pair both ways instead, at twice the calls. Night 1 runs `scripts/rq1_night1.sh`; the commands it runs per graph are:
 
 ```bash
 python -m cdlp.discovery --concepts outputs/benchmarks/<c>/sample_concepts.json \
-    --pairs outputs/benchmarks/<c>/sample_pairs.csv --out-dir outputs/rq1/<c> \
-    --stats outputs/rq1/<c>/discovery_only.stats.json
+    --pairs outputs/benchmarks/<c>/sample_pairs.csv --pairs-direction given \
+    --out-dir outputs/rq1/<c> --stats outputs/rq1/<c>/discovery_only.stats.json
 python -m cdlp.discovery --concepts outputs/benchmarks/<c>/sample_concepts.json \
     --baseline-only --num-ctx 16384 --out-dir outputs/rq1/<c> \
     --stats outputs/rq1/<c>/baseline_prompt.stats.json
