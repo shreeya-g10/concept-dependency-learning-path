@@ -9,7 +9,7 @@ concept list and no candidate filter (the RQ1 baseline), in the same format.
 filter and every per-pair call (cheap ablation runs).
 
 Discovery writes only relationships.json. Quiz items and simulated students are
-built by the learning_path module (owner: Vaidehi).
+built by the learning_path module (cdlp/learning_path/quiz.py, sim_students.py).
 """
 
 import argparse
