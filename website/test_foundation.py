@@ -104,10 +104,11 @@ def test_an_answer_in_the_quick_check_reaches_the_study_plan(demo_outputs):
     quiz = json.loads((common.EXAMPLES / "quiz_items.json").read_text())["items"]
     at = AppTest.from_file(str(SITE / "Home.py"), default_timeout=60).run()
     at.button(key="home_quiz").click().run()
+    at.selectbox[0].set_value("avl_tree").run()
+    at.button(key="quiz_start").click().run()
     shown = next(m.value for m in at.markdown if m.value.startswith("### "))
     item = next(q for q in quiz if q["question"] == shown[4:])
-    at.radio[0].set_value(item["answer"])
-    next(b for b in at.button if b.label == S.QUIZ_SUBMIT).click().run()
+    at.button(key=f"answer_{item['id']}_{item['options'].index(item['answer'])}").click().run()
     assert not at.exception and not at.error
     next(b for b in at.button if b.label == S.QUIZ_TO_PLAN).click().run()
     assert not at.exception and not at.error
@@ -200,7 +201,7 @@ def test_topic_map_sends_the_heavy_picture_only_on_request(demo_outputs):
     at = AppTest.from_file(str(SITE / ui.PAGES["map"].path), default_timeout=60).run()
     assert not at.exception
     assert not at.get("iframe")
-    at.toggle[0].set_value(True).run()
+    at.button(key="map_full_button").click().run()
     assert not at.exception
 
 
