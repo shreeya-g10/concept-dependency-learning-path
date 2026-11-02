@@ -16,6 +16,10 @@ Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is writt
 never blocks ACCEPT. A check with weight 0 in the config is report-only: it runs and is
 recorded on every edge, but takes no part in the score, the vetoes or the decision.
 Necessity is report-only by default (weight 0; --necessity-weight overrides it).
+--necessity-sample N runs the necessity test only on a seeded sample of N edges (same
+sample for the same seed and edges, so the runs with and without necessity compare on
+the same edges); the other edges get necessity "skipped". The sampled ids are written
+next to --out as <out stem>.necessity_sample.json.
 The run's LLM call counts go to <out dir>/<setting>.stats.json (write_stats), where
 setting is full_agent, minus_<check> or minus_<a>_<b>... (or --setting).
 """
@@ -30,7 +34,7 @@ from pathlib import Path
 import networkx as nx
 
 from cdlp.shared import llm
-from cdlp.shared.io import read_json, read_jsonl, write_json
+from cdlp.shared.io import read_json, read_jsonl
 from cdlp.validation import evidence_check, graph_checks, necessity_test, semantic_check
 
 CHECKS = ("evidence", "semantic", "necessity", "graph")
@@ -134,6 +138,16 @@ def decide(
     return decision, round(confidence, 4), f"{summary} ({detail})."
 
 
+def necessity_sample_ids(rels: list[dict], n: int, seed: int, course_id: str) -> list[str]:
+    """Seeded sample of n relationship ids (all of them if there are fewer)."""
+    import random
+
+    ids = sorted(r["id"] for r in rels)
+    if n >= len(ids):
+        return ids
+    return sorted(random.Random(f"{seed}:{course_id}").sample(ids, n))
+
+
 def validate(
     relationships: dict,
     concepts: dict,
@@ -143,6 +157,8 @@ def validate(
     config_path: Path | str = DEFAULT_CONFIG,
     embed=None,
     necessity_weight: float | None = None,
+    necessity_sample: int | None = None,
+    necessity_seed: int = 42,
 ) -> dict:
     cfg = load_decision_config(config_path)
     if necessity_weight is not None:
@@ -168,15 +184,22 @@ def validate(
         else None
     )
     ncfg = necessity_test.load_config(config_path)
+    sampled = (
+        necessity_sample_ids(rels, necessity_sample, necessity_seed, relationships["course_id"])
+        if necessity_sample is not None and "necessity" not in skip
+        else None
+    )
     necessity = by_id(
-        necessity_test.run(relationships, concepts, chunks, cfg=ncfg)
-        if "necessity" not in skip
+        necessity_test.run(relationships, concepts, chunks, cfg=ncfg, only=sampled)
+        if "necessity" not in skip and sampled != []
         else None
     )
 
     edges = []
     for r in rels:
         ev, se, ne = evidence.get(r["id"]), semantic.get(r["id"]), necessity.get(r["id"])
+        if sampled is not None and r["id"] not in sampled:
+            ne = None  # outside the necessity sample, whatever the check returned
         grades = {
             "evidence": ev["evidence"] if ev else None,
             "semantic": se["semantic"] if se else None,
@@ -196,6 +219,8 @@ def validate(
         skipped = [c for c in CHECKS if c in skip]
         if skipped:
             reason += f" (skipped: {', '.join(skipped)})"
+        if sampled is not None and r["id"] not in sampled:
+            reason += " (necessity not in the sample)"
         edges.append(
             {
                 "id": r["id"],
@@ -224,13 +249,35 @@ def validate(
                 "reason": reason,
             }
         )
-    return {
+    result = {
         "schema_version": SCHEMA_VERSION,
         "course_id": relationships["course_id"],
         "nodes": [{"id": c["id"], "name": c["name"]} for c in concepts["concepts"]],
         "edges": edges,
         "skipped_checks": [c for c in CHECKS if c in skip],
     }
+    if sampled is not None:
+        result["_necessity_sample"] = {
+            "n": necessity_sample,
+            "seed": necessity_seed,
+            "ids": sampled,
+        }
+    return result
+
+
+def write_graph(path: Path, graph: dict) -> None:
+    """Write a validated graph under any name (validated_graph.json, or an RQ1 ablation
+    such as validated_minus_evidence_necessity.json): the file-name ending does not
+    pick the schema here, so the contract is checked explicitly."""
+    from cdlp.shared.validate import check
+
+    errors = check(graph, "validated_graph")
+    if errors:
+        raise ValueError(
+            f"{path.name} breaks the validated_graph contract:\n  " + "\n  ".join(errors)
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(graph, indent=2, ensure_ascii=False) + "\n")
 
 
 def main(argv: list[str] | None = None) -> dict:
@@ -253,6 +300,10 @@ def main(argv: list[str] | None = None) -> dict:
         type=float,
         help="override the config's necessity weight (0 = report-only, the default)",
     )
+    parser.add_argument(
+        "--necessity-sample", type=int, help="run necessity on a seeded sample of N edges only"
+    )
+    parser.add_argument("--necessity-seed", type=int, default=42)
     args = parser.parse_args(argv)
     if args.review_queue and not args.students:
         parser.error("--review-queue needs --students (sim_students.json)")
@@ -265,8 +316,15 @@ def main(argv: list[str] | None = None) -> dict:
         skip=skip,
         config_path=args.config,
         necessity_weight=args.necessity_weight,
+        necessity_sample=args.necessity_sample,
+        necessity_seed=args.necessity_seed,
     )
-    write_json(args.out, result)
+    sample = result.pop("_necessity_sample", None)
+    if sample:
+        sidecar = args.out.with_name(f"{args.out.stem}.necessity_sample.json")
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        sidecar.write_text(json.dumps(sample, indent=2) + "\n")
+    write_graph(args.out, result)
     if args.review_queue:
         from cdlp.validation.review_queue import write_review_queue
 

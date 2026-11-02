@@ -200,3 +200,65 @@ def test_plus_necessity_setting_lets_necessity_decide(tmp_path):
     assert changed, "with weight 1 the necessity grades must move some scores"
     by_pair = {(e["source"], e["target"]): e for e in plus["edges"]}
     assert by_pair[("graphs", "avl_tree")]["decision"] == "REJECT"
+
+
+def test_necessity_sample_runs_necessity_on_n_edges_only(tmp_path, monkeypatch):
+    asked = []
+    real = necessity_test.run
+
+    def spy(rels, concepts, chunks, **kw):
+        asked.append(kw.get("only"))
+        return real(rels, concepts, chunks, **kw)
+
+    monkeypatch.setattr(necessity_test, "run", spy)
+
+    graph = run_cli(tmp_path, "--necessity-sample", "2")
+
+    sample = json.loads((tmp_path / "validated_graph.necessity_sample.json").read_text())
+    assert sample["n"] == 2 and sample["seed"] == 42 and len(sample["ids"]) == 2
+    assert asked == [sample["ids"]]
+    graded = [e["id"] for e in graph["edges"] if e["checks"]["necessity"] != "skipped"]
+    assert sorted(graded) == sample["ids"]
+    for e in graph["edges"]:
+        if e["id"] not in sample["ids"]:
+            assert "necessity not in the sample" in e["reason"]
+    assert check_file(tmp_path / "validated_graph.json") == []
+
+
+def test_necessity_sample_is_the_same_for_both_weights(tmp_path):
+    run_cli(tmp_path, "--necessity-sample", "3")
+    first = json.loads((tmp_path / "validated_graph.necessity_sample.json").read_text())
+    cli.main(
+        [
+            *["--relationships", f"{EX}/relationships.json", "--concepts", f"{EX}/concepts.json"],
+            *["--chunks", f"{EX}/chunks.jsonl", "--necessity-sample", "3"],
+            *["--necessity-weight", "1", "--out", str(tmp_path / "validated_plus_necessity.json")],
+        ]
+    )
+    second = json.loads((tmp_path / "validated_plus_necessity.necessity_sample.json").read_text())
+    assert first["ids"] == second["ids"]
+
+
+def test_necessity_sample_larger_than_edges_takes_all(tmp_path):
+    graph = run_cli(tmp_path, "--necessity-sample", "99")
+    assert all(e["checks"]["necessity"] != "skipped" for e in graph["edges"])
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "validated_minus_evidence_necessity.json",
+        "validated_plus_necessity.json",
+        "validated_minus_graph.json",
+    ],
+)
+def test_ablation_outputs_can_have_their_rq1_names(tmp_path, name):
+    from cdlp.shared.validate import check
+
+    cli.main(
+        [
+            *["--relationships", f"{EX}/relationships.json", "--concepts", f"{EX}/concepts.json"],
+            *["--chunks", f"{EX}/chunks.jsonl", "--out", str(tmp_path / name)],
+        ]
+    )
+    assert check(json.loads((tmp_path / name).read_text()), "validated_graph") == []
