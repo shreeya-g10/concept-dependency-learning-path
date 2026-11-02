@@ -29,5 +29,8 @@ Format and example: `cdlp/shared/schemas/`, `cdlp/shared/examples/`.
 - [x] Evaluation: concept precision / recall / F1 vs gold → `cdlp/extraction/results/`
 - [x] Website shell: navigation, styling, course selector, page 1; deploy free on Streamlit Community Cloud
 
+## Evidence filter
+`concept_filter.py` runs after extraction, with its settings in `configs/concept_filter.json`. It uses only `concepts.json` and `chunks.jsonl`, never `data/gold`. The CLI writes the filtered list to `concepts.json`, the full list to `unfiltered_concepts.json` and the reason for each concept to `concept_filter_report.json`. Use `--no-concept-filter` to skip it. To filter existing files without an LLM: `python -m cdlp.extraction.concept_filter --concepts ... --chunks ... --out-dir ...`. Results: `results/concept_filter_ds101.md`.
+
 ## Done when
 `python -m cdlp.extraction --input data/raw --out-dir outputs` writes both files from the real PDFs, the site is deployed, and `pytest cdlp/extraction` passes.

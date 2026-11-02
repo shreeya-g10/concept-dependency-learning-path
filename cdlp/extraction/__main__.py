@@ -6,9 +6,11 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
+from cdlp.extraction.concept_filter import DEFAULT_CONFIG, filter_concepts, load_config
 from cdlp.extraction.extract import ExtractionError, extract_concepts_from_chunks
 from cdlp.extraction.parse import is_course_file, parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
@@ -40,6 +42,17 @@ def main() -> None:
         action="store_true",
         help="use the keyword catalog when the LLM is unreachable or fails for many chunks "
         "(loud warning; recorded as extraction_method). Default: fail.",
+    )
+    parser.add_argument(
+        "--filter-config",
+        type=Path,
+        default=DEFAULT_CONFIG,
+        help="settings of the evidence filter (see concept_filter.py)",
+    )
+    parser.add_argument(
+        "--no-concept-filter",
+        action="store_true",
+        help="write every extracted concept to concepts.json (for ablations)",
     )
     args = parser.parse_args()
 
@@ -90,6 +103,20 @@ def main() -> None:
         fail(f"concept extraction failed: {exc!r}")
     if not concepts_data.get("concepts"):
         fail("concept extraction found no concepts")
+
+    # 3. Evidence filter. The unfiltered list and the reasons are kept next to the result.
+    if not args.no_concept_filter:
+        write_json(out_dir / "unfiltered_concepts.json", concepts_data)
+        concepts_data, report = filter_concepts(
+            concepts_data, chunks, load_config(args.filter_config)
+        )
+        (out_dir / "concept_filter_report.json").write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        print(
+            f"Concept filter: {report['concepts_before']} -> {report['concepts_after']} "
+            f"{report['note']}".rstrip()
+        )
 
     concepts_file = out_dir / "concepts.json"
     write_json(concepts_file, concepts_data)
