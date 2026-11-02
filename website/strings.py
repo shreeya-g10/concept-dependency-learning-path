@@ -55,68 +55,91 @@ HOME_PLAN = "See my study plan"
 
 # ---- step 1: add your notes -----------------------------------------------------------
 ADD_TITLE = "Add your notes"
-ADD_INTRO = "Add a file with your class notes. We will find the topics in it."
+ADD_INTRO = "Add your class notes. We will find the topics in them."
+ADD_FILES = "Add your files here"
+ADD_FILE_TYPES = (
+    "**These files work:** PDF, PowerPoint (.pptx), Word (.docx), and text (.txt, .md). "
+    "Old .ppt and .doc files do not work. Pages that are only pictures, like scans or "
+    "photos, cannot be read."
+)
 ADD_NAME = "Give your notes a name"
 ADD_NAME_HELP = "For example: Biology notes"
-ADD_NAME_EMPTY = "Type a name for your notes to start."
+ADD_NAME_EMPTY = "Type a name for your notes to go on."
 ADD_NAME_BAD = "We cannot use that name."
 ADD_NAME_BAD_NEXT = "Use a name that starts with a letter from A to Z, like Biology notes."
-ADD_FILES = "Choose your files (PDF, PowerPoint, Word, or text)"
-ADD_SAVE = "Save my files"
-ADD_SAVED = "✅ Saved: {files}"
+ADD_NAME_TAKEN = "That name belongs to a ready-made course."
+ADD_NAME_TAKEN_NEXT = "Pick another name, like Biology notes."
 ADD_SAVE_FAILED = "We could not save your files."
 ADD_SAVE_FAILED_NEXT = (
-    "Check that each file is a PDF, PowerPoint, Word, or text file. Then try again."
+    "Check that each file is a PDF, PowerPoint, Word, or text file. Then add it again."
 )
-ADD_NO_FILES = "No files here yet. Choose your files above, then tap Save my files."
+ADD_NO_FILES = "No files here yet. Add your files above."
 ADD_FILES_HERE = "**Your files:** {files}"
-ADD_TIME = "This may take about **{low} to {high} minutes**. This is only a rough guess."
+ADD_NO_TEXT = "We could not find any words in these files."
+ADD_NO_TEXT_NEXT = "Use a file with text you can select, not a scan or a photo."
+ADD_TIME = (
+    "This may take about **{span}**. This is only a rough guess. "
+    "You can leave this page while we work."
+)
+ADD_MINUTES = "{low} to {high} minutes"
+ADD_HOURS = "{low} to {high} hours"
 ADD_TIME_FAILED = "We could not guess how long this will take. You can still start."
 ADD_AI_OFF = "The AI helper is off right now, so we cannot read new notes."
-ADD_AI_OFF_NEXT = "Ask your teacher to turn it on, then reload this page."
+ADD_AI_OFF_NEXT = (
+    "Try the ready-made sample course now. To use your own notes, ask your teacher to turn "
+    "the AI helper on, then reload this page."
+)
+ADD_SAMPLE = "Try the sample course"
 ADD_REPLACES = "These notes were read before. Reading them again replaces the old topics."
-ADD_BUSY = "We are already reading these notes."
+ADD_BUSY = "We are already reading these notes. Add more files when we finish."
 ADD_BUILD = "Read my notes"
+ADD_BUILD_AGAIN = "Read my notes again"
 ADD_BUILD_FAILED = "We could not start reading your notes."
 ADD_BUILD_FAILED_NEXT = "Wait one minute, then tap Read my notes again."
-ADD_PROGRESS_TITLE = "#### Reading your notes"
+ADD_NOW = "#### ⏳ {step}"
+ADD_STARTING = "Reading your file…"
+ADD_STEP_DONE = "✅ {step}"
 ADD_RUNNING = "This keeps going if you leave this page. You can come back later."
 ADD_DONE = "✅ Done! We finished reading your notes."
 ADD_FAILED = "We could not finish reading your notes."
-ADD_FAILED_NEXT = "Tap Read my notes to try again. If it stops again, show your teacher this page."
-ADD_NEXT = "Next: see your topics"
+ADD_FAILED_NEXT = (
+    "Tap Read my notes to try again. Check that your file has text you can select. "
+    "If it stops again, show your teacher this page."
+)
+ADD_NEXT = "Next: See your topics"
 ADD_LOG = "(nothing yet)"
+# What we are doing now. A finished step drops the "…".
 STAGE_LABELS = {
-    "cdlp.extraction": "Finding topics",
-    "cdlp.discovery": "Finding which topics come first",
-    "cdlp.validation": "Checking the links between topics",
-    "cdlp.learning_path.quiz": "Writing questions",
-    "cdlp.learning_path": "Getting study plans ready",
-    "cdlp.root_cause": "Looking at past answers",
-    "contract check": "Final check",
-}
-STATUS_WORDS = {
-    "done": "✅ Done",
-    "running": "⏳ Working",
-    "failed": "❌ Stopped",
-    "skipped": "⏭️ Skipped",
-    "pending": "▫️ Waiting",
+    "cdlp.extraction": "Reading your file and finding topics…",
+    "cdlp.discovery": "Finding which topics come first…",
+    "cdlp.validation": "Checking links…",
+    "cdlp.learning_path.quiz": "Writing questions…",
+    "cdlp.learning_path": "Getting study plans ready…",
+    "cdlp.root_cause": "Looking at past answers…",
+    "contract check": "Doing a final check…",
 }
 
 # ---- step 2: see your topics ----------------------------------------------------------
 TOPICS_TITLE = "See your topics"
-TOPICS_INTRO = "These are the topics we found. Tap one to see where it comes from."
+TOPICS_FOUND = "### We found {n} topics in your notes"
+TOPICS_FOUND_ONE = "### We found 1 topic in your notes"
+TOPICS_FOUND_SAMPLE = "### This sample has {n} topics"
+TOPICS_RANKED = "The topics used most in your notes come first."
 TOPICS_SEARCH = "🔍 Search for a topic"
 TOPICS_FILTER = "Show topics from"
 TOPICS_ALL_FILES = "All files"
 TOPICS_COUNT = "**Showing {shown} of {total} topics**"
+TOPICS_MORE = "Show {n} more topics"
 TOPICS_NONE = "We did not find any topics yet."
 TOPICS_NONE_NEXT = "Add your notes first."
 TOPICS_NO_MATCH = "No topic matches your search. Try a shorter word."
-TOPICS_ALIASES = "Also called: {aliases}"
-TOPICS_SOURCE_TEXT = "📖 Read this part of your notes"
+TOPICS_WHERE = "**Where to read:** {place}"
+TOPICS_WHERE_MORE = " and {n} more"
+TOPICS_READ = "Read this part"
+TOPICS_HIDE = "Hide this part"
+TOPICS_ALSO = "Also in: {places}"
 TOPICS_TEXT_MISSING = "We cannot show the text for this part."
-TOPICS_NEXT = "Next: do the quick check"
+TOPICS_NEXT = "Next: Quick check"
 TOPICS_ADD = "Add your notes"
 WHERE_PAGE = "📄 {doc}, page {page}"
 WHERE_SECTION = "📄 {doc}, section {page}"

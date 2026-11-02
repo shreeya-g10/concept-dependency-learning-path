@@ -25,8 +25,15 @@ names = concept_names()
 relationships = load("relationships.json")["relationships"]
 
 
+STRENGTH_WORDS = {"hard": "Must learn first", "soft": "Helps to learn first"}
+
+
 def label(concept_id: str) -> str:
     return names.get(concept_id, concept_id)
+
+
+def strength_word(strength: str) -> str:
+    return STRENGTH_WORDS.get(strength, strength)
 
 
 def candidate_count(course_id: str) -> int | None:
@@ -70,7 +77,9 @@ elif n_pairs:
 st.subheader("Suggested links")
 concept_ids = sorted({c for r in relationships for c in (r["source"], r["target"])}, key=label)
 selected = st.selectbox("Filter by topic", ["(all)", *concept_ids], format_func=label)
-strengths = st.multiselect("Strength", ["hard", "soft"], default=["hard", "soft"])
+strengths = st.multiselect(
+    "Kind of link", ["hard", "soft"], default=["hard", "soft"], format_func=strength_word
+)
 
 shown = [
     r
@@ -81,17 +90,22 @@ shown = [
 st.dataframe(
     [
         {
-            "from": label(r["source"]),
-            "to": label(r["target"]),
-            "strength": r["strength"],
-            "confidence": r["confidence"],
-            "quotes": len(r["evidence"]),
-            "both directions": bool(r.get("bidirectional")),
+            "From": label(r["source"]),
+            "To": label(r["target"]),
+            "Kind": strength_word(r["strength"]),
+            "How sure the AI is": r["confidence"],
+            "Quotes": len(r["evidence"]),
+            "Both directions": bool(r.get("bidirectional")),
         }
         for r in shown
     ],
     width="stretch",
     hide_index=True,
+)
+
+st.caption(
+    "Technical terms: a suggested link is a candidate prerequisite edge · Must learn first = "
+    "hard, Helps to learn first = soft · How sure the AI is = discovery confidence."
 )
 
 # ---- Evidence quotes --------------------------------------------------------
@@ -100,14 +114,15 @@ if not shown:
     st.info("No suggested link matches the filter. Change the filter above to see more.")
 for r in shown:
     with st.expander(
-        f"{label(r['source'])} → {label(r['target'])} · {r['strength']} · {r['confidence']:.2f}"
+        f"{label(r['source'])} → {label(r['target'])} · {strength_word(r['strength'])}"
     ):
         if r.get("bidirectional"):
             st.warning(
                 "The AI suggested both directions: reverse "
                 f"{r.get('reverse_strength', '?')}, confidence {r.get('reverse_confidence', '?')}. "
-                "The AI checks pick the direction or send it to a teacher."
+                "The AI checks pick the direction or send it to you."
             )
+        st.caption(f"{r['strength']} · confidence {r['confidence']:.2f}")
         if not r["evidence"]:
             st.caption("No quote given.")
         for ev in r["evidence"]:
@@ -116,6 +131,7 @@ for r in shown:
 
 # ---- Baseline comparison ----------------------------------------------------
 st.subheader("Compared with a simpler method")
+st.caption("Technical term: the no-filter baseline.")
 if not resolve_path("relationships_baseline.json").exists():
     st.info(
         "The simpler method has not been run for this subject. To compare, run discovery "
@@ -137,7 +153,7 @@ else:
     )
     st.dataframe(
         [
-            {"from": label(s), "to": label(t), "found by": found_by}
+            {"From": label(s), "To": label(t), "Found by": found_by}
             for found_by, pairs in (
                 ("both", both),
                 ("our method only", only_ours),
