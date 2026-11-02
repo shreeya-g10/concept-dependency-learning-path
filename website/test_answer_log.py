@@ -65,8 +65,7 @@ def test_log_answer_appends_valid_rows(outputs):
 
 def start_quick_check(topic: str = "avl_tree") -> AppTest:
     at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
-    at.selectbox[0].set_value(topic).run()
-    return at.button(key="quiz_start").click().run()
+    return at.button(key=f"topic_{topic}").click().run()
 
 
 def current_item(at: AppTest) -> dict:
@@ -143,6 +142,34 @@ def test_the_stored_root_cause_keeps_the_raw_fallback_marker(outputs, monkeypatc
     assert "It may help to go back to Trees." in " ".join(c.value for c in at.caption)
 
 
+def test_a_student_is_not_sent_back_to_a_topic_they_just_got_right(outputs, monkeypatch):
+    monkeypatch.setattr(
+        root_cause_api,
+        "trace",
+        lambda *a, **k: {
+            "explanation": "[fallback: offline estimate] x",
+            "traced_concept": "trees",
+        },
+    )
+    at = AppTest.from_file(str(QUIZ), default_timeout=60)
+    at.session_state["quiz_course"] = "ds101"
+    at.session_state["quiz_mastery"] = {"trees": 0.9, "__observed__": {"trees": True}}
+    at.session_state["quiz_asked"] = []
+    at.session_state["quiz_answers"] = [{"concept_id": "trees", "correct": True}]
+    at.session_state["quiz_picking"] = True
+    at.session_state["quiz_first_answer"] = 1
+    at.session_state["quiz_progress"] = 0.0
+    at.session_state["quiz_feedback"] = None
+    at.session_state["quiz_just_right"] = False
+    at.session_state["quiz_not_saved"] = False
+    at.run()
+    at = at.button(key="topic_binary_tree").click().run()
+    assert not at.exception
+    at = tap_answer(at, correct=False)
+    shown = " ".join(c.value for c in at.caption)
+    assert "It may help to go back to" in shown and "go back to Trees" not in shown
+
+
 # --- quick check screens ------------------------------------------------------------
 
 
@@ -167,13 +194,58 @@ def screen_text(at: AppTest) -> str:
     return " ".join(parts + [b.label for b in at.button])
 
 
-def test_quick_check_starts_by_searching_for_a_topic(outputs):
+def test_quick_check_lists_only_ready_topics_with_the_real_count(outputs):
     at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
     assert not at.exception
-    assert at.selectbox[0].value is None  # nothing is picked for the student
-    assert at.selectbox[0].placeholder == S.QUIZ_SEARCH_HINT
-    assert at.button(key="quiz_start").disabled
+    assert at.text_input[0].placeholder == S.QUIZ_SEARCH_HINT
     assert not any(m.value.startswith("### ") for m in at.markdown)
+    # 6 topics in the examples; Graphs has no accepted link (only review and rejected ones).
+    assert any(m.value == S.QUIZ_READY_COUNT.format(ready=5, total=6) for m in at.markdown)
+    listed = {b.key for b in at.button if b.key.startswith("topic_")}
+    assert "topic_avl_tree" in listed and "topic_graphs" not in listed and len(listed) == 5
+
+
+def test_quick_check_search_narrows_and_says_when_a_topic_is_not_ready(outputs):
+    at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
+    at.text_input[0].set_value("avl").run()
+    assert [b.key for b in at.button if b.key.startswith("topic_")] == ["topic_avl_tree"]
+    assert not at.info or not any(S.QUIZ_TOPIC_NOT_READY in i.value for i in at.info)
+    at.text_input[0].set_value("graphs").run()  # a real topic, but it is not ready
+    assert not at.exception
+    assert any(S.QUIZ_TOPIC_NOT_READY in i.value for i in at.info)
+    assert not [b for b in at.button if b.key.startswith("topic_")]
+
+
+def test_quick_check_search_finds_another_name_of_a_topic(outputs):
+    course = with_examples(outputs)
+    concepts = json.loads((course / "concepts.json").read_text())
+    for concept in concepts["concepts"]:
+        if concept["id"] == "binary_search_tree":
+            concept["aliases"] = ["BST"]
+    (course / "concepts.json").write_text(json.dumps(concepts))
+    at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
+    at.text_input[0].set_value("bst").run()
+    assert [b.key for b in at.button if b.key.startswith("topic_")] == ["topic_binary_search_tree"]
+
+
+def test_a_long_list_of_ready_topics_says_there_are_more(outputs):
+    course = with_examples(outputs)
+    concepts = json.loads((course / "concepts.json").read_text())
+    graph = json.loads((course / "validated_graph.json").read_text())
+    quiz = json.loads((course / "quiz_items.json").read_text())
+    edge = next(e for e in graph["edges"] if e["decision"] == "ACCEPT")
+    for n in range(20):
+        topic = {"id": f"t{n}", "name": f"Topic {n}", "aliases": [], "sources": []}
+        concepts["concepts"].append(topic)
+        graph["edges"].append({**edge, "id": f"x{n}", "source": "avl_tree", "target": f"t{n}"})
+        quiz["items"].append({**quiz["items"][0], "id": f"q{n}", "concept_id": f"t{n}"})
+    (course / "concepts.json").write_text(json.dumps(concepts))
+    (course / "validated_graph.json").write_text(json.dumps(graph))
+    (course / "quiz_items.json").write_text(json.dumps(quiz))
+    at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
+    assert not at.exception
+    assert len([b for b in at.button if b.key.startswith("topic_")]) == 15
+    assert any(S.QUIZ_TYPE_MORE in c.value for c in at.caption)
 
 
 def test_one_question_a_screen_with_big_buttons_and_no_total_or_timer(outputs, no_ai):
@@ -227,8 +299,7 @@ def whole_site() -> AppTest:
 
 def test_finishing_opens_the_plan_by_itself(outputs, no_ai):
     at = whole_site()
-    at.selectbox[0].set_value("avl_tree").run()
-    at = at.button(key="quiz_start").click().run()
+    at = at.button(key="topic_avl_tree").click().run()
     for _ in range(10):
         assert not at.exception and not at.error
         if at.title[0].value != S.QUIZ_TITLE:
@@ -245,8 +316,7 @@ def test_finishing_opens_the_plan_by_itself(outputs, no_ai):
 
 def test_a_wrong_last_answer_is_read_before_the_plan_opens(outputs, no_ai):
     at = whole_site()
-    at.selectbox[0].set_value("trees").run()  # the only question on this topic
-    at = at.button(key="quiz_start").click().run()
+    at = at.button(key="topic_trees").click().run()  # the only question on this topic
     at = tap_answer(at, correct=False)
     assert at.title[0].value == S.QUIZ_TITLE and any(S.QUIZ_KIND in i.value for i in at.info)
     at = at.button(key="quiz_continue").click().run()
@@ -256,39 +326,52 @@ def test_a_wrong_last_answer_is_read_before_the_plan_opens(outputs, no_ai):
 
 def test_coming_back_after_finishing_offers_a_new_topic_not_a_loop(outputs, no_ai):
     at = whole_site()
-    at.selectbox[0].set_value("trees").run()
-    at = at.button(key="quiz_start").click().run()
+    at = at.button(key="topic_trees").click().run()
     at = tap_answer(at, correct=True)
     assert at.title[0].value == S.PLAN_TITLE
     at = at.button(key="plan_other_topic").click().run()
     assert not at.exception and not at.error
-    assert at.title[0].value == S.QUIZ_TITLE and at.selectbox
+    assert at.title[0].value == S.QUIZ_TITLE and at.text_input
 
 
-def test_topic_outside_the_graph_says_the_map_is_not_complete(outputs, monkeypatch):
-    course = with_examples(outputs)
-    concepts = json.loads((course / "concepts.json").read_text())
-    concepts["concepts"].append(
-        {"id": "lonely", "name": "Lonely topic", "aliases": [], "sources": []}
-    )
-    (course / "concepts.json").write_text(json.dumps(concepts))
-    at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
-    at.selectbox[0].set_value("lonely").run()
-    assert not at.exception
-    assert any(S.QUIZ_NOT_READY in i.value for i in at.info)
-    assert at.button(key="quiz_start").disabled
-
-
-def test_topic_without_questions_says_so_and_does_not_bounce(outputs):
+def test_no_ready_topics_says_so_and_points_to_the_teacher(outputs):
     course = with_examples(outputs)
     quiz = json.loads((course / "quiz_items.json").read_text())
     quiz["items"] = []
     (course / "quiz_items.json").write_text(json.dumps(quiz))
     at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
-    at.selectbox[0].set_value("trees").run()
-    at = at.button(key="quiz_start").click().run()
     assert not at.exception
-    assert any(S.QUIZ_NO_QUESTIONS in i.value for i in at.info)
+    assert any(S.QUIZ_NONE_READY in i.value for i in at.info)
+    assert not at.text_input
+
+
+def test_a_topic_with_links_but_no_questions_is_not_in_the_quick_check(outputs):
+    course = with_examples(outputs)
+    quiz = json.loads((course / "quiz_items.json").read_text())
+    quiz["items"] = [q for q in quiz["items"] if q["concept_id"] != "recursion"]
+    (course / "quiz_items.json").write_text(json.dumps(quiz))
+    at = AppTest.from_file(str(QUIZ), default_timeout=60).run()
+    assert not [b for b in at.button if b.key == "topic_recursion"]
+    assert any(m.value == S.QUIZ_READY_COUNT.format(ready=4, total=6) for m in at.markdown)
+    # The map needs no questions, so the topic is still there.
+    at = map_page()
+    assert any(m.value == S.MAP_READY_COUNT.format(ready=5, total=6) for m in at.markdown)
+
+
+def test_no_concept_data_is_changed_and_teachers_see_what_is_not_ready(outputs):
+    course = with_examples(outputs)
+    before = (course / "concepts.json").read_bytes()
+    assert len(json.loads(before)["concepts"]) == 6
+    AppTest.from_file(str(QUIZ), default_timeout=60).run()
+    map_page()
+    teacher_page = SITE / "pages" / "teacher_AI_checks_and_review.py"
+    at = AppTest.from_file(str(teacher_page), default_timeout=60).run()
+    assert not at.exception
+    assert (course / "concepts.json").read_bytes() == before
+    text = " ".join(m.value for m in at.markdown)
+    assert "Quick check: **5 of 6** topics. Topic map: **5 of 6** topics." in text
+    assert "- Graphs: No accepted link yet" in text
+    assert any("not ready for students yet (1)" in e.label for e in at.expander)
 
 
 # --- study plan ---------------------------------------------------------------------
@@ -391,13 +474,29 @@ def test_tapping_a_card_moves_the_focus(outputs):
     at = at.button(key="after_binary_search_tree").click().run()
     assert not at.exception
     assert any(m.value == S.MAP_THIS_TOPIC.format(topic="Binary Search Trees") for m in at.markdown)
-    assert at.selectbox[0].value == "binary_search_tree"
 
 
-def test_searching_moves_the_focus(outputs):
+def test_searching_the_map_moves_the_focus_and_clears_the_box(outputs):
     at = map_page("binary_tree")
-    at.selectbox[0].set_value("trees").run()
+    at.text_input[0].set_value("avl").run()
     assert not at.exception
+    at = at.button(key="found_avl_tree").click().run()
+    assert any(m.value == S.MAP_THIS_TOPIC.format(topic="AVL Trees") for m in at.markdown)
+    assert at.text_input[0].value == ""
+
+
+def test_map_search_says_when_a_topic_is_not_ready(outputs):
+    at = map_page("binary_tree")
+    at.text_input[0].set_value("graphs").run()  # no accepted link
+    assert any(S.MAP_TOPIC_NOT_READY in i.value for i in at.info)
+
+
+def test_map_lists_only_ready_topics_with_the_real_count(outputs):
+    at = map_page()
+    assert any(m.value == S.MAP_READY_COUNT.format(ready=5, total=6) for m in at.markdown)
+    listed = {b.key for b in at.button if b.key.startswith("all_")}
+    assert "all_trees" in listed and "all_graphs" not in listed
+    at = at.button(key="all_trees").click().run()
     assert any(m.value == S.MAP_THIS_TOPIC.format(topic="Trees") for m in at.markdown)
 
 
@@ -444,15 +543,10 @@ def test_full_map_without_the_drawing_library_lists_accepted_links_only(outputs,
         assert (line in listed) == (edge["decision"] == "ACCEPT")
 
 
-def test_topic_without_links_says_the_map_is_not_complete(outputs):
-    course = with_examples(outputs)
-    concepts = json.loads((course / "concepts.json").read_text())
-    concepts["concepts"].append({"id": "lonely", "name": "Lonely", "aliases": [], "sources": []})
-    (course / "concepts.json").write_text(json.dumps(concepts))
-    at = map_page("lonely")
+def test_a_stale_focus_on_a_topic_that_is_not_ready_moves_to_a_ready_one(outputs):
+    at = map_page("graphs")
     assert not at.exception
-    assert any(S.MAP_NO_LINKS in i.value for i in at.info)
-    assert "not complete" in S.MAP_NO_LINKS
+    assert not any(m.value == S.MAP_THIS_TOPIC.format(topic="Graphs") for m in at.markdown)
 
 
 def test_one_sided_topic_never_implies_nothing_comes_first(outputs):

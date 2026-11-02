@@ -104,8 +104,7 @@ def test_an_answer_in_the_quick_check_reaches_the_study_plan(demo_outputs):
     quiz = json.loads((common.EXAMPLES / "quiz_items.json").read_text())["items"]
     at = AppTest.from_file(str(SITE / "Home.py"), default_timeout=60).run()
     at.button(key="home_quiz").click().run()
-    at.selectbox[0].set_value("avl_tree").run()
-    at.button(key="quiz_start").click().run()
+    at.button(key="topic_avl_tree").click().run()
     shown = next(m.value for m in at.markdown if m.value.startswith("### "))
     item = next(q for q in quiz if q["question"] == shown[4:])
     at.button(key=f"answer_{item['id']}_{item['options'].index(item['answer'])}").click().run()

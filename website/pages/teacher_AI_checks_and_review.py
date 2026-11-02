@@ -21,6 +21,8 @@ import streamlit as st
 import ui
 from common import OUTPUTS, ROOT, concept_names, get_active_course, load, resolve_path
 
+from cdlp.learning_path import api
+
 ui.page_header(
     "AI checks and review",
     "What the AI checks decided for each link between topics, and the links that need you.",
@@ -42,7 +44,8 @@ GRADE_ICON = {
 
 course = get_active_course()
 names = concept_names()
-edges = load("validated_graph.json")["edges"]
+graph_data = load("validated_graph.json")
+edges = graph_data["edges"]
 
 
 DECISION_WORDS = {"ACCEPT": "Accepted", "REJECT": "Rejected", "HUMAN_REVIEW": "Needs your review"}
@@ -94,6 +97,29 @@ st.metric(
 st.caption(
     "Every suggested link is kept with its decision. Students only see accepted links. "
     "Technical terms: ACCEPT, REJECT, HUMAN_REVIEW; the share is the human-review rate."
+)
+
+# ---- Which topics students can use -------------------------------------------
+# The Quick check and the Topic map list only ready topics. This is where the rest are named;
+# they all stay in concepts.json and on See your topics.
+st.subheader("Topics students can use")
+on_map = {e[end] for e in edges if e["decision"] == "ACCEPT" for end in ("source", "target")}
+quiz_items = load("quiz_items.json")
+in_quick_check = {
+    c for c in names if c in on_map and api.next_question(graph_data, quiz_items, {}, c) is not None
+}
+st.write(
+    f"Quick check: **{len(in_quick_check)} of {len(names)}** topics. "
+    f"Topic map: **{len(on_map & set(names))} of {len(names)}** topics."
+)
+not_ready = sorted((c for c in names if c not in in_quick_check), key=lambda c: names[c].lower())
+with st.expander(f"Topics not ready for students yet ({len(not_ready)})"):
+    for concept_id in not_ready:
+        reason = "No questions yet" if concept_id in on_map else "No accepted link yet"
+        st.markdown(f"- {label(concept_id)}: {reason}")
+st.caption(
+    "These topics are kept and still show on See your topics. Accepting a link or adding "
+    "questions makes them ready. Technical terms: in the ACCEPT graph, with quiz items."
 )
 
 # ---- Teacher review ---------------------------------------------------------
