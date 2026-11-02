@@ -11,9 +11,12 @@ text. By default each pair is asked in BOTH directions (like a tied candidate), 
 gold file's orientation never tells the model the answer; --pairs-direction given asks
 only the listed direction (half the calls). --chunks is optional with --pairs.
 
---prompt-version discover_v3 asks one neutral question per unordered pair (A before B, B
-before A, or neither), so the direction comes from the model and not from the candidate's
-course order. Tied candidates and --pairs-direction make no difference: one call per pair.
+Without --pairs the default prompt is discover_v3_1: one neutral question per unordered pair
+(A before B, B before A, or neither), so the direction comes from the model and not from the
+candidate's course order. A and B are chosen by a hash of the pair, recorded per edge as
+"pair_order", and the file's "discovery" block counts the answers, including NEITHER.
+With --pairs the default stays discover_v2, so benchmark runs do not change. Passing a neutral
+--prompt-version with --pairs asks one call per pair, whatever --pairs-direction says.
 
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
@@ -33,7 +36,9 @@ from pathlib import Path
 from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
 from cdlp.discovery.candidates import Candidate, candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
+    DIRECTIONAL_PROMPT_VERSION,
     NEUTRAL_PROMPT_VERSIONS,
+    PAIR_ORDER_RULES,
     PROMPT_VERSION,
     build_contract_relationships,
     discover_candidates,
@@ -74,7 +79,10 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="leave out edges implied by a longer path (off: the validator handles redundancy)",
     )
-    parser.add_argument("--prompt-version", default=PROMPT_VERSION)
+    parser.add_argument(
+        "--prompt-version",
+        help=f"default: {PROMPT_VERSION}, or {DIRECTIONAL_PROMPT_VERSION} with --pairs",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
         "--baseline",
@@ -94,6 +102,8 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if not args.chunks and not args.pairs:
         parser.error("--chunks is required unless --pairs is given")
+    if not args.prompt_version:
+        args.prompt_version = DIRECTIONAL_PROMPT_VERSION if args.pairs else PROMPT_VERSION
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     concepts_data = read_json(args.concepts)
@@ -137,18 +147,22 @@ def main(argv: list[str] | None = None) -> None:
         remove_transitive=args.remove_transitive,
         prompt_version=args.prompt_version,
     )
+    output = {
+        "schema_version": RELATIONSHIPS_SCHEMA_VERSION,
+        "course_id": course_id,
+        "relationships": build_contract_relationships(
+            relationships, concepts, chunks, args.prompt_version
+        ),
+    }
     if neutral:
-        print(f"{args.prompt_version} answers: {neutral_summary(relationships)}", file=sys.stderr)
-    write_json(
-        args.out_dir / "relationships.json",
-        {
-            "schema_version": RELATIONSHIPS_SCHEMA_VERSION,
-            "course_id": course_id,
-            "relationships": build_contract_relationships(
-                relationships, concepts, chunks, args.prompt_version
-            ),
-        },
-    )
+        summary = neutral_summary(relationships)
+        print(f"{args.prompt_version} answers: {summary}", file=sys.stderr)
+        output["discovery"] = {
+            "prompt_version": args.prompt_version,
+            "pair_order_rule": PAIR_ORDER_RULES[args.prompt_version],
+            "answers": summary,
+        }
+    write_json(args.out_dir / "relationships.json", output)
 
     if args.baseline:
         write_baseline(

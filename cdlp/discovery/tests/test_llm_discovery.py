@@ -5,6 +5,13 @@ import pytest
 from cdlp.discovery import llm_discovery
 from cdlp.discovery.candidates import Candidate
 
+
+def discover(*args, **kwargs):
+    """These tests are about the directional prompt, which benchmark runs still use."""
+    version = llm_discovery.DIRECTIONAL_PROMPT_VERSION
+    return llm_discovery.discover_candidates(*args, prompt_version=version, **kwargs)
+
+
 CONCEPTS = [
     {"id": a, "name": a, "description": "", "sources": [{"chunk_id": f"c_{a}"}]}
     for a in ["a", "b", "c"]
@@ -27,7 +34,7 @@ def llm(monkeypatch):
     answers = {}
 
     def fake_chat_json(prompt, **kwargs):
-        assert kwargs["prompt_version"] == llm_discovery.PROMPT_VERSION
+        assert kwargs["prompt_version"] == llm_discovery.DIRECTIONAL_PROMPT_VERSION
         source = prompt.split("SOURCE CONCEPT:\nID: ")[1].split("\n")[0]
         target = prompt.split("TARGET CONCEPT:\nID: ")[1].split("\n")[0]
         return answers.get((source, target), answer("NONE", "NONE"))
@@ -40,9 +47,7 @@ def test_tied_pair_both_direct_keeps_one_bidirectional_edge(llm):
     llm[("a", "b")] = answer(confidence="MEDIUM")
     llm[("b", "a")] = answer(strength="SOFT", confidence="HIGH")
 
-    rels = llm_discovery.discover_candidates(
-        [Candidate("a", "b", ["same_chunk"], tied=True)], CONCEPTS, CHUNKS
-    )
+    rels = discover([Candidate("a", "b", ["same_chunk"], tied=True)], CONCEPTS, CHUNKS)
     (edge,) = llm_discovery.build_contract_relationships(rels, CONCEPTS, CHUNKS)
 
     assert (edge["source"], edge["target"]) == ("b", "a")  # higher confidence kept
@@ -54,9 +59,7 @@ def test_tied_pair_both_direct_keeps_one_bidirectional_edge(llm):
 def test_tied_pair_one_direction_is_a_normal_edge(llm):
     llm[("b", "a")] = answer()
 
-    rels = llm_discovery.discover_candidates(
-        [Candidate("a", "b", ["same_chunk"], tied=True)], CONCEPTS, CHUNKS
-    )
+    rels = discover([Candidate("a", "b", ["same_chunk"], tied=True)], CONCEPTS, CHUNKS)
     (edge,) = llm_discovery.build_contract_relationships(rels, CONCEPTS, CHUNKS)
 
     assert (edge["source"], edge["target"]) == ("b", "a")
@@ -70,7 +73,7 @@ def test_untied_pair_is_asked_once(llm, monkeypatch):
         llm_discovery, "chat_json", lambda p, **k: calls.append(p) or original(p, **k)
     )
 
-    llm_discovery.discover_candidates([Candidate("a", "b", ["same_chunk"])], CONCEPTS, CHUNKS)
+    discover([Candidate("a", "b", ["same_chunk"])], CONCEPTS, CHUNKS)
 
     assert len(calls) == 1
 
@@ -115,7 +118,7 @@ def chain_answers(llm):
 
 
 def test_transitive_edges_are_kept_by_default(llm):
-    rels = llm_discovery.discover_candidates(chain_answers(llm), CONCEPTS, CHUNKS)
+    rels = discover(chain_answers(llm), CONCEPTS, CHUNKS)
 
     assert {(r["source"], r["target"]) for r in rels if r["relationship"] == "DIRECT"} == {
         ("a", "b"),
@@ -125,9 +128,7 @@ def test_transitive_edges_are_kept_by_default(llm):
 
 
 def test_remove_transitive_flag_leaves_redundant_edges_out_without_rewriting(llm):
-    rels = llm_discovery.discover_candidates(
-        chain_answers(llm), CONCEPTS, CHUNKS, remove_transitive=True
-    )
+    rels = discover(chain_answers(llm), CONCEPTS, CHUNKS, remove_transitive=True)
 
     assert {(r["source"], r["target"]) for r in rels} == {("a", "b"), ("b", "c")}
     assert all(r["relationship"] == "DIRECT" for r in rels)

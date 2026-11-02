@@ -2,6 +2,7 @@
 Runs in-process with the LLM and the embedding model mocked, so it never calls an LLM.
 Keep this test passing; add your own unit tests next to it."""
 
+import re
 import sys
 
 import pytest
@@ -24,17 +25,20 @@ def mocked_models(monkeypatch):
     monkeypatch.setattr(llm, "chat_json", no_llm)
     # embedding model: not installed in CI
     monkeypatch.setattr(candidates, "_embedding_pairs", lambda concepts, threshold=0.55: set())
+
     # every candidate is a hard prerequisite, citing the source concept's chunk
-    monkeypatch.setattr(
-        llm_discovery,
-        "chat_json",
-        lambda prompt, **kwargs: {
-            "relationship": "DIRECT",
+    def discovery_reply(prompt, **kwargs):
+        reply = {
             "strength": "HARD",
             "confidence": "HIGH",
             "evidence_chunk_ids": [prompt.split("Chunk ID: ")[1].split("\n")[0]],
-        },
-    )
+        }
+        if "SOURCE CONCEPT" in prompt:  # discover_v2 asks about one direction
+            return {**reply, "relationship": "DIRECT"}
+        a, b = re.findall(r"^ID: (\S+)$", prompt, re.M)[-2:]
+        return {**reply, "a": a, "b": b, "answer": "A_BEFORE_B"}
+
+    monkeypatch.setattr(llm_discovery, "chat_json", discovery_reply)
     # baseline: one call that lists a chain over the example concepts
     monkeypatch.setattr(
         baseline,
@@ -173,7 +177,17 @@ def test_pairs_mode_asks_listed_pairs_both_ways_without_chunks(tmp_path, monkeyp
 
 def test_pairs_direction_given_halves_the_calls(tmp_path, monkeypatch):
     asked = []
-    monkeypatch.setattr(llm_discovery, "chat_json", lambda p, **kw: asked.append(p) or {})
+
+    def record(prompt, **kwargs):
+        asked.append((prompt, kwargs["prompt_version"]))
+        return {
+            "relationship": "DIRECT",
+            "strength": "HARD",
+            "confidence": "HIGH",
+            "evidence_chunk_ids": [],
+        }
+
+    monkeypatch.setattr(llm_discovery, "chat_json", record)
     pairs = tmp_path / "pairs.csv"
     write_pairs(pairs, [("trees", "binary_tree"), ("graphs", "avl_tree")])
 
@@ -191,6 +205,18 @@ def test_pairs_direction_given_halves_the_calls(tmp_path, monkeypatch):
     )
 
     assert len(asked) == 2
+    # benchmark mode is unchanged by the new course default: the listed direction, under v2
+    assert {version for _, version in asked} == {"discover_v2"}
+    assert "SOURCE CONCEPT:\nID: trees\n" in asked[0][0]
+    assert "TARGET CONCEPT:\nID: binary_tree\n" in asked[0][0]
+    output = read_json(tmp_path / "relationships.json")
+    assert "discovery" not in output
+    assert [e["method"] for e in output["relationships"]] == ["llm_discover_v2"] * 2
+    assert ("trees", "binary_tree") == (
+        output["relationships"][0]["source"],
+        output["relationships"][0]["target"],
+    )
+    assert all("pair_order" not in e for e in output["relationships"])
 
 
 def test_pairs_with_unknown_concepts_fail(tmp_path):
