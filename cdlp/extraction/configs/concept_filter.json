@@ -1,0 +1,29 @@
+{
+  "version": "concept_filter_v1",
+  "min_chunks_to_apply": 30,
+  "min_concepts_after": 5,
+  "aside_heading_pattern": "exercise|summary",
+  "strong_source_chunks": 8,
+  "min_mention_chunks": 3,
+  "min_source_chunks_with_mention": 2,
+  "min_mention_chunks_across_docs": 2,
+  "min_mention_docs": 2,
+  "code_call_share": 0.8,
+  "code_min_calls": 2,
+  "code_suffixes": ["method", "function"],
+  "generic_names": [
+    "addition",
+    "analysis",
+    "correctness",
+    "definition",
+    "example",
+    "exercise",
+    "introduction",
+    "lemma",
+    "proof",
+    "removal",
+    "summary",
+    "theorem",
+    "theoretical analysis"
+  ]
+}
