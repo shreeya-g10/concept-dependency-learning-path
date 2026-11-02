@@ -41,8 +41,10 @@
     },
     "kappa": {
       "title": "Inter-annotator agreement (Cohen's \u03ba, before adjudication)",
-      "sources": [],
-      "placeholders": 12
+      "sources": [
+        "data/gold/merged/agreement.json"
+      ],
+      "placeholders": 0
     },
     "extraction": {
       "title": "Concept extraction vs. hand-annotated concepts",
@@ -64,6 +66,9 @@
     "figures/rq2_accuracy_vs_questions.png": [
       "cdlp/learning_path/results/rq2_rq4_results.json"
     ],
+    "figures/kappa_raw_vs_rule.png": [
+      "data/gold/merged/agreement.json"
+    ],
     "figures/necessity_gap_stability.png": [
       "cdlp/validation/results/necessity_stability/summary.json"
     ]
@@ -74,8 +79,6 @@
     "cdlp/validation/results/rq1_ds101.json",
     "cdlp/validation/results/rq1_ml101.json",
     "cdlp/validation/results/rq1_university_course.json",
-    "data/gold/merged/agreement.json",
-    "figures/kappa_raw_vs_rule.png",
     "figures/rq1_al_cpl_micro_precision_recall.png",
     "figures/rq1_ds101_precision_recall.png",
     "figures/rq1_ml101_precision_recall.png",
@@ -106,7 +109,8 @@
     "cdlp/validation/results/necessity_v1_control_examples.json",
     "cdlp/validation/results/necessity_v1_examples.json",
     "cdlp/validation/results/semantic_v1_examples.json",
-    "cdlp/validation/results/semantic_v2_examples.json"
+    "cdlp/validation/results/semantic_v2_examples.json",
+    "data/gold/merged/agreement.json"
   ],
   "results_not_used": [
     "cdlp/root_cause/results/dev_set_baselines_no_mastery.json",

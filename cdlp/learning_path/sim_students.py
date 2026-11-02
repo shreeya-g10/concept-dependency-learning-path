@@ -105,3 +105,48 @@ def save_simulated_students(
         course_id=course_id,
     )
     write_json(path, data)
+
+
+def generate_independent_students(
+    graph_data: dict,
+    num_students: int = 50,
+    seed: int = 42,
+    course_id: str | None = None,
+    p_mastered: float = 0.5,
+) -> dict[str, Any]:
+    """Students whose knowledge does NOT follow the graph (RQ2 robustness condition).
+
+    Each concept is mastered independently with probability p_mastered, so knowing a
+    concept says nothing about knowing its prerequisites. Mastery values use the same
+    ranges as generate_simulated_students (known ~0.85-0.98, unknown ~0.02-0.18), so
+    only the dependence on the graph changes. Graph-guided diagnosis assumes the
+    opposite (knowing B implies knowing its prerequisites); this condition measures
+    what that assumption costs when it is false.
+    """
+    rng = random.Random(seed)
+    G = load_graph(graph_data)
+    nodes = list(G.nodes)
+    target = "avl_tree" if "avl_tree" in nodes else (nodes[-1] if nodes else "concept")
+    students = []
+    for i in range(1, num_students + 1):
+        mastery = {
+            concept: round(
+                rng.uniform(0.85, 0.98) if rng.random() < p_mastered else rng.uniform(0.02, 0.18),
+                2,
+            )
+            for concept in nodes
+        }
+        students.append(
+            {
+                "student_id": f"ind_s_{i:03d}",
+                "target": target,
+                "mastery": mastery,
+                "slip": 0.1,
+                "guess": 0.15,
+            }
+        )
+    return {
+        "schema_version": "1.0",
+        "course_id": course_id or graph_data.get("course_id") or "ds101",
+        "students": students,
+    }
