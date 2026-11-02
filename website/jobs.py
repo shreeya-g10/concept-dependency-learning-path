@@ -12,15 +12,14 @@ outputs/.jobs/<id>/. The page only reads those two files (read_status()).
 Job files live outside outputs/<id>/ because pipeline.py's contract check validates
 every file in that folder and rejects unknown names.
 
-Uploads: PDF and PPTX are saved as they are. Extraction reads only PDF and PPTX, so
-TXT, MD and DOCX are converted to a PDF next to them (`notes.docx` -> `notes.docx.pdf`)
-and the original is kept in data/raw/<id>/originals/ (extraction ignores subfolders).
+Uploads are saved to data/raw/<id>/ as they are: cdlp.extraction reads PDF, PPTX, MD,
+TXT and DOCX itself (pages, slides or sections; see cdlp/extraction/parse.py). README
+files are refused, because extraction skips them as documentation.
 """
 
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import math
 import os
@@ -38,8 +37,7 @@ OUTPUTS = ROOT / "outputs"
 JOBS = OUTPUTS / ".jobs"
 
 UPLOAD_TYPES = ["pdf", "pptx", "txt", "md", "docx"]
-NATIVE = {".pdf", ".pptx"}  # read by cdlp.extraction as they are
-CONVERTED = {".txt", ".md", ".docx"}  # converted to PDF first
+READABLE = {f".{t}" for t in UPLOAD_TYPES}  # read by cdlp.extraction as they are
 COURSE_ID = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
 
 # (marker printed by pipeline.py as "==> <marker>", label shown on the page)
@@ -96,115 +94,70 @@ def save_uploads(
     if not valid_course_id(course_id):
         raise ValueError(f"invalid course id {course_id!r}")
     names = [safe_name(n) for n, _ in files]
-    bad = [n for n in names if Path(n).suffix.lower() not in NATIVE | CONVERTED]
+    bad = [n for n in names if Path(n).suffix.lower() not in READABLE]
     if bad:
         raise ValueError(f"unsupported file type: {', '.join(bad)}")
+    readme = [n for n in names if n.lower().startswith("readme")]
+    if readme:
+        raise ValueError(f"rename {', '.join(readme)}: extraction skips README files")
     folder = (raw or RAW) / course_id
     folder.mkdir(parents=True, exist_ok=True)
-    saved = []
     for name, (_, data) in zip(names, files, strict=True):
-        suffix = Path(name).suffix.lower()
-        if suffix in NATIVE:
-            (folder / name).write_bytes(data)
-            saved.append(folder / name)
-            continue
-        originals = folder / "originals"
-        originals.mkdir(exist_ok=True)
-        (originals / name).write_bytes(data)
-        pdf = folder / f"{name}.pdf"
-        text_to_pdf(blocks_of(name, data), pdf, title=name)
-        saved.append(pdf)
-    return saved
-
-
-def blocks_of(name: str, data: bytes) -> list[tuple[str, str]]:
-    """(kind, text) blocks of a TXT / MD / DOCX file; kind is 'h' (heading) or 'p'."""
-    suffix = Path(name).suffix.lower()
-    if suffix == ".docx":
-        import io
-
-        import docx  # python-docx
-
-        document = docx.Document(io.BytesIO(data))
-        blocks = []
-        for p in document.paragraphs:
-            if p.text.strip():
-                heading = (p.style.name or "").lower().startswith(("heading", "title"))
-                blocks.append(("h" if heading else "p", p.text.strip()))
-        for table in document.tables:
-            for row in table.rows:
-                cells = [c.text.strip() for c in row.cells if c.text.strip()]
-                if cells:
-                    blocks.append(("p", " | ".join(cells)))
-        return blocks
-    text = data.decode("utf-8", errors="replace").replace("\r\n", "\n")
-    blocks = []
-    for para in re.split(r"\n\s*\n", text):
-        para = para.strip()
-        if not para:
-            continue
-        if suffix == ".md":
-            lines = para.splitlines()
-            while lines and re.match(r"^#{1,6}\s", lines[0]):  # one heading per line
-                blocks.append(("h", lines.pop(0).lstrip("#").strip()))
-            para = "\n".join(lines).strip()
-            if not para:
-                continue
-        blocks.append(("p", para))
-    return blocks
-
-
-def text_to_pdf(blocks: list[tuple[str, str]], out: Path, title: str) -> int:
-    """Lay out text blocks on A4 pages with PyMuPDF; returns the page count."""
-    import pymupdf
-
-    body = (
-        "".join(
-            f"<h2>{html.escape(t)}</h2>" if kind == "h" else f"<p>{html.escape(t)}</p>"
-            for kind, t in blocks
-        )
-        or f"<p>{html.escape(title)}</p>"
-    )
-    story = pymupdf.Story(html=body)
-    writer = pymupdf.DocumentWriter(str(out))
-    page_rect = pymupdf.paper_rect("a4")
-    area = page_rect + (54, 54, -54, -54)
-    pages, more = 0, True
-    while more:
-        device = writer.begin_page(page_rect)
-        more, _ = story.place(area)
-        story.draw(device)
-        writer.end_page()
-        pages += 1
-    writer.close()
-    return pages
+        (folder / name).write_bytes(data)
+    return [folder / name for name in names]
 
 
 # --- estimate -----------------------------------------------------------------------
 
 
-def _page_words(path: Path) -> list[int]:
-    """Word count of each page (PDF) or slide (PPTX)."""
-    if path.suffix.lower() == ".pdf":
+def _unit_words(path: Path) -> list[int]:
+    """Word count per page (PDF, TXT), slide (PPTX) or section (MD, DOCX).
+
+    A light copy of how cdlp.extraction splits files (the website does not import it).
+    """
+    suffix = path.suffix.lower()
+    if suffix == ".pdf":
         import pymupdf
 
         with pymupdf.open(path) as doc:
             return [len(page.get_text().split()) for page in doc]
-    from pptx import Presentation
+    if suffix == ".pptx":
+        from pptx import Presentation
 
-    words = []
-    for slide in Presentation(str(path)).slides:
-        text = " ".join(s.text_frame.text for s in slide.shapes if s.has_text_frame)
-        words.append(len(text.split()))
-    return words
+        words = []
+        for slide in Presentation(str(path)).slides:
+            text = " ".join(s.text_frame.text for s in slide.shapes if s.has_text_frame)
+            words.append(len(text.split()))
+        return words
+    if suffix == ".docx":
+        import docx  # python-docx
+
+        words = [0]
+        for para in docx.Document(str(path)).paragraphs:
+            style = (para.style.name if para.style is not None else "").lower()
+            if para.text.strip() and style.startswith(("heading", "title")):
+                words.append(0)
+            else:
+                words[-1] += len(para.text.split())
+        return words
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if suffix == ".md":
+        units = re.split(r"(?m)^#{1,6}\s", text)
+    else:  # .txt: pages at form feeds
+        units = text.split("\f")
+    return [len(u.split()) for u in units]
 
 
 def estimate(folder: Path) -> dict:
     """Size and a rough LLM-time estimate for running the pipeline on folder/."""
-    files = sorted(p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in NATIVE)
+    files = sorted(
+        p
+        for p in folder.iterdir()
+        if p.is_file() and p.suffix.lower() in READABLE and not p.name.lower().startswith("readme")
+    )
     pages = words = chunks = 0
     for path in files:
-        per_page = _page_words(path)
+        per_page = _unit_words(path)
         pages += len(per_page)
         words += sum(per_page)
         chunks += sum(max(1, math.ceil(w / CHUNK_WORDS)) for w in per_page if w)

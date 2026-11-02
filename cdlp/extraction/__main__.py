@@ -9,13 +9,18 @@ import argparse
 from pathlib import Path
 
 from cdlp.extraction.extract import extract_concepts_from_chunks
-from cdlp.extraction.parse import parse_directory
+from cdlp.extraction.parse import is_course_file, parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, required=True, help="folder of PDF/PPTX files")
+    parser.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="folder of course files (PDF, PPTX, MD, TXT, DOCX)",
+    )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--course-id", "--course", dest="course_id", type=str, default=None)
     args = parser.parse_args()
@@ -42,7 +47,7 @@ def main() -> None:
         except Exception:
             chunks = []
 
-    # Fallback to examples if no PDFs/PPTX found
+    # Fallback to examples if no course file was found
     if not chunks:
         chunks = read_jsonl(EXAMPLES / "chunks.jsonl")
 
@@ -51,7 +56,7 @@ def main() -> None:
 
     # 2. Concept Extraction, Canonicalization, and Filtering
     concepts_data = None
-    if input_dir.exists() and any(input_dir.glob("*.pdf")):
+    if input_dir.is_dir() and any(is_course_file(p) for p in input_dir.iterdir()):
         try:
             concepts_data = extract_concepts_from_chunks(chunks, course_id=course_id)
         except Exception:
