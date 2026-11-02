@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "review_decisions.json",
+  "description": "Since 1.6. A teacher's decisions on HUMAN_REVIEW edges of validated_graph.json, one row per edge (a new decision replaces the old one). Written by website page 3 through cdlp/validation/apply_review.py, which applies them to validated_graph.json.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "decisions"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "edge_id",
+          "source",
+          "target",
+          "decision",
+          "decided_by",
+          "decided_at"
+        ],
+        "properties": {
+          "edge_id": {
+            "type": "string",
+            "description": "id of the edge in validated_graph.json when decided; edges are matched by (source, target) first, since ids can change when validation is re-run"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$",
+            "description": "stable slug, e.g. binary_search_tree"
+          },
+          "decision": {
+            "enum": [
+              "ACCEPT",
+              "REJECT"
+            ]
+          },
+          "decided_by": {
+            "type": "string",
+            "description": "who decided: 'teacher' from page 3; 'simulated_teacher' in the review-queue experiment"
+          },
+          "decided_at": {
+            "type": "string",
+            "description": "ISO 8601 time; decisions are applied in this order"
+          },
+          "comment": {
+            "type": "string",
+            "description": "optional free-text reason from the teacher"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-"""Website entry point. Owner: Vaidehi.
+"""Website entry point (initial code: Vaidehi).
 
 streamlit run website/Home.py
 """
@@ -23,10 +23,10 @@ st.subheader("Agent-Validated Prerequisite Graphs for Student-Adaptive Learning 
 st.markdown(
     """
 > *"I don't understand AVL Trees."*  
-> A generic platform tells the student to re-watch the AVL lecture.  
-> Our system runs a short graph-guided adaptive quiz, identifies that the student knows
-> binary trees but breaks the BST ordering property, and recommends:  
-> **BST Ordering Rule (Lec 7, p.18) $\\rightarrow$ AVL Trees (Lec 9, p.4)**.
+> A generic system says "revise AVL Trees". This system runs a short adaptive quiz, finds
+> that the student knows binary trees but breaks the BST ordering rule, and recommends
+> **BST ordering rule $\\rightarrow$ AVL Trees**, with the lecture page for each step.  
+> *(Illustrative example.)*
 """
 )
 
@@ -69,45 +69,53 @@ with c3:
 with c4:
     st.info("**4. Knowledge Graph**\n\nValidated DAG & transitive reduction.")
 with c5:
-    st.info("**5. My Learning Path**\n\nAdaptive diagnostic quiz and personalized shortest path.")
+    st.info("**5. My Learning Path**\n\nAdaptive diagnostic quiz and personalized path.")
 
 st.divider()
 
-# Novel Research Contributions
-st.markdown("### 🔬 Three Novel Contributions")
+# Research contributions: kept in sync with "What's new" in README.md
+st.markdown("### 🔬 What's new")
+st.caption(
+    "We don't claim prerequisite discovery itself is new. "
+    "Results are reported in the paper once experiments complete; no numbers are shown here."
+)
 exp1, exp2, exp3 = st.columns(3)
 
 with exp1:
-    st.markdown("#### 1. Necessity-Testing Validation Agent")
+    st.markdown("#### 1. Necessity-testing validation agent")
     st.write(
-        "Before edge $A \\rightarrow B$ enters the graph, a simulated learner plays a student "
-        "who lacks $A$ and tries problems on $B$. The score gap provides empirical evidence."
+        "Before an edge $A \\rightarrow B$ enters the graph, an LLM plays a student who does "
+        "not know $A$ and answers questions on $B$, then tries again knowing $A$. The score "
+        "difference (the necessity gap) shows whether $A$ is truly needed. It is combined with "
+        "evidence retrieval, semantic and graph-consistency checks: ACCEPT / REJECT / "
+        "HUMAN_REVIEW."
     )
 
 with exp2:
-    st.markdown("#### 2. Graph-Guided Adaptive Diagnosis")
+    st.markdown("#### 2. Graph-guided adaptive diagnosis")
     st.write(
-        "Prerequisite links connect concepts. A correct answer on BST implies binary trees "
-        "are known, narrowing uncertainty across prerequisite chains via adaptive inquiry."
+        "The validated graph chooses the most informative next quiz question: a correct answer "
+        "on BST implies its prerequisites are known. The aim is to find a student's gaps with "
+        "fewer questions than testing every concept."
     )
 
 with exp3:
-    st.markdown("#### 3. Root-Cause Gap Tracing")
+    st.markdown("#### 3. Personalized, explainable paths")
     st.write(
-        "Instead of binary scoring, wrong answers are analyzed against prerequisite concepts "
-        "to trace the exact cognitive root cause (e.g. failing AVL because of BST ordering)."
+        "One course graph, a different path per student: the target's prerequisites minus what "
+        "the student has mastered, in dependency order. Every step cites the lecture and page "
+        "it comes from."
     )
 
 st.divider()
 
-# Team & Project Details
-st.markdown("### 👥 Research Team & Implementation")
+st.markdown("### 👥 Team")
 st.markdown(
     """
-- **Vaidehi (@vkumaw)**: Parsing, Concept Extraction, Gold Standard Evaluation & Website Shell
-- **Sneha (@snehadebnath26)**: Candidate Generation, Dependency Discovery & Simulated Learners
-- **Shreeya (@shreeya-g10, Lead)**: Validation Agent, Necessity Testing & System Scaffolding
-- **Shrestha (@shrestha035)**: Knowledge Graph, Adaptive Diagnosis & Personalized Learning Paths
+- **Shreeya (@shreeya-g10)**: maintainer; validation agent, root-cause tracing, benchmarks
+- **Vaidehi (@vkumaw)**: extraction, learning path, website shell, gold labels, root-cause test set
+- **Sneha (@snehadebnath26)**: initial discovery code
+- **Shrestha (@shrestha035)**: initial learning-path code
 
 *Built with Python, Streamlit, PyMuPDF, python-pptx, NetworkX, and Ollama. Free & local.*
 """

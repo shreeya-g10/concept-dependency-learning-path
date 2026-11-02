@@ -118,3 +118,111 @@ def test_baseline_only_skips_candidates_and_per_pair_calls(tmp_path, monkeypatch
 def test_baseline_flags_are_exclusive(tmp_path, monkeypatch):
     with pytest.raises(SystemExit):
         run_cli(monkeypatch, tmp_path, "--baseline", "--baseline-only")
+
+
+def write_pairs(path, rows):
+    path.write_text("source,target,label\n" + "".join(f"{s},{t},x\n" for s, t in rows))
+
+
+def test_pairs_mode_asks_listed_pairs_both_ways_without_chunks(tmp_path, monkeypatch):
+    asked = []
+    monkeypatch.setattr(
+        llm_discovery,
+        "chat_json",
+        lambda prompt, **kw: (
+            asked.append(
+                (
+                    prompt.split("SOURCE CONCEPT:\nID: ")[1].split("\n")[0],
+                    prompt.split("TARGET CONCEPT:\nID: ")[1].split("\n")[0],
+                )
+            )
+            or {"relationship": "NONE"}
+        ),
+    )
+    monkeypatch.setattr(
+        candidates, "_embedding_pairs", lambda *a, **k: pytest.fail("no candidate filter")
+    )
+    pairs = tmp_path / "pairs.csv"
+    write_pairs(pairs, [("trees", "binary_tree"), ("binary_tree", "trees"), ("graphs", "avl_tree")])
+
+    cli.main(
+        [
+            "--concepts",
+            f"{EX}/concepts.json",
+            "--pairs",
+            str(pairs),
+            "--out-dir",
+            str(tmp_path),
+            "--stats",
+            str(tmp_path / "discovery_only.stats.json"),
+        ]
+    )
+
+    # the duplicate pair in reverse is asked once, and every pair both ways
+    assert sorted(asked) == sorted(
+        [
+            ("trees", "binary_tree"),
+            ("binary_tree", "trees"),
+            ("graphs", "avl_tree"),
+            ("avl_tree", "graphs"),
+        ]
+    )
+    assert check_file(tmp_path / "relationships.json") == []
+    assert (tmp_path / "discovery_only.stats.json").exists()
+
+
+def test_pairs_direction_given_halves_the_calls(tmp_path, monkeypatch):
+    asked = []
+    monkeypatch.setattr(llm_discovery, "chat_json", lambda p, **kw: asked.append(p) or {})
+    pairs = tmp_path / "pairs.csv"
+    write_pairs(pairs, [("trees", "binary_tree"), ("graphs", "avl_tree")])
+
+    cli.main(
+        [
+            "--concepts",
+            f"{EX}/concepts.json",
+            "--pairs",
+            str(pairs),
+            "--pairs-direction",
+            "given",
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert len(asked) == 2
+
+
+def test_pairs_with_unknown_concepts_fail(tmp_path):
+    pairs = tmp_path / "pairs.csv"
+    write_pairs(pairs, [("trees", "nope")])
+    with pytest.raises(SystemExit, match="not in"):
+        cli.main(
+            ["--concepts", f"{EX}/concepts.json", "--pairs", str(pairs), "--out-dir", str(tmp_path)]
+        )
+
+
+def test_chunks_required_without_pairs(tmp_path):
+    with pytest.raises(SystemExit):
+        cli.main(["--concepts", f"{EX}/concepts.json", "--out-dir", str(tmp_path)])
+
+
+def test_baseline_num_ctx_is_passed(tmp_path, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(baseline, "chat_json", lambda p, **kw: seen.update(kw) or {})
+
+    cli.main(
+        [
+            "--concepts",
+            f"{EX}/concepts.json",
+            "--chunks",
+            f"{EX}/chunks.jsonl",
+            "--out-dir",
+            str(tmp_path),
+            "--baseline-only",
+            "--num-ctx",
+            "16384",
+        ]
+    )
+
+    assert seen["num_ctx"] == 16384
