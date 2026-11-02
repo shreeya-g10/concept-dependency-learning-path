@@ -1,4 +1,6 @@
-# Website (Vaidehi) only.
+# Website only.
 streamlit
 pyvis
 networkx
+python-docx
+pymupdf  # jobs.py: PDF page counts and TXT/MD/DOCX -> PDF
