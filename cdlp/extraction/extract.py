@@ -400,11 +400,20 @@ def merge_and_canonicalize(
     return canonical_list
 
 
+def fallback_method() -> str:
+    """tfidf when scikit-learn is installed, else jaccard (see semantic_similarity)."""
+    try:
+        import sklearn  # noqa: F401
+    except ImportError:
+        return "jaccard"
+    return "tfidf"
+
+
 def dedup_method(counts: Counter, embedder_loaded: bool) -> str:
     """embedding / tfidf / jaccard, or mixed when one run used more than one."""
     used = [m for m in ("embedding", "tfidf", "jaccard") if counts.get(m)]
     if not used:  # every merge was exact or an acronym: the method that would have run
-        return "embedding" if embedder_loaded else "tfidf"
+        return "embedding" if embedder_loaded else fallback_method()
     return used[0] if len(used) == 1 else "mixed"
 
 

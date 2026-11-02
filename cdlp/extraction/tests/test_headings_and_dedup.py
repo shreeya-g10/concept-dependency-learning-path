@@ -8,7 +8,12 @@ import sys
 import pytest
 
 from cdlp.extraction import extract
-from cdlp.extraction.extract import DedupError, dedup_method, extract_concepts_from_chunks
+from cdlp.extraction.extract import (
+    DedupError,
+    dedup_method,
+    extract_concepts_from_chunks,
+    fallback_method,
+)
 from cdlp.extraction.parse import clean_page, looks_like_heading, running_lines
 from cdlp.shared.validate import check
 
@@ -159,7 +164,7 @@ def test_allowed_tfidf_warns_loudly_and_is_recorded(monkeypatch, no_llm, capsys)
     assert (
         "WARNING: Concept deduplication cannot use sentence embeddings" in capsys.readouterr().err
     )
-    assert result["dedup_method"] == "tfidf" and result["schema_version"] == "1.7"
+    assert result["dedup_method"] == fallback_method() and result["schema_version"] == "1.7"
     assert set(result["dedup_comparisons"]) <= {"tfidf", "jaccard"}
     assert check(result, "concepts") == []
 
@@ -178,7 +183,7 @@ def test_encode_failure_mid_run_is_not_silent(monkeypatch, no_llm, capsys):
     with pytest.raises(DedupError, match="Embedding failed"):
         extract_concepts_from_chunks(CHUNKS)
     result = extract_concepts_from_chunks(CHUNKS, allow_tfidf=True)
-    assert result["dedup_method"] == "tfidf"
+    assert result["dedup_method"] == fallback_method()  # tfidf, or jaccard without sklearn
     assert result["dedup_comparisons"]["embedding_failed"] > 0
     assert "WARNING: Embedding failed" in capsys.readouterr().err
 
@@ -189,7 +194,8 @@ def test_dedup_method_names():
     assert dedup_method(Counter(embedding=3), True) == "embedding"
     assert dedup_method(Counter(embedding=3, tfidf=1), True) == "mixed"
     assert dedup_method(Counter(), True) == "embedding"
-    assert dedup_method(Counter(), False) == "tfidf"
+    assert dedup_method(Counter(), False) == fallback_method()
+    assert dedup_method(Counter(jaccard=2), False) == "jaccard"
 
 
 def test_cli_exits_2_instead_of_writing_example_concepts(tmp_path, monkeypatch):
