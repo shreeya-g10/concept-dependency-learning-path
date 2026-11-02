@@ -45,6 +45,7 @@ STAGES = [
     ("cdlp.extraction", "Concept extraction"),
     ("cdlp.discovery", "Dependency discovery"),
     ("cdlp.validation", "Validation agent"),
+    ("cdlp.learning_path.quiz", "Quiz generation"),
     ("cdlp.learning_path", "Learning paths"),
     ("cdlp.root_cause", "Root-cause tracing"),
     ("contract check", "Contract check"),
@@ -164,7 +165,8 @@ def estimate(folder: Path) -> dict:
 
     def later_stages_s(concepts_per_chunk: float) -> float:
         candidates = chunks * concepts_per_chunk * CANDIDATES_PER_CONCEPT
-        return candidates * SHORT_S + candidates * EDGE_SHARE * VALIDATION_S_PER_EDGE
+        quiz_s = chunks * concepts_per_chunk * LONG_S  # one quiz call per concept, long reply
+        return candidates * SHORT_S + candidates * EDGE_SHARE * VALIDATION_S_PER_EDGE + quiz_s
 
     low, high = (extraction_s + later_stages_s(r) for r in CONCEPTS_PER_CHUNK)
     return {
