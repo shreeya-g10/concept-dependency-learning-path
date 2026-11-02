@@ -121,7 +121,7 @@ def main() -> None:
         *(["--skip-necessity"] if args.skip_necessity else []),
         *(["--demo-subset", str(args.demo_subset)] if args.demo_subset else []),
     )
-    # teacher decisions (website page 3) survive a re-run: apply them to the new graph
+    # teacher decisions (website review page) survive a re-run: apply them to the new graph
     if (out / "review_decisions.json").exists():
         run(
             "cdlp.validation.apply_review",

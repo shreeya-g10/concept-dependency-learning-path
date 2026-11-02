@@ -1,4 +1,4 @@
-"""Helpers every page uses. Initial code: Vaidehi.
+"""Helpers every page uses: course list, contract files, answer log.
 
 Pages read pipeline outputs from outputs/ and fall back to cdlp/shared/examples/,
 so every page works before the real pipeline exists.
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
+import strings as S
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = ROOT / "outputs"
@@ -25,23 +27,32 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-# Display names for the two built-in courses; any other course shows its id.
+# Display names for the two built-in courses; any other course id was made from a name
+# the student typed, so course_label() turns it back into words.
 COURSE_NAMES = {
     "ds101": "Data Structures & Algorithms",
     "ml101": "Introduction to Machine Learning",
 }
 
 
-def list_courses(outputs: Path | None = None) -> list[str]:
-    """Course ids with a folder in outputs/ (hidden folders such as outputs/.jobs/ excluded).
+# A folder in outputs/ is a course only when a finished run left these files in it.
+COURSE_FILES = ("concepts.json", "validated_graph.json")
 
-    New courses built from page 1 appear automatically. With no outputs at all, the
-    built-in courses are listed so the pages still show the example data.
+
+def list_courses(outputs: Path | None = None) -> list[str]:
+    """Course ids with a finished run in outputs/ (hidden and partial folders are left out).
+
+    New courses built from the upload page appear automatically. With no outputs at all,
+    the built-in courses are listed so the pages still show the example data.
     """
     outputs = outputs or OUTPUTS
     found = (
         sorted(
-            p.name for p in outputs.iterdir() if p.is_dir() and not p.name.startswith((".", "_"))
+            p.name
+            for p in outputs.iterdir()
+            if p.is_dir()
+            and not p.name.startswith((".", "_"))
+            and all((p / name).is_file() for name in COURSE_FILES)
         )
         if outputs.is_dir()
         else []
@@ -49,9 +60,30 @@ def list_courses(outputs: Path | None = None) -> list[str]:
     return found or list(COURSE_NAMES)
 
 
+def course_options() -> list[str]:
+    """The course picker's choices: list_courses() plus a course whose first run just started."""
+    courses = list_courses()
+    active = st.session_state.get("course_id")
+    return courses + [active] if active and active not in courses else courses
+
+
+def course_label(course_id: str) -> str:
+    """The name students see. Never shows a raw id for a built-in course."""
+    return COURSE_NAMES.get(course_id) or course_id.replace("_", " ").strip().capitalize()
+
+
+def course_id_from_name(name: str) -> str:
+    """'Biology notes' -> 'biology_notes'. May be invalid: check with jobs.valid_course_id()."""
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:40].rstrip("_")
+
+
 def get_active_course() -> str:
-    """Return the currently selected course id (default: ds101)."""
-    return st.session_state.get("course_id", "ds101")
+    """The selected course id; before any choice, ds101 if it exists, else the first course."""
+    active = st.session_state.get("course_id")
+    if active:
+        return active
+    courses = list_courses()
+    return "ds101" if "ds101" in courses else courses[0]
 
 
 def resolve_path(name: str, course_id: str | None = None) -> Path:
@@ -67,16 +99,18 @@ def resolve_path(name: str, course_id: str | None = None) -> Path:
 
 
 @st.cache_data
+def _read_contract(path: str, modified: int) -> dict | list:
+    """Cached per file and version: a course switch or a new run can never show old data."""
+    text = Path(path).read_text(encoding="utf-8")
+    if path.endswith(".jsonl"):
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+    return json.loads(text)
+
+
 def load(name: str, course_id: str | None = None) -> dict | list:
     """Load a contract file by name, e.g. load('validated_graph.json')."""
     path = resolve_path(name, course_id=course_id)
-    if path.suffix == ".jsonl":
-        return [
-            json.loads(line)
-            for line in path.read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _read_contract(str(path), path.stat().st_mtime_ns)
 
 
 def using_examples(name: str, course_id: str | None = None) -> bool:
@@ -88,7 +122,6 @@ def concept_names(course_id: str | None = None) -> dict[str, str]:
     return {c["id"]: c["name"] for c in load("concepts.json", course_id=course_id)["concepts"]}
 
 
-@st.cache_data
 def get_chunks_map(course_id: str | None = None) -> dict[str, dict[str, Any]]:
     """Return a mapping of chunk_id -> chunk dict."""
     try:
@@ -100,36 +133,34 @@ def get_chunks_map(course_id: str | None = None) -> dict[str, dict[str, Any]]:
     return {}
 
 
-def demo_subset_note(course_id: str | None = None) -> str | None:
-    """Banner text when the course's validated graph covers only a demo subset of edges."""
+def citation(doc: str, page: int | str) -> str:
+    """'📄 file.pdf, page 3'. MD and DOCX chunks count sections, not pages (extraction/parse.py)."""
+    is_section = str(doc).lower().endswith((".md", ".docx"))
+    return (S.WHERE_SECTION if is_section else S.WHERE_PAGE).format(doc=doc, page=page)
+
+
+def _demo_subset(course_id: str | None = None) -> dict | None:
     try:
         graph = load("validated_graph.json", course_id=course_id)
     except (OSError, ValueError):
         return None
-    subset = graph.get("subset") if isinstance(graph, dict) else None
-    if not subset:
-        return None
-    return (
-        f"**Demo subset:** only {subset['n']} of {subset['of']} proposed prerequisite edges "
-        f"were validated ({subset['selection']}). The graph and the learning paths use only "
-        "these edges. This is a demo, not an evaluation of the course graph."
-    )
+    return (graph.get("subset") or None) if isinstance(graph, dict) else None
 
 
-def page_header(title: str, owner: str, source_file: str) -> None:
-    """`owner` is kept for signature stability and no longer shown (single maintainer)."""
-    st.title(title)
-    course = get_active_course()
-    is_example = using_examples(source_file, course_id=course)
-    badge = "🟡 Example Mock Data" if is_example else f"🟢 Live Pipeline Data (outputs/{course}/)"
-    st.caption(f"Course: `{course}` · Source: `{source_file}` · {badge}")
-    note = demo_subset_note(course)
-    if note:
-        st.warning(note)
+def demo_subset_note(course_id: str | None = None) -> str | None:
+    """Plain-words notice when the course's validated graph covers only a demo subset."""
+    subset = _demo_subset(course_id)
+    return S.DEMO_NOTICE.format(n=subset["n"], of=subset["of"]) if subset else None
+
+
+def demo_subset_rule(course_id: str | None = None) -> str | None:
+    """The written rule that picked the demo subset (shown on the teacher pages)."""
+    subset = _demo_subset(course_id)
+    return subset.get("selection") if subset else None
 
 
 # ---- anonymous answer log ---------------------------------------------------------
-# Every quiz answer on page 5 is appended to outputs/<course>/student_answers.json
+# Every quick-check answer is appended to outputs/<course>/student_answers.json
 # (contract student_answers.json), the input of root-cause tracing (pipeline.py runs
 # cdlp.root_cause when the file exists) and of the real-student study. The student is
 # identified only by a random per-browser-session id: no name, login or IP is stored.
@@ -169,26 +200,3 @@ def log_answer(course_id: str, row: dict) -> Path:
         f.write(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
     os.replace(tmp, path)
     return path
-
-
-def render_sidebar():
-    """Render common course selector and navigation info in sidebar."""
-    with st.sidebar:
-        st.markdown("### 📚 Course Selection")
-        courses = list_courses()
-        active = st.session_state.get("course_id")
-        if active and active not in courses:  # e.g. a course whose first run just started
-            courses.append(active)
-        index = courses.index(active) if active in courses else 0
-        course_id = st.selectbox(
-            "Active Course",
-            courses,
-            index=index,
-            format_func=lambda c: f"{c} — {COURSE_NAMES[c]}" if c in COURSE_NAMES else c,
-        )
-        st.session_state["course_id"] = course_id
-        st.caption(f"Target Course ID: `{course_id}`")
-        st.divider()
-        st.markdown("### 🔍 System Info")
-        st.caption("Verify, Diagnose, Adapt System")
-        st.caption("Gen AI Lab — Educational Prerequisite Graphs")

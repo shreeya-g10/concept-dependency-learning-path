@@ -8,24 +8,31 @@ streamlit run website/Home.py
 
 Every page reads pipeline outputs from `outputs/`. When those don't exist yet, it falls back to `cdlp/shared/examples/`, so each page works from day one.
 
-**Answer log (page 5).** Every quiz answer is appended to `outputs/<course>/student_answers.json` under a random per-session id (`anon_<hex>`); no name, login or IP is stored. The file feeds root-cause tracing (`pipeline.py`) and the real-student study. Writes are atomic but not locked across sessions. The real-student study runs **locally** (`streamlit run website/Home.py` on the maintainer's laptop), so the log stays on that disk and no hosted storage is needed; a hosted deployment (Streamlit Community Cloud wipes its disk on redeploy) is for demos only and its answers are not study data. A root cause that comes from a fallback (LLM unreachable or unusable) is labelled "offline estimate" / "baseline estimate", never shown as an LLM explanation.
+**Answer log (Quick check).** Every quiz answer is appended to `outputs/<course>/student_answers.json` under a random per-session id (`anon_<hex>`); no name, login or IP is stored. The file feeds root-cause tracing (`pipeline.py`) and the real-student study. Writes are atomic but not locked across sessions. The real-student study runs **locally** (`streamlit run website/Home.py` on the maintainer's laptop), so the log stays on that disk and no hosted storage is needed; a hosted deployment (Streamlit Community Cloud wipes its disk on redeploy) is for demos only and its answers are not study data. A root cause that comes from a fallback (LLM unreachable or unusable) is labelled in plain words as "our best guess ... not from the AI helper", never shown as an LLM explanation.
 
 ## Pages
 
-Maintainer: Shreeya. Shell and pages 1, 4, 5 were built by Vaidehi (pages 4 and 5 from Shrestha's initial code); page 2 started from Sneha's code.
-
 | File | Shows |
 |---|---|
-| `Home.py`, `common.py`, `requirements.txt`, `.streamlit/` | Shell, navigation, styling, deployment |
-| `pages/1_Course_Material.py` | Concepts + source pages |
-| `pages/2_Proposed_Dependencies.py` | LLM-proposed edges |
-| `pages/3_Validation_Agent.py` | Decisions, checks, evidence, necessity gap |
-| `pages/4_Knowledge_Graph.py` | Interactive validated graph |
-| `pages/5_My_Learning_Path.py` | Adaptive quiz + personal path |
+| `Home.py` | Entry point: page setup and the menu (`st.navigation`), then runs the current page |
+| `ui.py`, `strings.py`, `common.py` | Shared page parts, all student-facing text, data helpers |
+| `../.streamlit/config.toml` | Theme |
+| `pages/0_Start_here.py` | Pick a subject, the 4 steps |
+| `pages/1_Add_your_notes.py` | Upload + background build |
+| `pages/2_See_your_topics.py` | Concepts + source pages |
+| `pages/3_Quick_check.py` | Adaptive quiz |
+| `pages/4_My_study_plan.py` | Personal path |
+| `pages/5_Topic_map.py` | Concept lists + optional interactive graph |
+| `pages/teacher_AI_checks_and_review.py` | For teachers: decisions, checks, evidence, necessity gap, review |
+| `pages/teacher_AI_suggestions.py` | For teachers: LLM-proposed edges |
+
+A new page must be added to `ui.PAGES`: `st.navigation` ignores files it is not told about.
 
 ## Rules
 
 - Pages read contract files through `common.load("<file>.json")`, never by running pipeline code.
-- The only module code a page may import is `cdlp/learning_path/api.py` (live quiz on page 5) and `cdlp/root_cause/api.py`.
-- Shared page helpers go in `common.py`.
+- The only module code a page may import is `cdlp/learning_path/api.py` (live quiz) and `cdlp/root_cause/api.py`.
+- Shared page parts go in `ui.py`, data helpers in `common.py`.
+- **Student pages:** one column; one main action per screen; plain words at about a 6th-grade level; an icon always with a word; no team names, research terms or course IDs; every error says what to do next (`ui.friendly_error`). All their text lives in `strings.py`.
+- **Honesty:** `ui.page_header(source_file=...)` shows the sample and demo notices. Keep them. Never state anything we have not measured.
 - CI renders every page on example data (`website/test_pages.py`), so keep every page working before you open a PR.
