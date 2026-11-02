@@ -203,6 +203,53 @@
               "mcq"
             ],
             "description": "added in 1.4: necessity-test question format"
+          },
+          "review": {
+            "type": "object",
+            "description": "added in 1.6: a human decision on an edge the validator sent to HUMAN_REVIEW (cdlp/validation/apply_review.py). Absent = no human decision. When status is 'applied', the edge's decision is review.decision; when 'refused_cycle', accepting would have closed a cycle, so decision stays HUMAN_REVIEW. confidence, checks, evidence and reason stay the validator's.",
+            "required": [
+              "decided_by",
+              "decision",
+              "validator_decision",
+              "status"
+            ],
+            "properties": {
+              "decided_by": {
+                "type": "string",
+                "description": "'teacher' (page 3) or 'simulated_teacher' (experiment)"
+              },
+              "decision": {
+                "enum": [
+                  "ACCEPT",
+                  "REJECT"
+                ]
+              },
+              "validator_decision": {
+                "enum": [
+                  "HUMAN_REVIEW"
+                ],
+                "description": "the validator's decision, restored when decisions are re-applied"
+              },
+              "status": {
+                "enum": [
+                  "applied",
+                  "refused_cycle"
+                ]
+              },
+              "comment": {
+                "type": "string"
+              },
+              "decided_at": {
+                "type": "string"
+              },
+              "cycle": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "for refused_cycle: the cycle accepting would close, first node repeated at the end"
+              }
+            }
           }
         }
       }
