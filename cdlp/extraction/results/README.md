@@ -1,25 +1,11 @@
-# Concept Extraction & Gold Standard Evaluation Report
-Owner: Vaidehi (@vkumaw)
+# Concept extraction results
 
-## 1. Gold Standard Agreement (Cohen's Kappa)
-- **Total merged edges**: 10
-- **Unique gold concepts**: 6
-- **Average Cohen's $\kappa$**: 0.9243 (target $\ge 0.60$)
+`evaluation_metrics.json`: concept extraction vs. the hand-annotated concept list (`data/gold/gold_concepts.json`), written by `python -m cdlp.extraction.evaluate --concepts outputs/<course>/concepts.json`.
 
-### Pairwise Inter-Annotator Agreement:
-| Annotator Pair | Cohen's $\kappa$ | Agreement Level |
-|---|---|---|
-| annotator_a_vs_annotator_b | 1.0 | Substantial / Almost Perfect |
-| annotator_a_vs_annotator_c | 0.8485 | Substantial / Almost Perfect |
-| annotator_a_vs_annotator_d | 1.0 | Substantial / Almost Perfect |
-| annotator_b_vs_annotator_c | 0.8485 | Substantial / Almost Perfect |
-| annotator_b_vs_annotator_d | 1.0 | Substantial / Almost Perfect |
-| annotator_c_vs_annotator_d | 0.8485 | Substantial / Almost Perfect |
+| Precision | Recall | F1 | TP | FP | FN |
+|---|---|---|---|---|---|
+| 0.86 | 1.00 | 0.92 | 6 | 1 | 0 |
 
-## 2. Concept Extraction (RQ0) Performance vs. Gold Standard
-- **Precision**: 85.71%
-- **Recall**: 100.00%
-- **F1 Score**: 92.31%
-- **True Positives**: 6
-- **False Positives**: 1
-- **False Negatives**: 0
+Caveat: measured on the stub lectures; rerun on the real material before reporting.
+
+Inter-annotator agreement is no longer reported here. The κ values this file used to show (average 0.92 over annotators a–d) included labels of annotators b and d that were later removed from their files, so they cannot be reproduced. The reproducible κ (raw and with the shortcut rule, per course) is in `data/gold/agreement.json` (`python data/gold/merge_gold.py`).

@@ -103,10 +103,13 @@ def test_pair_outside_every_course_is_an_error(tmp_path):
 
 
 def test_committed_agreement_matches_the_annotator_files(tmp_path):
-    """data/gold/merged/ is regenerated from the committed files (rerun merge_gold.py)."""
+    """data/gold/ agreement and per-course gold match the annotator files (rerun the script)."""
     gold = ROOT / "data/gold"
     report = mg.run(
         gold / "annotations", gold / "courses.json", gold / "adjudication.csv", tmp_path
     )
-    committed = json.loads((gold / "merged/agreement.json").read_text())
+    committed = json.loads((gold / "agreement.json").read_text())
     assert report == committed
+    for course in report["merge"]["gold_rows"]:
+        rel = f"{course}/gold_edges.csv"
+        assert (tmp_path / rel).read_text() == (gold / rel).read_text(), rel

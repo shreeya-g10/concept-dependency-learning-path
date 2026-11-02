@@ -11,7 +11,7 @@ from cdlp.validation import evaluate as ev
 EXAMPLES = Path(__file__).resolve().parents[2] / "shared" / "examples"
 CONFIGS = Path(__file__).resolve().parents[1] / "configs" / "rq1"
 
-# Same labels as data/gold/gold_edges.csv for the example concepts (6 positives).
+# Same labels as data/gold/ds101/gold_edges.csv for the example concepts (6 positives).
 GOLD = """source,target,label,agreement,note
 binary_search_tree,avl_tree,hard,,
 binary_tree,avl_tree,none,,
@@ -62,8 +62,8 @@ def _make_run(run_dir: Path, *, skip=(), calls=None) -> None:
 @pytest.fixture
 def project(tmp_path):
     """A base folder laid out like the repo: gold, concepts and one run folder."""
-    (tmp_path / "data/gold").mkdir(parents=True)
-    (tmp_path / "data/gold/gold_edges.csv").write_text(GOLD)
+    (tmp_path / "data/gold/ds101").mkdir(parents=True)
+    (tmp_path / "data/gold/ds101/gold_edges.csv").write_text(GOLD)
     (tmp_path / "outputs/ds101").mkdir(parents=True)
     shutil.copy(EXAMPLES / "concepts.json", tmp_path / "outputs/ds101/concepts.json")
     _make_run(
@@ -262,7 +262,7 @@ def test_multi_course_dataset_writes_micro_average(project, tmp_path):
             {
                 "course_id": f"toy_{i}",
                 "concepts": "outputs/ds101/concepts.json",
-                "gold": "data/gold/gold_edges.csv",
+                "gold": "data/gold/ds101/gold_edges.csv",
                 "run_dir": "outputs/rq1/ds101",
             }
             for i in (1, 2)

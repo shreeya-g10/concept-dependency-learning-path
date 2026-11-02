@@ -20,7 +20,7 @@ Sources (all optional):
 - RQ2, RQ4   cdlp/learning_path/results/rq2_rq4_results.json
 - RQ3        cdlp/root_cause/results/*.json whose dataset is the gold test set
              (data/gold/root_cause_testset.json); dev-set runs are listed, never tabled
-- κ          data/gold/merged/agreement.json (data/gold/merge_gold.py)
+- κ          data/gold/agreement.json (data/gold/merge_gold.py)
 - extraction cdlp/extraction/results/evaluation_metrics.json
 - necessity  cdlp/validation/results/necessity_stability*/summary.json
 """
@@ -234,7 +234,7 @@ def rq3_table(r: Report) -> Table:
     return t
 
 
-AGREEMENT = "data/gold/merged/agreement.json"
+AGREEMENT = "data/gold/agreement.json"
 
 
 def kappa_table(r: Report) -> tuple[Table, dict | None]:

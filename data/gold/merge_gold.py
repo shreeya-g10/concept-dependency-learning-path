@@ -2,25 +2,29 @@
 
     python data/gold/merge_gold.py [--annotations data/gold/annotations]
         [--courses data/gold/courses.json] [--adjudication data/gold/adjudication.csv]
-        [--out-dir data/gold/merged]
+        [--out-dir data/gold]
 
 Reads every `annotations/annotator_<x>.csv` (source,target,label,note) exactly as
-committed. Each pair belongs to the course in `courses.json` that holds both concepts
-(a pair matching no course, or two, is an error).
+committed: today annotator_a (20 pairs), annotator_c (20) and the 6 rows of
+annotator_b; annotator_d is empty. Labels that exist only in git history (older b and
+d rows, removed in commit 6be20de) are never read, so the gold is reproducible from
+the files alone (data/gold/README.md, "Provenance"). Each pair belongs to the course in
+`courses.json` that holds both concepts (a pair matching no course, or two, is an error).
 
-Agreement (`<out-dir>/agreement.json`), for every annotator pair with >= 2 shared
-pairs, per course and overall, computed **before any adjudication**:
+Agreement (`<out-dir>/agreement.json`, default data/gold/agreement.json), for every
+annotator pair with >= 2 shared pairs, per course and overall, computed **before any adjudication**:
 - raw: Cohen's kappa on the committed labels;
 - shortcut rule: the same, after this mechanical rule is applied to each annotator's
   file on its own: a pair labelled hard or soft becomes none if that annotator's own
   hard/soft pairs already form a path from A to B through another concept. The
   number of labels the rule changed is reported per annotator and course.
 
-Merge (`<out-dir>/<course>/gold_edges.csv`, columns source,target,label,agreement,note,
-the same as data/gold/gold_edges.csv): majority of the committed (raw) labels. A tie
+Merge, the gold of record (`<out-dir>/<course>/gold_edges.csv`, default
+data/gold/<course>/gold_edges.csv; columns source,target,label,agreement,note):
+majority of the committed (raw) labels. A tie
 is decided only by a row in the adjudication file (source,target,label,note); without
 one the pair is left out of the gold file and listed as unresolved in agreement.json.
-Nothing here edits an annotator file or data/gold/gold_edges.csv.
+Nothing here edits an annotator file.
 """
 
 from __future__ import annotations
@@ -236,7 +240,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--annotations", type=Path, default=GOLD / "annotations")
     parser.add_argument("--courses", type=Path, default=GOLD / "courses.json")
     parser.add_argument("--adjudication", type=Path, default=GOLD / "adjudication.csv")
-    parser.add_argument("--out-dir", type=Path, default=GOLD / "merged")
+    parser.add_argument("--out-dir", type=Path, default=GOLD)
     args = parser.parse_args(argv)
     report = run(args.annotations, args.courses, args.adjudication, args.out_dir)
     for row in report["pairs"]:
