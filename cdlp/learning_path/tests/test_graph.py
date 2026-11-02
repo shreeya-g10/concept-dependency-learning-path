@@ -82,3 +82,21 @@ def test_evaluate_rq2_and_rq4():
     assert "rq2_diagnosis" in res
     assert "rq4_learning_path" in res
     assert res["rq4_learning_path"]["total_order_mistakes"] == 0
+
+
+def test_mastery_threshold_is_strict_0_8():
+    from cdlp.learning_path import api
+    from cdlp.learning_path.evaluate import evaluate_accuracy
+    from cdlp.learning_path.graph import MASTERY_THRESHOLD, is_mastered
+    from cdlp.shared.io import EXAMPLES, read_json
+
+    assert MASTERY_THRESHOLD == 0.8
+    assert is_mastered(0.81) and not is_mastered(0.8) and not is_mastered(0.75)
+
+    # 0.75 counted as mastered under the old 0.7 rule; now it is a gap
+    assert evaluate_accuracy({"trees": 0.75}, {"trees": 0.1}) == 1.0
+    graph = read_json(EXAMPLES / "validated_graph.json")
+    path = api.personalized_path(
+        graph, {"trees": 0.8, "recursion": 0.9, "binary_tree": 0.81}, "binary_tree"
+    )
+    assert [s["concept_id"] for s in path] == ["trees"]

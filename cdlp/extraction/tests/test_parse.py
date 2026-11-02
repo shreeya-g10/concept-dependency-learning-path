@@ -46,11 +46,15 @@ def test_extract_heading_explicit():
     assert "Heading:" not in body
 
 
-def test_parse_data_raw(tmp_path):
-    chunks = parse_directory(Path("data/raw"))
+FIXTURES = Path(__file__).parent / "fixtures"  # the old stub lectures (ds and ml)
+
+
+def test_parse_fixtures(tmp_path):
+    chunks = parse_directory(FIXTURES)
     if not chunks:
         pytest.skip("PyMuPDF / python-pptx not available in this environment")
-    assert len(chunks) >= 6
+    assert len(chunks) >= 12
+    assert {c["doc"] for c in chunks} >= {"ds_lec8.pptx", "ml_lec1.pdf"}
 
     # Verify every chunk conforms to the contract
     out_file = tmp_path / "chunks.jsonl"

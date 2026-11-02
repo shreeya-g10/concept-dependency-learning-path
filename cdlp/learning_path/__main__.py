@@ -12,6 +12,7 @@ import argparse
 from pathlib import Path
 
 from cdlp.learning_path import api
+from cdlp.learning_path.graph import is_mastered
 from cdlp.learning_path.sim_students import generate_simulated_students
 from cdlp.shared.io import read_json, write_json
 
@@ -118,7 +119,7 @@ def main() -> None:
 
             q_id = question.get("id", question.get("item_id", f"q_{len(asked_ids)}"))
             concept = question["concept_id"]
-            correct = true_mastery.get(concept, 0.5) > 0.5
+            correct = is_mastered(true_mastery.get(concept, 0.5))
 
             mastery = api.update_mastery(graph, mastery, concept, correct)
             asked_ids.append(q_id)
