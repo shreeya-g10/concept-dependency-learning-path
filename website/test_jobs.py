@@ -1,4 +1,4 @@
-"""Upload -> background pipeline job (website/jobs.py), the dynamic course list and page 1.
+"""Upload -> background pipeline job (website/jobs.py), the course list and the add-notes page.
 
 The pipeline is never run: jobs get a fake command that prints pipeline.py's stage
 markers ("==> cdlp.extraction", ...) and exits 0 or 1. No LLM is called.
@@ -21,7 +21,7 @@ if str(SITE) not in sys.path:  # as `streamlit run website/Home.py` does
 import common  # noqa: E402
 import jobs  # noqa: E402
 
-PAGE = SITE / "pages" / "1_Course_Material.py"
+PAGE = SITE / "pages" / "1_Add_your_notes.py"
 ALL_STAGES = "".join(f"print('==> {key}', flush=True)\n" for key, _ in jobs.STAGES[:5])
 SUCCESS = ALL_STAGES + (
     "print('==> cdlp.root_cause skipped (no student_answers.json)')\nprint('==> contract check')\n"
@@ -250,8 +250,20 @@ def test_no_job_yet(tmp_path):
 def test_course_list_comes_from_output_folders(tmp_path):
     for name in ["ml101", "os101", ".jobs", "_tmp"]:
         (tmp_path / name).mkdir()
+        for file in common.COURSE_FILES:
+            (tmp_path / name / file).write_text("{}")
     (tmp_path / "concepts.json").write_text("{}")  # legacy top-level file: not a course
+    (tmp_path / "half_done").mkdir()  # a folder without a finished run: not a course
+    (tmp_path / "half_done" / "concepts.json").write_text("{}")
     assert common.list_courses(tmp_path) == ["ml101", "os101"]
+
+
+def test_course_names_never_show_a_raw_id():
+    assert common.course_label("ds101") == "Data Structures & Algorithms"
+    assert common.course_label("biology_notes") == "Biology notes"
+    assert common.course_id_from_name("  Biology notes! ") == "biology_notes"
+    assert jobs.valid_course_id(common.course_id_from_name("Biology notes"))
+    assert not jobs.valid_course_id(common.course_id_from_name("2024"))
 
 
 def test_course_list_falls_back_to_the_built_in_courses(tmp_path):
@@ -279,7 +291,7 @@ def page(tmp_path, monkeypatch):
 
 
 def build_button(at):
-    return next(b for b in at.button if "Build course graph" in b.label)
+    return at.button(key="build")
 
 
 def test_page_blocks_the_build_without_an_llm(page, tmp_path):
@@ -287,9 +299,10 @@ def test_page_blocks_the_build_without_an_llm(page, tmp_path):
     make_pdf(tmp_path / "raw" / "c1" / "lec.pdf", ["Trees"])
     at = page("c1")
     assert not at.exception
-    assert any("No LLM is reachable" in e.value for e in at.error)
+    assert any("AI helper is off" in e.value and "What to do" in e.value for e in at.error)
+    assert any("No LLM is reachable" in c.value for c in at.code)  # kept for the teacher
     assert build_button(at).disabled
-    assert any("Time estimate" in m.value for m in at.markdown)
+    assert any("rough guess" in m.value for m in at.markdown)
 
 
 def test_page_shows_progress_of_a_running_job(page, tmp_path):
@@ -300,8 +313,9 @@ def test_page_shows_progress_of_a_running_job(page, tmp_path):
     at = page("c1")
     assert not at.exception
     text = " ".join(m.value for m in at.markdown)
-    assert "**running**" in text
-    assert "✅ Concept extraction" in text and "⏳ Dependency discovery" in text
+    assert (
+        "✅ Done: Finding topics" in text and "⏳ Working: Finding which topics come first" in text
+    )
 
 
 def test_page_shows_why_a_job_failed(page, tmp_path):
@@ -311,13 +325,14 @@ def test_page_shows_why_a_job_failed(page, tmp_path):
     (folder / "pipeline.log").write_text("==> cdlp.extraction\nConnectionError: refused\n")
     at = page("c1")
     assert not at.exception
-    assert any("LLM endpoint could not be reached" in e.value for e in at.error)
+    assert any("What to do" in e.value for e in at.error)
+    assert any("LLM endpoint could not be reached" in c.value for c in at.code)  # for the teacher
 
 
-def test_page_rejects_a_bad_course_id(page):
-    at = page("Bad Id")
+def test_page_rejects_a_name_it_cannot_use(page):
+    at = page("9 lives")
     assert not at.exception
-    assert any("Course ID" in e.value for e in at.error)
+    assert any("We cannot use that name" in e.value for e in at.error)
 
 
 def test_website_builds_skip_the_necessity_test():

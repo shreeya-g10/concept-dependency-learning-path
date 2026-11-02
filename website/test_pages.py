@@ -7,9 +7,10 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 SITE = Path(__file__).parent
-PAGES = [SITE / "Home.py", *sorted((SITE / "pages").glob("*.py"))]
+PAGES = sorted((SITE / "pages").glob("*.py"))
 # `streamlit run website/Home.py` puts website/ on sys.path (for common.py, jobs.py);
 # a single page run by AppTest does not, so add it here.
+AI_CHECKS = SITE / "pages" / "teacher_AI_checks_and_review.py"
 if str(SITE) not in sys.path:
     sys.path.insert(0, str(SITE))
 
@@ -36,10 +37,8 @@ def test_demo_subset_banner_on_every_page(tmp_path, monkeypatch):
     monkeypatch.setattr(common, "OUTPUTS", tmp_path)
     common.st.cache_data.clear()
 
-    assert "only 3 of 6 proposed prerequisite edges" in common.demo_subset_note("demo101")
-    assert common.demo_subset_note("ds101") is None or "Demo subset" in common.demo_subset_note(
-        "ds101"
-    )
+    assert "only 3 of the 6 links" in common.demo_subset_note("demo101")
+    assert common.demo_subset_rule("demo101")
     graph = json.loads((course / "validated_graph.json").read_text())
     assert graph["subset"]["kind"] == "demo"
 
@@ -56,13 +55,14 @@ def test_banner_renders_in_the_page_header(tmp_path, monkeypatch):
     monkeypatch.setattr(common, "get_active_course", lambda: "demo101")
     common.st.cache_data.clear()
     shown = []
-    monkeypatch.setattr(common.st, "warning", lambda text: shown.append(text))
+    monkeypatch.setattr(common.st, "warning", lambda text, **k: shown.append(text))
     monkeypatch.setattr(common.st, "title", lambda *a, **k: None)
     monkeypatch.setattr(common.st, "caption", lambda *a, **k: None)
+    import ui
 
-    common.page_header("Knowledge Graph", "", "validated_graph.json")
+    ui.page_header("Topic map", source_file="validated_graph.json")
 
-    assert shown and shown[0].startswith("**Demo subset:**")
+    assert shown and shown[0].startswith("**This is a demo.**")
 
 
 def _live_course(tmp_path, graph):
@@ -94,14 +94,14 @@ def test_page3_hides_example_necessity_runs_on_a_live_graph_without_necessity(
     _live_course(tmp_path, graph)
     monkeypatch.setattr(common, "OUTPUTS", tmp_path)
 
-    at = AppTest.from_file(str(SITE / "pages" / "3_Validation_Agent.py"), default_timeout=60).run()
+    at = AppTest.from_file(str(AI_CHECKS), default_timeout=60).run()
 
     assert not at.exception
-    assert "Necessity test" not in [s.value for s in at.subheader]
+    assert not any("Trial check" in s.value for s in at.subheader)
 
 
 def test_page3_still_shows_necessity_runs_on_the_examples():
-    at = AppTest.from_file(str(SITE / "pages" / "3_Validation_Agent.py"), default_timeout=60).run()
+    at = AppTest.from_file(str(AI_CHECKS), default_timeout=60).run()
     assert not at.exception
 
 

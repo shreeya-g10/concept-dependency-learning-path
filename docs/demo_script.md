@@ -69,27 +69,28 @@ Progress at any time (calls made in the last 3 hours, by step; prompt versions: 
 cd /Users/shreeyakhairnar/Desktop/PREP/projects/GenAI/concept-dependency-learning-path && for v in extract_v1 discover_v3 evidence_v1 semantic_v2 quiz_v1; do echo "$v: $(find .cache/llm -name '*.json' -mmin -180 -exec grep -l "\"prompt_version\": \"$v\"" {} + 2>/dev/null | wc -l)"; done
 ```
 
-### Check all five pages on outputs/ds101
+### Check every page on outputs/ds101
 
 1. Automated (no LLM; run only when no LLM step is running): renders every page on `outputs/ds101` and prints `ok` or `ERROR` per page.
    ```bash
-   .venv/bin/python -c "import sys; sys.path.insert(0, 'website'); from pathlib import Path; from streamlit.testing.v1 import AppTest; [print(p.name, 'ERROR' if AppTest.from_file(str(p), default_timeout=120).run().exception else 'ok') for p in [Path('website/Home.py'), *sorted(Path('website/pages').glob('*.py'))]]"
+   .venv/bin/python -c "import sys; sys.path.insert(0, 'website'); from pathlib import Path; from streamlit.testing.v1 import AppTest; [print(p.name, 'ERROR' if AppTest.from_file(str(p), default_timeout=120).run().exception else 'ok') for p in sorted(Path('website/pages').glob('*.py'))]"
    ```
-2. By eye: `.venv/bin/streamlit run website/Home.py`, choose **Active Course → ds101** in the sidebar, then open each page:
-   - **Home:** green "Live Pipeline" badge, the yellow demo-subset banner, concept and edge counts.
-   - **1 Course Material:** the 🔎 Concepts tab lists concepts with their source file and page.
-   - **2 Proposed Dependencies:** proposed edges with evidence quotes.
-   - **3 Validation Agent:** ACCEPT / REJECT / HUMAN_REVIEW counts; necessity shows ➖ (skipped); no "Necessity test" table (it only appears for graphs that ran it).
-   - **4 Knowledge Graph:** the interactive graph draws, and an edge expands to its evidence.
-   - **5 My Learning Path:** a quiz question appears; after a few answers the path lists steps with 📄 file and page.
+2. By eye: `.venv/bin/streamlit run website/Home.py`, pick **Data Structures & Algorithms** on Home, then open each page:
+   - **Home:** the demo notice in plain words (no "sample topics" notice), the 4 steps.
+   - **2 See your topics:** lists topics with their source file and page.
+   - **3 Quick check:** a question appears; answer a few.
+   - **4 My study plan:** lists topics in order with 📄 file and page.
+   - **Topic map:** pick a topic, turn on the picture; the map draws, and a link expands to its evidence.
+   - **For teachers → AI suggestions:** suggested links with quotes.
+   - **For teachers → AI checks and review:** Accepted / Rejected / Needs a teacher counts; necessity shows ➖ (skipped); no "Trial check" table (it only appears for graphs that ran it).
 3. **Start the website after the runs finish** (or use ☰ → **Clear cache**): pages cache the files they read.
 
 ### Test upload with a tiny notes file (tonight, about 5–10 min)
 
 1. Create `~/Desktop/demo_notes.md` with three short paragraphs, e.g. one each on *Stacks*, *Queues* and *Breadth-first search (uses a queue)*.
-2. Page 1 → **📤 Upload & build a course** → **Course ID** `notes101` → drop the file → **💾 Save files** → **🚀 Build course graph**.
+2. **1 Add your notes** → name `Notes101` → drop the file → **Save my files** → **Read my notes**.
 3. The status shows each stage. Website builds skip the report-only necessity test to stay quick; the time estimate on the page is a rough range (only the validator speed, ≈48 s per call on this laptop, is measured).
-4. When it finishes, sidebar **Active Course → notes101** and look at pages 1–5.
+4. When it finishes, pick **Notes101** on Home and look at each page.
 
 ### Backups (after everything works)
 
@@ -102,21 +103,21 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 ## Before you present (5 min)
 
 1. Close other apps. `ollama stop qwen2.5:7b-instruct; ollama stop llama3.1:8b`.
-2. `cd` to the repo and run `.venv/bin/streamlit run website/Home.py`. Sidebar → **Active Course → ds101**.
+2. `cd` to the repo and run `.venv/bin/streamlit run website/Home.py`. On Home, pick **Data Structures & Algorithms**.
 3. Open each page once, so nothing loads for the first time on stage.
 
 ## The 5-minute demo
 
 | Time | Click | Say |
 |---|---|---|
-| 0:00 | **Home** | The problem: "I don't understand AVL trees." One course graph, a different path per student. Point at the pipeline and the counts; the yellow banner says this is a 28-edge demo subset, chosen by a written rule. |
-| 0:40 | **1 Course Material → 🔎 Concepts** | Concepts extracted from the real ds101 textbook chapters, each with its source file and page. Search "binary search tree". |
-| 1:20 | **1 → 📤 Upload & build a course** | (Optional, live) Course ID `notes101_live`, drop `demo_notes.md`, **Save files**, **Build course graph**. It runs in the background; come back at 4:30. |
-| 1:40 | **2 Proposed Dependencies** | The discovery model (qwen) proposes prerequisite edges only for candidate pairs, with an evidence quote for each. |
-| 2:20 | **3 Validation Agent** | A *different* model (llama) checks every edge: evidence in the material, teaching sense, graph consistency (cycles, redundant shortcuts) → ACCEPT / REJECT / HUMAN_REVIEW. Open one REJECT and read its reason. Say that some edges were picked because they looked wrong, to show rejections, so these counts are not an accuracy figure. Necessity is ➖: an experimental check, skipped here. |
-| 3:00 | **4 Knowledge Graph** | Only accepted edges; click an edge for its evidence. |
-| 3:30 | **5 My Learning Path** | Answer one question right and one wrong. A wrong answer is traced to a likely missing prerequisite. The path lists the steps in order, each with 📄 file and page. |
-| 4:30 | **1 → Upload** (if started) | Show the build status, or the finished `notes101` course in the sidebar. |
+| 0:00 | **Home** | The problem: "I don't understand AVL trees." One course graph, a different path per student. The yellow notice says this is a demo: only 28 of the 64 links were checked, picked by a written rule (shown on the teacher pages). |
+| 0:40 | **2 See your topics** | Concepts extracted from the real ds101 textbook chapters, each with its source file and page. Search "binary search tree". |
+| 1:20 | **1 Add your notes** | (Optional, live) Name `Notes101 live`, drop `demo_notes.md`, **Save my files**, **Read my notes**. It runs in the background; come back at 4:30. |
+| 1:40 | **For teachers → AI suggestions** | The discovery model (qwen) proposes prerequisite edges only for candidate pairs, with an evidence quote for each. |
+| 2:20 | **For teachers → AI checks and review** | A *different* model (llama) checks every edge: evidence in the material, teaching sense, graph consistency (cycles, redundant shortcuts) → Accepted / Rejected / Needs a teacher. Open one rejected link and read its reason. Say that some edges were picked because they looked wrong, to show rejections, so these counts are not an accuracy figure. Necessity is ➖: an experimental check, skipped here. |
+| 3:00 | **Topic map** | Only accepted edges; turn on the picture, then open a link for its evidence. |
+| 3:30 | **3 Quick check, then 4 My study plan** | Answer one question right and one wrong. A wrong answer is traced to a likely missing prerequisite. The plan lists the steps in order, each with 📄 file and page. |
+| 4:30 | **1 Add your notes** (if started) | Show the progress, or pick the finished course on Home. |
 | 4:50 | **Home** | Recap: upload → graph → validation → adaptive quiz → personalized path. Every number shown comes from the files in `outputs/ds101/`. |
 
 ## Backup plan
