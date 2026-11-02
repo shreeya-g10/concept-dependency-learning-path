@@ -13,12 +13,17 @@ from pathlib import Path
 from cdlp.discovery.candidates import _mentions, _terms
 from cdlp.shared.llm import chat_json
 
-PROMPT_VERSION = "discover_v2"  # discover_v1 is kept for the record; it leaked gold pairs
+PROMPT_VERSION = "discover_v3_1"  # course runs: discover_v3 with a hash-chosen A and B
+# Asks one fixed direction per pair. Benchmark runs (--pairs) keep it unless told otherwise, so
+# RQ1 results stay comparable. discover_v1 is kept for the record; it leaked gold pairs.
+DIRECTIONAL_PROMPT_VERSION = "discover_v2"
 TEMPERATURE = 0.0
 
 # Versions that ask one neutral question per unordered pair (A before B, B before A or
 # neither), so the direction comes from the model and not from the course file order.
-NEUTRAL_PROMPT_VERSIONS = {"discover_v3"}
+NEUTRAL_PROMPT_VERSIONS = {"discover_v3", "discover_v3_1"}
+# How A and B are chosen. discover_v3's text says A is the lower ID, so it keeps that order.
+PAIR_ORDER_RULES = {"discover_v3": "lower_id_first", "discover_v3_1": "sha256_of_pair_v1"}
 NEUTRAL_ANSWERS = {"A_BEFORE_B", "B_BEFORE_A", "NEITHER"}
 # Ollama's default context is 4096 tokens; a longer prompt loses its START, which held the
 # question in discover_v2 (200 of the 237 ds101 calls). These caps keep a neutral prompt
@@ -73,7 +78,7 @@ def discover_relationship(
     target: dict,
     evidence: list[dict],
     candidate_reasons: list[str],
-    prompt_version: str = PROMPT_VERSION,
+    prompt_version: str = DIRECTIONAL_PROMPT_VERSION,
 ) -> dict:
     evidence_text = "\n".join(f"Chunk ID: {item['chunk_id']}\n{item['text']}" for item in evidence)
     prompt = load_prompt(prompt_version).format(
@@ -150,9 +155,25 @@ def select_neutral_evidence(a: dict, b: dict, chunk_map: dict) -> list[dict]:
     ]
 
 
+def neutral_order(x: dict, y: dict, prompt_version: str) -> tuple[dict, dict]:
+    """(A, B) for a pair, the same whichever way round it arrives.
+
+    Under the lower-ID rule, position follows the IDs, and IDs can correlate with the true
+    direction (every positive ds101 gold edge has the later concept first alphabetically), so
+    a model's position preference and the real answer cannot be told apart. A hash of the pair
+    makes position unrelated to the concepts, and sha256 stays the same between processes,
+    which Python's hash() does not.
+    """
+    low, high = sorted((x, y), key=lambda concept: concept["id"])
+    if PAIR_ORDER_RULES[prompt_version] == "lower_id_first":
+        return low, high
+    digest = hashlib.sha256(f"{low['id']}\0{high['id']}".encode()).digest()
+    return (high, low) if digest[0] & 1 else (low, high)
+
+
 def build_neutral_prompt(x: dict, y: dict, evidence: list[dict], prompt_version: str) -> str:
-    """The same text whichever way round the pair arrives: A is always the lower ID."""
-    a, b = sorted((x, y), key=lambda concept: concept["id"])
+    """The same text whichever way round the pair arrives: see neutral_order()."""
+    a, b = neutral_order(x, y, prompt_version)
     return load_prompt(prompt_version).format(
         a_id=a["id"],
         a_name=a["name"],
@@ -195,14 +216,18 @@ def _normalise_neutral_result(result, a: dict, b: dict, allowed_chunks: set) -> 
         ],
         "answer": answer if answer in NEUTRAL_ANSWERS and direct else "NEITHER",
         "on_topic": on_topic,
+        "pair_a": a["id"],
+        "pair_b": b["id"],
     }
 
 
 def discover_pair_neutral(
-    x: dict, y: dict, chunk_map: dict, prompt_version: str = "discover_v3"
+    x: dict, y: dict, chunk_map: dict, prompt_version: str = PROMPT_VERSION
 ) -> dict:
-    a, b = sorted((x, y), key=lambda concept: concept["id"])
-    evidence = select_neutral_evidence(a, b, chunk_map)
+    a, b = neutral_order(x, y, prompt_version)
+    # Chosen by ID, not by A and B, so a pair gets the same evidence under every order rule
+    # and a change in the answers can only come from the order.
+    evidence = select_neutral_evidence(*sorted((x, y), key=lambda c: c["id"]), chunk_map)
     prompt = build_neutral_prompt(a, b, evidence, prompt_version)
     try:
         result = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
@@ -357,5 +382,12 @@ def build_contract_relationships(
             edge["bidirectional"] = True
             edge["reverse_strength"] = relationship["reverse_strength"]
             edge["reverse_confidence"] = relationship["reverse_confidence"]
+        if "pair_a" in relationship:  # which concept was A, so a position bias can be measured
+            edge["pair_order"] = {
+                "a": relationship["pair_a"],
+                "b": relationship["pair_b"],
+                "rule": PAIR_ORDER_RULES[prompt_version],
+                "answer": relationship["answer"],
+            }
         contract.append(edge)
     return contract

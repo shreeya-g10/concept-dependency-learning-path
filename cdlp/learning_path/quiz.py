@@ -19,6 +19,11 @@ its name or an alias, at most MAX_CHUNKS. A concept with no chunk gets no items
 Bad items are skipped and counted per reason in the file's `generation` block,
 together with the model, prompt version, temperature and seed. All LLM calls go
 through cdlp.shared.llm (cached). Initial code: Vaidehi (moved from cdlp/discovery/).
+
+quiz_v2 adds a word-for-word quote, a second model (prompts/quiz_check_v2.txt) and one
+retry per topic that ends up with too few items. The checks in quiz_check_v2 were designed
+from real ds101 failures (tests/quiz_dev_examples.json). Those are development examples:
+any accuracy figure for the checks must come from questions not used to design them.
 """
 
 from __future__ import annotations
@@ -35,13 +40,23 @@ from typing import Any
 from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 from cdlp.shared.llm import chat_json
+from cdlp.shared.validate import schema_for
 
 logger = logging.getLogger(__name__)
 
 PROMPT_VERSION = "quiz_v2"
-CHECK_PROMPT_VERSION = "quiz_check_v1"
+CHECK_PROMPT_VERSION = "quiz_check_v2"  # quiz_check_v1 is kept for the record
+RETRY_PROMPT_VERSION = "quiz_retry_v1"
 CHECK_ITEMS = True  # a second model must confirm every item (quiz_v2)
 N_QUESTIONS = 4
+# Below this a topic gets one retry. One question cannot tell a slip from a real gap.
+MIN_ITEMS_PER_TOPIC = 2
+MAX_FAILURES_SHOWN = 8  # rejected questions listed in a retry prompt
+# Questions this alike ask the same thing. Short answers such as "O(log n)" are not compared:
+# two different questions can share one.
+SAME_QUESTION_OVERLAP = 0.7
+SAME_ANSWER_OVERLAP = 0.6
+MIN_ANSWER_WORDS = 4
 MIN_QUOTE_CHARS = 20
 TEMPERATURE = 0.0
 MAX_CHUNKS = 3  # evidence chunks shown per concept
@@ -56,6 +71,37 @@ LEAKED_WORDING = re.compile(
     r"|(all|none) of the above",
     re.IGNORECASE,
 )
+
+
+COMMON_WORDS = frozenset(
+    "a an and are be by can could do does for from how in is it its of on or that the their "
+    "they this to what when where which why will with would".split()
+)
+
+# What a retry prompt tells the model about each rejection reason.
+FAILURE_ADVICE = {
+    "reply_not_json": "The reply was not valid JSON.",
+    "no_items_list": 'The reply had no "items" list.',
+    "not_an_object": "An item was not a JSON object.",
+    "no_question": "The question was empty.",
+    "bad_options": "It did not have 2 to 6 non-empty options.",
+    "duplicate_options": "Two options were the same.",
+    "no_answer": 'It had no "correct_answer".',
+    "answer_not_in_options": '"correct_answer" was not the full text of one option.',
+    "mentions_the_source": "It mentioned the text or used a phrase such as 'all of the above'.",
+    "not_about_topic": "Neither the question nor the answer named the topic.",
+    "no_source_quote": '"source_quote" was missing or too short to prove anything.',
+    "quote_not_in_book": '"source_quote" was not copied word for word from one excerpt.',
+    "near_duplicate": "It asked the same thing as another question, or used the same quote.",
+    "check_reply_not_json": "A checker could not judge it. Make it simpler and clearer.",
+    "check_bad_verdicts": "A checker could not judge it. Make it simpler and clearer.",
+    "check_off_topic": "A checker found that it was really about a different topic.",
+    "check_none_true": "A checker, reading only the excerpt, found no option that was correct.",
+    "check_several_true": "A checker found more than one correct option. Make the others false.",
+    "check_disagrees": "A checker, reading only the excerpt, found a different correct option.",
+    "check_quote_other_subject": "The question and the quote were about different things.",
+    "check_quote_no_proof": "The quote did not prove the correct answer.",
+}
 
 
 def load_prompt(version: str = PROMPT_VERSION) -> str:
@@ -212,13 +258,58 @@ def focused_chunks(concept: dict, chunks: list[dict], k: int = MAX_CHUNKS) -> li
     return [chunk for _, _, chunk in sorted(scored, key=lambda x: x[:2])[:k]]
 
 
+def _name_forms(squashed: str) -> set[str]:
+    """A lowercase name with no separators, plus its plural or singular forms."""
+    forms = {squashed, squashed + "s", squashed + "es"}
+    if squashed.endswith("y"):
+        forms.add(squashed[:-1] + "ies")
+    if squashed.endswith(("ix", "ex")):
+        forms.add(squashed[:-2] + "ices")
+    if squashed.endswith("is"):
+        forms.add(squashed[:-2] + "es")
+    if squashed.endswith("ies"):
+        forms.add(squashed[:-3] + "y")
+    if squashed.endswith("ices"):
+        forms |= {squashed[:-4] + "ix", squashed[:-4] + "ex"}
+    if squashed.endswith("es"):
+        forms.add(squashed[:-2])
+    if squashed.endswith("s") and not squashed.endswith("ss"):
+        forms.add(squashed[:-1])
+    return forms
+
+
+def names_topic(text: str, concept: dict) -> bool:
+    """Does the text name the concept, or an alias, as whole words?
+
+    Spaces, hyphens, underscores and case are ignored, and plurals count, so "BinarySearchTrees"
+    and "binary-search tree" both name "Binary Search Tree". A longer word does not: "ArrayQueue"
+    does not name "Queue". A name with symbols ("C++") is matched as written.
+    """
+    words = [w.casefold() for w in re.findall(r"[^\W_]+", text)]
+    for name in [concept.get("name", ""), *concept.get("aliases", [])]:
+        squashed = re.sub(r"[\s_\-\u2010-\u2015]+", "", name).casefold()
+        if not squashed:
+            continue
+        if not squashed.isalnum():
+            if re.search(rf"(?<![^\W_]){re.escape(name.strip())}(?![^\W_])", text, re.IGNORECASE):
+                return True
+            continue
+        forms = _name_forms(squashed)
+        most_words = len(re.findall(r"[^\W_]+", name)) + 1
+        for start in range(len(words)):
+            for end in range(start + 1, min(start + most_words, len(words)) + 1):
+                if "".join(words[start:end]) in forms:
+                    return True
+    return False
+
+
 def v2_problem(raw: dict, concept: dict, evidence: list[dict]) -> str | None:
     """Why a structurally valid quiz_v2 item must be dropped, or None. No LLM involved."""
     text = " ".join([raw.get("question", ""), *raw.get("options", [])])
     if LEAKED_WORDING.search(text):
         return "mentions_the_source"
     asked = f"{raw.get('question', '')} {raw.get('answer') or raw.get('correct_answer') or ''}"
-    if not any(p.search(asked) for p in _name_patterns(concept)):
+    if not names_topic(asked, concept):
         return "not_about_topic"
     quote = raw.get("source_quote")
     if not isinstance(quote, str) or len(_norm(quote)) < MIN_QUOTE_CHARS:
@@ -228,23 +319,60 @@ def v2_problem(raw: dict, concept: dict, evidence: list[dict]) -> str | None:
     return None
 
 
+def _content_words(text: str) -> set[str]:
+    words = {w.casefold() for w in re.findall(r"[^\W_]+", text)} - COMMON_WORDS
+    return {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words}
+
+
+def _overlap(a: set[str], b: set[str]) -> float:
+    return len(a & b) / len(a | b) if a | b else 0.0
+
+
+def near_duplicate(item: dict, others: list[dict]) -> bool:
+    """Same quote, nearly the same question, or the same long answer as an item in others."""
+    question, answer = _content_words(item["question"]), _content_words(item["answer"])
+    for other in others:
+        if _norm(item["source_quote"]) == _norm(other["source_quote"]):
+            return True
+        if _overlap(question, _content_words(other["question"])) >= SAME_QUESTION_OVERLAP:
+            return True
+        other_answer = _content_words(other["answer"])
+        if min(len(answer), len(other_answer)) >= MIN_ANSWER_WORDS:
+            if _overlap(answer, other_answer) >= SAME_ANSWER_OVERLAP:
+                return True
+    return False
+
+
 def quote_chunk(quote: str, evidence: list[dict]) -> dict | None:
     """The excerpt that really contains the quote: an invented quote finds none."""
     wanted = _norm(quote)
     return next((c for c in evidence if wanted in _norm(c.get("text", ""))), None)
 
 
+def _truth(value: Any) -> bool | None:
+    """True or False from a checker's reply; None for anything else."""
+    if isinstance(value, bool):
+        return value
+    return {"true": True, "false": False}.get(str(value).strip().casefold())
+
+
 def check_item(
     item: dict, concept: dict, excerpt: str, template: str, model: str | None
 ) -> str | None:
-    """Ask a second model, which never saw the answer. Returns why it failed, or None."""
+    """Ask a second model, which is never told the answer. Returns why it failed, or None.
+
+    The model judges each option true or false from the excerpt, says which option the quote
+    proves and whether the question and quote share a subject. This code compares that with
+    the answer, so the model cannot just agree with it. A reply that cannot be read fails.
+    """
     options = sorted(item["options"], key=_norm)  # the position must not hint at the answer
-    letters = "ABCDEF"
+    letters = "ABCDEF"[: len(options)]
     prompt = template.format(
         concept_name=concept.get("name", concept["id"]),
         excerpt=excerpt[:MAX_CHUNK_CHARS],
         question=item["question"],
-        options="\n".join(f"{letters[i]}. {o}" for i, o in enumerate(options)),
+        options="\n".join(f"{letter}. {o}" for letter, o in zip(letters, options, strict=True)),
+        quote=item["source_quote"],
     )
     try:
         reply = chat_json(
@@ -254,18 +382,113 @@ def check_item(
         return "check_reply_not_json"
     if not isinstance(reply, dict):
         return "check_reply_not_json"
-    if reply.get("about_topic") is not True:
+    if _truth(reply.get("about_topic")) is not True:
         return "check_off_topic"
-    if reply.get("only_one_correct") is not True:
-        return "check_not_one_answer"
-    letter = str(reply.get("correct_letter", "")).strip().upper()[:1]
-    position = letters.find(letter) if letter else -1
-    if position < 0 or position >= len(options) or options[position] != item["answer"]:
+    raw_verdicts = reply.get("verdicts")
+    if not isinstance(raw_verdicts, dict):
+        return "check_bad_verdicts"
+    verdicts = {str(k).strip().upper(): _truth(v) for k, v in raw_verdicts.items()}
+    if set(verdicts) != set(letters) or None in verdicts.values():
+        return "check_bad_verdicts"
+    true_options = [letter for letter in letters if verdicts[letter]]
+    if not true_options:
+        return "check_none_true"
+    if len(true_options) > 1:
+        return "check_several_true"
+    answer_letter = letters[options.index(item["answer"])]
+    if true_options[0] != answer_letter:
         return "check_disagrees"
+    if _truth(reply.get("same_subject")) is not True:
+        return "check_quote_other_subject"
+    if str(reply.get("quote_proves", "")).strip().upper() != answer_letter:
+        return "check_quote_no_proof"
     return None
 
 
 # ---- generation ---------------------------------------------------------------
+
+
+def _v2_prompt(concept: dict, evidence: list[dict], template: str) -> str:
+    return template.format(
+        concept_id=concept["id"],
+        concept_name=concept.get("name", concept["id"]),
+        concept_description=concept.get("description", "") or "(none)",
+        evidence=format_evidence(evidence),
+        n_questions=N_QUESTIONS,
+    )
+
+
+def _retry_prompt(topic: dict, template: str, retry_template: str) -> str:
+    """The first prompt, plus why the drafts failed and which questions to leave alone."""
+    failures = []
+    for question, reason in topic["failures"][:MAX_FAILURES_SHOWN]:
+        advice = FAILURE_ADVICE.get(reason, "It failed a check.")  # never crash a long run
+        failures.append(f'- "{question}": {advice}' if question else f"- {advice}")
+    accepted = [f"- {item['question']}" for item in topic["items"]]
+    return retry_template.format(
+        base_prompt=_v2_prompt(topic["concept"], topic["evidence"], template),
+        concept_name=topic["concept"].get("name", topic["concept"]["id"]),
+        failures="\n".join(failures) or "(none listed)",
+        accepted="\n".join(accepted) or "(none yet)",
+        n_questions=N_QUESTIONS,
+    )
+
+
+def _ask_for_drafts(prompt: str, topic: dict, version: str, model: str | None, skipped) -> list:
+    """The reply's items list. A bad reply is counted and remembered for the retry."""
+    try:
+        reply = chat_json(prompt, model=model, temperature=TEMPERATURE, prompt_version=version)
+    except json.JSONDecodeError:
+        skipped["reply_not_json"] += 1
+        topic["failures"].append(("", "reply_not_json"))
+        logger.warning("quiz: reply for %s was not JSON; no items", topic["concept"]["id"])
+        return []
+    raw = reply.get("items") if isinstance(reply, dict) else None
+    if not isinstance(raw, list):
+        skipped["no_items_list"] += 1
+        topic["failures"].append(("", "no_items_list"))
+        return []
+    return raw
+
+
+def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
+    """Run the no-LLM checks and add the drafts that pass to the topic. Returns those drafts."""
+    concept, evidence = topic["concept"], topic["evidence"]
+    new = []
+    for one in raw:
+        question = one.get("question") if isinstance(one, dict) else None
+        problem = item_problem(one) or v2_problem(one, concept, evidence)
+        if not problem:
+            source = quote_chunk(one["source_quote"], evidence)
+            item = clean_item(
+                {**one, "evidence_chunk_ids": [source["chunk_id"]]},
+                concept["id"],
+                "",
+                [source["chunk_id"]],
+            )
+            item["source_quote"] = " ".join(one["source_quote"].split())
+            if near_duplicate(item, topic["items"]):
+                problem = "near_duplicate"
+        if problem:
+            skipped[problem] += 1
+            topic["failures"].append((question if isinstance(question, str) else "", problem))
+            continue
+        topic["numbered"] += 1
+        item["id"] = f"q_{concept['id']}_{topic['numbered']}"
+        topic["items"].append(item)
+        new.append(item)
+        topic["excerpts"][item["id"]] = source.get("text", "")
+    return new
+
+
+def _check_drafts(new: list[dict], topic: dict, template: str, model: str | None, skipped) -> None:
+    for item in new:
+        excerpt = topic["excerpts"][item["id"]]
+        problem = check_item(item, topic["concept"], excerpt, template, model)
+        if problem:
+            skipped[problem] += 1
+            topic["failures"].append((item["question"], problem))
+            topic["items"].remove(item)
 
 
 def generate_quiz_items(
@@ -282,8 +505,10 @@ def generate_quiz_items(
     """quiz_items.json for any course: one LLM call per concept that has chunks.
 
     With quiz_v2 each item must also carry a word-for-word quote from the book, and a
-    second model, shown only the excerpt, must reach the same answer. Items that fail are
-    dropped and counted, so a topic can end up with no questions: it is then not ready.
+    second model, shown only the excerpt and the quote, must judge the item sound. Items that
+    fail are dropped and counted. A topic left with fewer than MIN_ITEMS_PER_TOPIC gets one
+    retry that says why its drafts failed, and the new drafts pass the same checks. A topic
+    can still end up with no questions: it is then not ready.
     """
     prompt_version = prompt_version or PROMPT_VERSION
     check = CHECK_ITEMS if check is None else check
@@ -293,23 +518,31 @@ def generate_quiz_items(
     concepts = concepts_data["concepts"][:limit] if limit else concepts_data["concepts"]
     skipped: Counter = Counter()
     no_chunks, items = [], []
-    to_check: list[tuple[dict, dict, str]] = []
+    topics: list[dict] = []
+    new_drafts: list[tuple[list[dict], dict]] = []
     for concept in concepts:
         evidence = focused_chunks(concept, chunks) if is_v2 else concept_chunks(concept, chunks)
         if not evidence:
             no_chunks.append(concept["id"])
             continue
+        if is_v2:
+            topic = {
+                "concept": concept,
+                "evidence": evidence,
+                "items": [],
+                "failures": [],
+                "excerpts": {},
+                "numbered": 0,
+            }
+            topics.append(topic)
+            raw = _ask_for_drafts(
+                _v2_prompt(concept, evidence, template), topic, prompt_version, model, skipped
+            )
+            new_drafts.append((_take_drafts(raw, topic, skipped), topic))
+            continue
         try:
             reply = chat_json(
-                build_prompt(concept, evidence, template)
-                if not is_v2
-                else template.format(
-                    concept_id=concept["id"],
-                    concept_name=concept.get("name", concept["id"]),
-                    concept_description=concept.get("description", "") or "(none)",
-                    evidence=format_evidence(evidence),
-                    n_questions=N_QUESTIONS,
-                ),
+                build_prompt(concept, evidence, template),
                 model=model,
                 temperature=TEMPERATURE,
                 prompt_version=prompt_version,
@@ -319,41 +552,41 @@ def generate_quiz_items(
             logger.warning("quiz: reply for %s was not JSON; no items", concept["id"])
             continue
         raw = reply.get("items") if isinstance(reply, dict) else None
-        if not is_v2:
-            items += clean_and_filter_quiz_items(
-                raw, concept["id"], [c["chunk_id"] for c in evidence], skipped
-            )
-            continue
-        if not isinstance(raw, list):
-            skipped["no_items_list"] += 1
-            continue
-        number = 0
-        for one in raw:
-            problem = item_problem(one) or v2_problem(one, concept, evidence)
-            if problem:
-                skipped[problem] += 1
-                continue
-            number += 1
-            source = quote_chunk(one["source_quote"], evidence)
-            item = clean_item(
-                {**one, "evidence_chunk_ids": [source["chunk_id"]]},
-                concept["id"],
-                f"q_{concept['id']}_{number}",
-                [source["chunk_id"]],
-            )
-            item["source_quote"] = " ".join(one["source_quote"].split())
-            items.append(item)
-            to_check.append((item, concept, source.get("text", "")))
+        items += clean_and_filter_quiz_items(
+            raw, concept["id"], [c["chunk_id"] for c in evidence], skipped
+        )
     checked = 0
-    if is_v2 and check:
-        # Second pass, so the two models are not swapped in and out of memory per concept.
-        check_template = load_prompt(CHECK_PROMPT_VERSION)
-        for item, concept, excerpt in to_check:
-            checked += 1
-            problem = check_item(item, concept, excerpt, check_template, check_model)
-            if problem:
-                skipped[problem] += 1
-                items.remove(item)
+    retried: list[str] = []
+    skipped_first_try: Counter = Counter()
+    if is_v2:
+        check_template = load_prompt(CHECK_PROMPT_VERSION) if check else ""
+
+        def run_checks(batches: list[tuple[list[dict], dict]]) -> int:
+            # Run after all the drafts, so the two models are not swapped per concept.
+            count = 0
+            if check:
+                for new, topic in batches:
+                    count += len(new)
+                    _check_drafts(new, topic, check_template, check_model, skipped)
+            return count
+
+        checked += run_checks(new_drafts)
+        skipped_first_try = Counter(skipped)
+        retry_template = load_prompt(RETRY_PROMPT_VERSION)
+        retry_batches = []
+        for topic in topics:
+            if len(topic["items"]) < MIN_ITEMS_PER_TOPIC:
+                retried.append(topic["concept"]["id"])
+                raw = _ask_for_drafts(
+                    _retry_prompt(topic, template, retry_template),
+                    topic,
+                    RETRY_PROMPT_VERSION,
+                    model,
+                    skipped,
+                )
+                retry_batches.append((_take_drafts(raw, topic, skipped), topic))
+        checked += run_checks(retry_batches)
+        items = [item for topic in topics for item in topic["items"]]
     return {
         "schema_version": SCHEMA_VERSION,
         "course_id": course_id or concepts_data["course_id"],
@@ -367,14 +600,25 @@ def generate_quiz_items(
             "check_model": (check_model or llm.DEFAULT_MODEL) if is_v2 and check else None,
             "check_prompt_version": CHECK_PROMPT_VERSION if is_v2 and check else None,
             "items_checked": checked,
+            "min_items_per_topic": MIN_ITEMS_PER_TOPIC if is_v2 else None,
+            "retry_prompt_version": RETRY_PROMPT_VERSION if is_v2 else None,
+            "topics_retried": retried,
             "concepts": len(concepts),
             "concepts_without_chunks": no_chunks,
             "concepts_without_items": sorted(
                 {c["id"] for c in concepts} - {i["concept_id"] for i in items} - set(no_chunks)
             ),
-            "skipped": dict(sorted(skipped.items())),
+            "skipped": dict(sorted(skipped.items())),  # every attempt, retries included
+            "skipped_on_retry": dict(sorted((skipped - skipped_first_try).items())),
         },
     }
+
+
+def _contract_of(path: Path) -> str | None:
+    try:
+        return schema_for(path)
+    except ValueError:
+        return None
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -393,6 +637,8 @@ def main(argv: list[str] | None = None) -> None:
         help="only concepts on ACCEPT edges of this validated_graph.json (fewer LLM calls)",
     )
     args = parser.parse_args(argv)
+    if _contract_of(args.out) != "quiz_items":  # before any LLM call: saving is the last step
+        parser.error(f"--out {args.out}: the file name must end in quiz_items.json")
     concepts_data = read_json(args.concepts)
     if args.only_graph:
         accepted = {
@@ -416,6 +662,7 @@ def main(argv: list[str] | None = None) -> None:
     print(
         f"quiz: {len(quiz['items'])} items for {g['concepts']} concepts -> {args.out}; "
         f"dropped {sum(g['skipped'].values())} items {g['skipped']}, "
+        f"retried {len(g['topics_retried'])} topics, "
         f"{len(g['concepts_without_chunks'])} concepts had no chunks"
     )
 

@@ -1,0 +1,77 @@
+You are an expert in educational prerequisite analysis. You will compare two concepts from one course, called A and B.
+
+A and B are in an arbitrary order, fixed by a hash of their IDs. That order says nothing about which concept is learned first.
+
+POSSIBLE ANSWERS
+
+A_BEFORE_B: A is a direct prerequisite of B.
+B_BEFORE_A: B is a direct prerequisite of A.
+NEITHER: there is no direct prerequisite either way.
+
+STRENGTH (for A_BEFORE_B or B_BEFORE_A)
+
+HARD: the later concept is defined in terms of the earlier one, or cannot reasonably be understood without it.
+SOFT: the earlier concept clearly helps, but the later one can still be learned without it. Choose SOFT whenever the later concept can be learned without the earlier one.
+NONE: use exactly when the answer is NEITHER.
+
+CONFIDENCE
+
+HIGH: the evidence states the dependency outright.
+MEDIUM: the evidence implies it.
+LOW: the evidence is thin and you are mostly reasoning from the meaning of the concepts.
+
+EXAMPLES (from an unrelated cooking course, to show the reasoning only)
+
+A "Bechamel Sauce", B "Roux". A bechamel is defined as milk thickened with a roux.
+Answer: B_BEFORE_A, HARD, HIGH.
+
+A "Knife Skills", B "Stir-Frying". Knife skills help, but a stir-fry can be made with ready-cut vegetables.
+Answer: A_BEFORE_B, SOFT, MEDIUM.
+
+A "Pasta Dough", B "Ravioli". Ravioli are parcels made from pasta dough.
+Answer: A_BEFORE_B, HARD, HIGH.
+
+A "Risotto", B "Stock Making". Good stock helps, but risotto can be learned with shop-bought stock.
+Answer: B_BEFORE_A, SOFT, LOW.
+
+A "Mornay Sauce", B "Roux". A mornay needs a roux only through the bechamel between them.
+Answer: NEITHER, NONE, MEDIUM. An indirect prerequisite is not a direct one.
+
+A "Proofing Yeast", B "Searing Meat". Both are taught in the same week, but neither needs the other.
+Answer: NEITHER, NONE, HIGH. Being taught together, being similar or being taught earlier is not a prerequisite.
+
+RULES
+
+1. Judge direct prerequisites only, and only between the two concepts below.
+2. The evidence is background and may discuss other concepts. Never answer about those concepts.
+3. Do not use the order of the evidence, or the file and chapter names in it, as a sign of which concept comes first.
+4. evidence_chunk_ids must be Chunk IDs copied from the COURSE EVIDENCE. Use an empty list if no chunk supports your answer.
+5. Return only valid JSON, with no text before or after it.
+
+COURSE EVIDENCE:
+{evidence}
+
+THE TWO CONCEPTS TO COMPARE
+
+A
+ID: {a_id}
+Name: {a_name}
+Description: {a_description}
+
+B
+ID: {b_id}
+Name: {b_name}
+Description: {b_description}
+
+QUESTION
+
+Is A a direct prerequisite of B, is B a direct prerequisite of A, or neither?
+
+Return exactly these fields:
+
+a: the ID of A, copied from above
+b: the ID of B, copied from above
+answer: A_BEFORE_B, B_BEFORE_A, or NEITHER
+strength: HARD, SOFT, or NONE
+confidence: HIGH, MEDIUM, or LOW
+evidence_chunk_ids: a list of Chunk IDs

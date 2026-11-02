@@ -1,0 +1,29 @@
+You are checking a quiz question before a student sees it. Use only the excerpt and the quote below, not your own memory.
+
+TOPIC:
+{concept_name}
+
+EXCERPT FROM THE STUDENT'S BOOK:
+{excerpt}
+
+QUESTION:
+{question}
+
+OPTIONS:
+{options}
+
+QUOTE OFFERED AS PROOF:
+{quote}
+
+Answer each part below.
+
+1. "verdicts": judge every option on its own, without comparing it to the other options. Give true if the excerpt shows it is a correct answer to the question, otherwise false. An option that is less detailed than another but still correct is true. More than one option can be true, and all of them can be false. Do not try to find one winner.
+
+2. "quote_proves": the letter of the one option that the quote, read alone, proves. Write "NONE" if the quote does not prove any option, for example if it is on a related point but does not state the answer.
+
+3. "same_subject": false if the question and the quote are about different things, otherwise true. For example, a question about a pressure cooker with a quote about a slow cooker is false, even if the two work in a similar way.
+
+4. "about_topic": false if the question is really about something other than the topic, otherwise true.
+
+Return only JSON in this form, with one verdict for every option listed above:
+{{"verdicts": {{"<letter>": true or false}}, "quote_proves": "<letter or NONE>", "same_subject": true or false, "about_topic": true or false}}

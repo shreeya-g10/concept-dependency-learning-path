@@ -74,8 +74,15 @@ def evaluate(relationships: list[dict], gold: list[dict]) -> dict:
     }
 
 
+def prompt_version_of(relationships: list[dict]) -> str:
+    """The prompt the edges record ("llm_discover_v3_1"), so results never name a default."""
+    methods = {str(r.get("method", "")) for r in relationships}
+    method = methods.pop() if len(methods) == 1 else ""
+    return method.removeprefix("llm_") if method.startswith("llm_") else "unknown"
+
+
 def main() -> None:
-    from cdlp.discovery.llm_discovery import PROMPT_VERSION, TEMPERATURE
+    from cdlp.discovery.llm_discovery import TEMPERATURE
     from cdlp.shared.io import read_json
     from cdlp.shared.llm import DEFAULT_MODEL, DEFAULT_SEED, PROVIDER
 
@@ -86,7 +93,7 @@ def main() -> None:
         "--out", type=Path, default=Path(__file__).parent / "results/evaluation.json"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="model that produced the edges")
-    parser.add_argument("--prompt-version", default=PROMPT_VERSION)
+    parser.add_argument("--prompt-version", help="default: the method the edges record")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="LLM seed used")
     args = parser.parse_args()
 
@@ -100,7 +107,7 @@ def main() -> None:
             "gold": str(args.gold),
             "provider": PROVIDER,
             "model": args.model,
-            "prompt_version": args.prompt_version,
+            "prompt_version": args.prompt_version or prompt_version_of(data["relationships"]),
             "temperature": TEMPERATURE,
             "seed": args.seed,
             "date": datetime.now(timezone.utc).isoformat(timespec="seconds"),

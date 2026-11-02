@@ -1,0 +1,236 @@
+{
+  "_about": "Real quiz_v2 drafts from the ds101 review run (2026-11-03), used to DESIGN quiz_check_v2 and the name and near-duplicate checks. These are development examples, not a test set: no accuracy figure may come from them. quiz_check_v1_reply is what the old check really answered (null: dropped before the check).",
+  "concepts": {
+    "graph": {
+      "id": "graph",
+      "name": "Graph",
+      "aliases": [
+        "Graph Interface",
+        "Graph Traversal",
+        "Graphs"
+      ]
+    },
+    "rotation": {
+      "id": "rotation",
+      "name": "Rotation",
+      "aliases": [
+        "Rotations"
+      ]
+    },
+    "binary_search_tree": {
+      "id": "binary_search_tree",
+      "name": "Binary Search Tree",
+      "aliases": [
+        "BST",
+        "Binary Search Trees"
+      ]
+    },
+    "avl_tree": {
+      "id": "avl_tree",
+      "name": "AVL Tree",
+      "aliases": [
+        "AVL",
+        "AVL Trees",
+        "AVL_Tree",
+        "Adelson_Velskii_and_Landis_Tree"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "concept_id": "graph",
+      "note": "several options are true",
+      "draft": {
+        "question": "What is a graph in mathematics?",
+        "options": [
+          "A set of vertices and edges",
+          "A set of vertices and edges where each edge is an ordered pair of vertices",
+          "A set of vertices and edges where each edge is an unordered pair of vertices",
+          "A set of vertices and edges where each edge is a single vertex"
+        ],
+        "correct_answer": "A set of vertices and edges where each edge is an ordered pair of vertices",
+        "source_quote": "Mathematically, a (directed) graph is a pair G = (V ,E) where V is a set of vertices and E is a set of ordered pairs of vertices called edges.",
+        "chunk_id": "ch_ods_ch12_graphs_p1_0"
+      },
+      "chunk_id": "ch_ods_ch12_graphs_p1_0",
+      "excerpt": "In this chapter, we study two representations of graphs and basic algo-\nrithms that use these representations.\nMathematically, a (directed) graph is a pair G = (V ,E) where V is a set\nof vertices and E is a set of ordered pairs of vertices called edges. An edge\n(i,j) is directed from i to j; i is called the source of the edge and j is called\nthe target. A path in G is a sequence of vertices v0,...,vk such that, for\nevery i ∈{1,...,k}, the edge (vi−1,vi) is in E. A path v0,...,vk is a cycle if,\nadditionally, the edge (vk,v0) is in E. A path (or cycle) is simple if all of its\nvertices are unique. If there is a path from some vertex vi to some vertex\nvj then we say that vj is reachable from vi. An example of a graph is shown\nin Figure 12.1.\nDue to their ability to model so many phenomena, graphs have an\nenormous number of applications. There are many obvious examples.\nComputer networks can be modelled as graphs, with vertices correspond-\ning to computers and edges corresponding to (directed) communication\nlinks between those computers. City streets can be modelled as graphs,\nwith vertices representing intersections and edges representing streets\njoining consecutive intersections.\nLess",
+      "quiz_check_v1_reply": {
+        "correct_letter": "C",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "rotation",
+      "note": "says red-black tree, quotes the AVL section",
+      "draft": {
+        "question": "What does rotation do in a red-black tree?",
+        "options": [
+          "It changes the color of nodes",
+          "It rearranges nodes to maintain balance",
+          "It splits nodes into two",
+          "It merges nodes into one"
+        ],
+        "correct_answer": "It rearranges nodes to maintain balance",
+        "source_quote": "The key to making the AVL tree work is to alter the insert and delete routines so as to maintain the balance property.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "chunk_id": "ch_opendsa_avl_trees_md_p1_0",
+      "excerpt": "The AVL tree (named for its inventors Adelson-Velskii and Landis)\nshould be viewed as a BST with the following additional property:\nFor every node, the heights of its left and right subtrees differ by\nat most 1.\nAs long as the tree maintains this property, if the tree contains\nn nodes, then it has a depth of at most O(\\log n).\nAs a result, search for any node will cost O(\\log n),\nand if the updates can be done in time proportional to the depth of\nthe node inserted or deleted, then updates will also cost\nO(\\log n), even in the worst case.\n\nThe key to making the AVL tree work is to alter the insert and delete\nroutines so as to maintain the balance property.\nOf course, to be practical, we must be able to implement the revised\nupdate routines in \\Theta(\\log n) time.\n\nConsider what happens when we insert a node with key value 5,\nas shown in the figure.\nThe tree on the left meets the AVL tree balance requirements.\nAfter the insertion, two nodes no longer meet the requirements.\nBecause the original tree met the balance requirement, nodes in the\nnew tree can only be unbalanced by a difference of at most 2 in the\nsubtrees.\nFor the bottommost unbalanced node, call it S, there are 4\ncases:\nTh",
+      "quiz_check_v1_reply": {
+        "correct_letter": "C",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "rotation",
+      "note": "says red-black tree, quotes the AVL section",
+      "draft": {
+        "question": "When might a rotation be needed in a red-black tree?",
+        "options": [
+          "After every insertion",
+          "When a node becomes unbalanced",
+          "During a leaf addition",
+          "When the tree is fully balanced"
+        ],
+        "correct_answer": "When a node becomes unbalanced",
+        "source_quote": "For the bottommost unbalanced node, call it S, there are 4 cases",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "chunk_id": "ch_opendsa_avl_trees_md_p1_0",
+      "excerpt": "The AVL tree (named for its inventors Adelson-Velskii and Landis)\nshould be viewed as a BST with the following additional property:\nFor every node, the heights of its left and right subtrees differ by\nat most 1.\nAs long as the tree maintains this property, if the tree contains\nn nodes, then it has a depth of at most O(\\log n).\nAs a result, search for any node will cost O(\\log n),\nand if the updates can be done in time proportional to the depth of\nthe node inserted or deleted, then updates will also cost\nO(\\log n), even in the worst case.\n\nThe key to making the AVL tree work is to alter the insert and delete\nroutines so as to maintain the balance property.\nOf course, to be practical, we must be able to implement the revised\nupdate routines in \\Theta(\\log n) time.\n\nConsider what happens when we insert a node with key value 5,\nas shown in the figure.\nThe tree on the left meets the AVL tree balance requirements.\nAfter the insertion, two nodes no longer meet the requirements.\nBecause the original tree met the balance requirement, nodes in the\nnew tree can only be unbalanced by a difference of at most 2 in the\nsubtrees.\nFor the bottommost unbalanced node, call it S, there are 4\ncases:\nTh",
+      "quiz_check_v1_reply": {
+        "correct_letter": "C",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "rotation",
+      "note": "says red-black tree, quotes the AVL section; same quote as rotation question 1",
+      "draft": {
+        "question": "What is the purpose of rotation in a red-black tree?",
+        "options": [
+          "To increase the tree's height",
+          "To maintain the balance property",
+          "To change the tree's color",
+          "To sort the nodes alphabetically"
+        ],
+        "correct_answer": "To maintain the balance property",
+        "source_quote": "The key to making the AVL tree work is to alter the insert and delete routines so as to maintain the balance property.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "chunk_id": "ch_opendsa_avl_trees_md_p1_0",
+      "excerpt": "The AVL tree (named for its inventors Adelson-Velskii and Landis)\nshould be viewed as a BST with the following additional property:\nFor every node, the heights of its left and right subtrees differ by\nat most 1.\nAs long as the tree maintains this property, if the tree contains\nn nodes, then it has a depth of at most O(\\log n).\nAs a result, search for any node will cost O(\\log n),\nand if the updates can be done in time proportional to the depth of\nthe node inserted or deleted, then updates will also cost\nO(\\log n), even in the worst case.\n\nThe key to making the AVL tree work is to alter the insert and delete\nroutines so as to maintain the balance property.\nOf course, to be practical, we must be able to implement the revised\nupdate routines in \\Theta(\\log n) time.\n\nConsider what happens when we insert a node with key value 5,\nas shown in the figure.\nThe tree on the left meets the AVL tree balance requirements.\nAfter the insertion, two nodes no longer meet the requirements.\nBecause the original tree met the balance requirement, nodes in the\nnew tree can only be unbalanced by a difference of at most 2 in the\nsubtrees.\nFor the bottommost unbalanced node, call it S, there are 4\ncases:\nTh",
+      "quiz_check_v1_reply": {
+        "correct_letter": "C",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "rotation",
+      "note": "the quote is about black node counts and never mentions rotation",
+      "draft": {
+        "question": "How does rotation affect the height of a red-black tree?",
+        "options": [
+          "It always increases the height",
+          "It can increase or decrease the height",
+          "It does not affect the height",
+          "It always decreases the height"
+        ],
+        "correct_answer": "It can increase or decrease the height",
+        "source_quote": "The ﬁrst and last node in this path are black and at most one out of every two internal nodes is red, so this path has at most log(n + 1) black nodes and at most log(n + 1) −1 red nodes.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p8_0"
+      },
+      "chunk_id": "ch_ods_ch09_red_black_trees_p8_0",
+      "excerpt": "length. In other words, T ′ is a 2-4 tree!\nThe 2-4 tree T ′ has n + 1 leaves that correspond to the n + 1 external\nnodes of the red-black tree. Therefore, this tree has height at most log(n+\n1). Now, every root to leaf path in the 2-4 tree corresponds to a path\nfrom the root of the red-black tree T to an external node. The ﬁrst and\nlast node in this path are black and at most one out of every two internal\nnodes is red, so this path has at most log(n + 1) black nodes and at most\nlog(n + 1) −1 red nodes. Therefore, the longest path from the root to any\ninternal node in T is at most\n2log(n + 1) −2 ≤2logn ,\nfor any n ≥1. This proves the most important property of red-black trees:\nLemma 9.2. The height of red-black tree with n nodes is at most 2logn.\nNow that we have seen the relationship between 2-4 trees and red-\nblack trees, it is not hard to believe that we can eﬃciently maintain a\nred-black tree while adding and removing elements.\nWe have already seen that adding an element in a BinarySearchTree\ncan be done by adding a new leaf. Therefore, to implement add(x) in a\nred-black tree we need a method of simulating splitting a node with ﬁve\nchildren in a 2-4 tree. A 2-4 tree node with ﬁv",
+      "quiz_check_v1_reply": {
+        "correct_letter": "A",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "note": "written as \"BinarySearchTree\"",
+      "draft": {
+        "question": "What is the binary search tree property in a BinarySearchTree?",
+        "options": [
+          "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+          "Every node stores a data value and the data values in the left subtree are greater than the node’s value while the data values in the right subtree are less.",
+          "Every node stores a data value and the data values in both left and right subtrees are equal to the node’s value.",
+          "Every node stores a data value and the data values in the left subtree are greater than or equal to the node’s value while the data values in the right subtree are less than or equal to the node’s value."
+        ],
+        "correct_answer": "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+        "source_quote": "the data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "quiz_check_v1_reply": {
+        "correct_letter": "A",
+        "only_one_correct": true,
+        "about_topic": true
+      }
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "note": "written as \"BinarySearchTree\"",
+      "draft": {
+        "question": "What can happen to a BinarySearchTree?",
+        "options": [
+          "It can become unbalanced, leading to slower search times.",
+          "It can only have nodes with two children.",
+          "It can only store numerical data values.",
+          "It can only be used for storing strings."
+        ],
+        "correct_answer": "It can become unbalanced, leading to slower search times.",
+        "source_quote": "A BinarySearchTree is a special kind of binary tree in which each node, u, also stores a data value, u.x, from some total order. The data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x. An example of a BinarySearchTree is shown in Figure 6.5.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "quiz_check_v1_reply": null
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "note": "written as \"BinarySearchTree\"",
+      "draft": {
+        "question": "What is a potential problem with BinarySearchTrees?",
+        "options": [
+          "They can become unbalanced, leading to slower search times.",
+          "They can only store integer values.",
+          "They can only be used for storing boolean values.",
+          "They can only be used for storing character values."
+        ],
+        "correct_answer": "They can become unbalanced, leading to slower search times.",
+        "source_quote": "The Binary Search Tree <BST> <BST> has a serious deficiency for practical use as a search structure. That is the fact that it can easily become unbalanced, so that some nodes are deep in the tree.",
+        "chunk_id": "ch_opendsa_balanced_trees_md_p1_0"
+      },
+      "chunk_id": "ch_opendsa_balanced_trees_md_p1_0",
+      "excerpt": "The Binary Search Tree <BST> <BST> has a serious deficiency for\npractical use as a search structure.\nThat is the fact that it can easily become unbalanced, so that some\nnodes are deep in the tree.\nIn fact, it is possible for a BST with n nodes to have a depth\nof n, making it no faster to search in the worst case than a\nlinked list.\nIf we could keep the tree balanced in some way, then search cost would\nonly be \\Theta(\\log n), a huge improvement.\n\nOne solution to this problem is to adopt another search\ntree structure instead of using a BST at all.\nAn example of such an alternative tree structure is the\n2-3 Tree <2-3 Tree> <TwoThreeTree>\nor the B-Tree <B-tree> <BTree>.\nBut another alternative would be to modify the BST access functions in\nsome way to guarantee that the tree performs well.\nThis is an appealing concept, and the concept works well for heaps,\nwhose access functions maintain the heap in the shape of a complete\nbinary tree.\nUnfortunately, the heap keeps its balanced shape at the cost of weaker\nrestrictions on the relative values of a node and its children, making\nit a bad search structure.\nAnd requiring that the BST always be in the shape of a\ncomplete binary tree requires ",
+      "quiz_check_v1_reply": null
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "note": "written as \"BinarySearchTree\"",
+      "draft": {
+        "question": "What is an example of a BinarySearchTree?",
+        "options": [
+          "A tree where nodes can have up to four children.",
+          "A tree where nodes can have up to two children.",
+          "A tree where nodes can have any number of children.",
+          "A tree where nodes can have no children."
+        ],
+        "correct_answer": "A tree where nodes can have up to two children.",
+        "source_quote": "An example of a BinarySearchTree is shown in Figure 6.5.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "quiz_check_v1_reply": null
+    }
+  ]
+}
