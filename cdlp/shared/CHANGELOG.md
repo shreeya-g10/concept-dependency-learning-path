@@ -10,12 +10,14 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 
 ## 1.7
 
-- `concepts.json` may carry two new optional top-level fields written by `cdlp.extraction`:
+- `concepts.json` may carry four new optional top-level fields written by `cdlp.extraction`:
+  - `extraction_method`: `llm`, `rule_based` (the built-in keyword catalog for every chunk, only with `--allow-rule-based`) or `mixed`.
+  - `extraction_fallback_chunks`: ids of the chunks whose concepts came from the catalog because the LLM failed for them.
   - `dedup_method`: `embedding` (sentence embeddings, the default), `tfidf` or `jaccard` (fallbacks, used only with `--allow-tfidf`), or `mixed` (more than one in a run).
   - `dedup_comparisons`: fuzzy name comparisons per method, plus `embedding_failed`.
   Extraction writes `schema_version` 1.7. Example: `examples/concepts.json`.
-- Not a contract change: without the embedding model, extraction now fails (exit 2) unless `--allow-tfidf` is given (`pipeline.py --allow-tfidf` passes it on). Before, it silently compared names with TF-IDF.
-- Purely additive: two new optional fields. Older files stay valid.
+- Not a contract change: without the embedding model, extraction now fails (exit 2) unless `--allow-tfidf` is given. Before, it silently compared names with TF-IDF. Without a reachable LLM, or when more than 20% of chunks fell back to the catalog, it fails (exit 2) unless `--allow-rule-based` is given. With course files present, a parse or extraction error exits 1 instead of writing the example files. `pipeline.py` passes both flags on.
+- Purely additive: four new optional fields. Older files stay valid.
 
 ## 1.5
 

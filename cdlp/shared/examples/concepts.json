@@ -1,6 +1,8 @@
 {
   "schema_version": "1.0",
   "course_id": "ds101",
+  "extraction_method": "llm",
+  "extraction_fallback_chunks": [],
   "dedup_method": "embedding",
   "dedup_comparisons": {
     "embedding": 14

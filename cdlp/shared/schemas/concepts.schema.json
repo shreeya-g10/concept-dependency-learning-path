@@ -67,6 +67,21 @@
         }
       }
     },
+    "extraction_method": {
+      "enum": [
+        "llm",
+        "rule_based",
+        "mixed"
+      ],
+      "description": "added in 1.7: where the concepts came from. llm = every chunk from the LLM; rule_based = the built-in keyword catalog for every chunk (only with --allow-rule-based); mixed = the catalog for the chunks in extraction_fallback_chunks."
+    },
+    "extraction_fallback_chunks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "added in 1.7: ids of the chunks whose concepts came from the keyword catalog because the LLM failed for them."
+    },
     "dedup_method": {
       "enum": [
         "embedding",

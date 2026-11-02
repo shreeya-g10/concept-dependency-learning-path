@@ -15,7 +15,7 @@ from cdlp.extraction.extract import (
     fallback_method,
 )
 from cdlp.extraction.parse import clean_page, looks_like_heading, running_lines
-from cdlp.shared.validate import check
+from cdlp.shared.validate import check, check_file
 
 # ---- headings -----------------------------------------------------------------------
 
@@ -148,6 +148,7 @@ def no_llm(monkeypatch):
         return extract.fallback_extract(c)
 
     monkeypatch.setattr(extract, "extract_concepts_from_chunk", fake)
+    monkeypatch.setattr(extract, "is_llm_available", lambda: True)
     return calls
 
 
@@ -202,6 +203,7 @@ def test_cli_exits_2_instead_of_writing_example_concepts(tmp_path, monkeypatch):
     pytest.importorskip("pymupdf")
     from cdlp.extraction import __main__ as cli
 
+    monkeypatch.setattr(extract, "is_llm_available", lambda: True)
     monkeypatch.setattr(extract, "get_embedder", lambda: None)
     fixtures = "cdlp/extraction/tests/fixtures"
     monkeypatch.setattr(sys, "argv", ["x", "--input", fixtures, "--out-dir", str(tmp_path)])
@@ -209,3 +211,117 @@ def test_cli_exits_2_instead_of_writing_example_concepts(tmp_path, monkeypatch):
         cli.main()
     assert exit_info.value.code == 2
     assert not (tmp_path / "concepts.json").exists()  # no silent example fallback
+
+
+# ---- concepts never come silently from the keyword catalog ----------------------------
+
+TEN = [chunk(i, f"Binary trees and heaps, part {i}.") for i in range(1, 11)]
+
+
+@pytest.fixture
+def llm(monkeypatch):
+    """A fake LLM that fails for the chunk ids in `failing`."""
+    state = {"failing": set(), "calls": []}
+
+    def chat_json(prompt, **kwargs):
+        cid = next(c["chunk_id"] for c in TEN + CHUNKS if c["text"] in prompt)
+        state["calls"].append(cid)
+        if cid in state["failing"]:
+            raise ConnectionError("Ollama stopped")
+        return {"concepts": [{"id": "binary_tree", "name": "Binary Trees", "aliases": []}]}
+
+    monkeypatch.setattr(extract, "chat_json", chat_json)
+    monkeypatch.setattr(extract, "is_llm_available", lambda: True)
+    monkeypatch.setattr(extract, "get_embedder", lambda: FakeEmbedder())
+    return state
+
+
+def test_unreachable_llm_fails_before_extraction(monkeypatch, llm):
+    monkeypatch.setattr(extract, "is_llm_available", lambda: False)
+    with pytest.raises(extract.ExtractionError, match="--allow-rule-based"):
+        extract_concepts_from_chunks(TEN)
+    assert llm["calls"] == []
+
+
+def test_allowed_rule_based_run_is_loud_and_recorded(monkeypatch, llm, capsys):
+    monkeypatch.setattr(extract, "is_llm_available", lambda: False)
+    result = extract_concepts_from_chunks(TEN, allow_rule_based=True)
+    assert "WARNING: No LLM is reachable" in capsys.readouterr().err
+    assert result["extraction_method"] == "rule_based"
+    assert result["extraction_fallback_chunks"] == [c["chunk_id"] for c in TEN]
+    assert check(result, "concepts") == []
+
+
+def test_a_few_failed_chunks_are_recorded_not_fatal(llm, capsys):
+    llm["failing"] = {"c3"}
+    result = extract_concepts_from_chunks(TEN)
+    assert result["extraction_method"] == "mixed"
+    assert result["extraction_fallback_chunks"] == ["c3"]
+    assert "1 of 10 chunks (10%)" in capsys.readouterr().err
+
+
+def test_many_failed_chunks_fail_the_run(llm):
+    llm["failing"] = {"c1", "c2", "c3"}  # 30% > 20%
+    with pytest.raises(extract.ExtractionError, match="3 of 10 chunks"):
+        extract_concepts_from_chunks(TEN)
+    result = extract_concepts_from_chunks(TEN, allow_rule_based=True)
+    assert result["extraction_method"] == "mixed"
+
+
+def test_an_empty_concept_list_is_an_answer_not_a_failure(monkeypatch, llm):
+    monkeypatch.setattr(extract, "chat_json", lambda *a, **k: {"concepts": []})
+    extract.FALLBACK_CHUNKS.clear()
+    assert extract.extract_concepts_from_chunk(TEN[0]) == []
+    assert extract.FALLBACK_CHUNKS == []
+
+
+def test_llm_only_run_is_recorded(llm):
+    result = extract_concepts_from_chunks(TEN)
+    assert result["extraction_method"] == "llm" and result["extraction_fallback_chunks"] == []
+
+
+def run_cli(monkeypatch, *args):
+    from cdlp.extraction import __main__ as cli
+
+    monkeypatch.setattr(sys, "argv", ["x", *map(str, args)])
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+    return exit_info.value.code
+
+
+def test_cli_with_course_files_and_no_llm_exits_2_and_writes_no_examples(tmp_path, monkeypatch):
+    pytest.importorskip("pymupdf")
+    monkeypatch.setattr(extract, "is_llm_available", lambda: False)
+    fixtures = "cdlp/extraction/tests/fixtures"
+    assert run_cli(monkeypatch, "--input", fixtures, "--out-dir", tmp_path) == 2
+    assert not (tmp_path / "concepts.json").exists()
+    chunks = (tmp_path / "chunks.jsonl").read_text()
+    assert "ds_lec" in chunks and "ch_l5_p03" not in chunks  # real chunks, not the examples
+
+
+def test_cli_parse_error_exits_1(tmp_path, monkeypatch):
+    from cdlp.extraction import __main__ as cli
+
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "broken.pdf").write_bytes(b"not a pdf")
+
+    def boom(*a, **k):
+        raise ValueError("cannot open broken.pdf")
+
+    monkeypatch.setattr(cli, "parse_directory", boom)
+    assert run_cli(monkeypatch, "--input", tmp_path / "in", "--out-dir", tmp_path / "out") == 1
+    assert not (tmp_path / "out" / "chunks.jsonl").exists()
+
+
+def test_cli_without_course_files_writes_the_examples(tmp_path):
+    import subprocess
+
+    (tmp_path / "in").mkdir()
+    (tmp_path / "in" / "README.md").write_text("docs only")
+    out = tmp_path / "out"
+    subprocess.run(
+        [sys.executable, "-m", "cdlp.extraction", "--input", tmp_path / "in", "--out-dir", out],
+        check=True,
+    )
+    assert "ch_l5_p03" in (out / "chunks.jsonl").read_text()
+    assert check_file(out / "concepts.json") == []

@@ -9,6 +9,18 @@ Jaccard without scikit-learn). That changes which concepts merge, so it is never
 extract_concepts_from_chunks() raises DedupError unless allow_tfidf=True (CLI:
 --allow-tfidf), prints a loud warning when it is allowed, and records the method used in
 concepts.json (`dedup_method`, `dedup_comparisons`; contract 1.7).
+
+Concepts come from the LLM. The rule-based keyword catalog (fallback_extract) is used
+only where the LLM failed, and never silently:
+- LLM unreachable before the run: ExtractionError, unless allow_rule_based=True (CLI:
+  --allow-rule-based), which uses the catalog for every chunk with a loud warning.
+- LLM error or malformed reply for a chunk: that chunk uses the catalog, its id is
+  recorded in `extraction_fallback_chunks`, and a warning is printed. If more than
+  MAX_FALLBACK_SHARE of the chunks fell back (e.g. Ollama stopped mid-run), the run
+  fails unless allow_rule_based=True. (Failing on one bad reply would make a re-run
+  fail too, because replies are cached.)
+- An empty concept list is a valid answer (a chunk with no concepts), not a failure.
+`extraction_method` records llm / rule_based / mixed.
 """
 
 from __future__ import annotations
@@ -79,8 +91,16 @@ DEDUP_COUNTS: Counter = Counter()
 SCHEMA_VERSION = "1.7"  # 1.7: dedup_method, dedup_comparisons
 
 
-class DedupError(RuntimeError):
+class ExtractionError(RuntimeError):
+    """Concepts could not come from the LLM and the rule-based fallback was not allowed."""
+
+
+class DedupError(ExtractionError):
     """Embedding-based deduplication is unavailable and the fallback was not allowed."""
+
+
+MAX_FALLBACK_SHARE = 0.2  # more chunks than this on the keyword catalog: the run fails
+FALLBACK_CHUNKS: list[str] = []  # chunk ids that used the catalog in the current run
 
 
 def get_embedder():
@@ -300,8 +320,12 @@ def fallback_extract(chunk: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def extract_concepts_from_chunk(chunk: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract candidate concepts from a single text chunk using the LLM prompt."""
+    """Concepts of one chunk from the LLM; the keyword catalog when the LLM fails.
+
+    A fallback is recorded in FALLBACK_CHUNKS (see the module docstring).
+    """
     if not is_llm_available():
+        FALLBACK_CHUNKS.append(chunk.get("chunk_id", "?"))
         return fallback_extract(chunk)
 
     prompt_template = PROMPT_FILE.read_text(encoding="utf-8")
@@ -318,12 +342,14 @@ def extract_concepts_from_chunk(chunk: dict[str, Any]) -> list[dict[str, Any]]:
             system="You are an expert curriculum extractor. Return valid JSON only.",
             prompt_version="extract_v1",
         )
-        concepts = response.get("concepts", [])
-        if isinstance(concepts, list) and len(concepts) > 0:
-            return concepts
+        concepts = response.get("concepts")
+        if isinstance(concepts, list):
+            return concepts  # an empty list is a valid answer: no concepts here
+        logger.warning("chunk %s: reply has no concept list", chunk.get("chunk_id"))
     except Exception as e:
-        logger.info(f"LLM call failed ({e}), falling back to rule-based extraction.")
+        logger.warning("chunk %s: LLM call failed (%s)", chunk.get("chunk_id"), e)
 
+    FALLBACK_CHUNKS.append(chunk.get("chunk_id", "?"))
     return fallback_extract(chunk)
 
 
@@ -427,12 +453,32 @@ def extract_concepts_from_chunks(
     course_id: str = "ds101",
     similarity_threshold: float = 0.85,
     allow_tfidf: bool = False,
+    allow_rule_based: bool = False,
 ) -> dict[str, Any]:
     """Run extraction across all chunks, merge duplicates, and return concepts contract dict.
 
     Raises DedupError before any LLM call when the embedding model is unavailable, and
     after merging when an encode failed during the run, unless allow_tfidf is True.
+    Raises ExtractionError when the LLM is unreachable before the run, or when more than
+    MAX_FALLBACK_SHARE of the chunks fell back to the keyword catalog, unless
+    allow_rule_based is True.
     """
+    if not is_llm_available():
+        from cdlp.shared.llm import BASE_URL
+
+        message = (
+            f"No LLM is reachable at {BASE_URL}. Concepts would come from the small "
+            "built-in keyword catalog instead of the course text."
+        )
+        if not allow_rule_based:
+            raise ExtractionError(
+                message + "\nStart Ollama (`ollama serve`) or set LLM_BASE_URL, or pass "
+                "--allow-rule-based."
+            )
+        _loud(
+            "WARNING: " + message + "\nAllowed by --allow-rule-based; recorded as "
+            "extraction_method."
+        )
     embedder_loaded = get_embedder() is not None
     if not embedder_loaded:
         message = (
@@ -449,6 +495,7 @@ def extract_concepts_from_chunks(
         _loud("WARNING: " + message + "\nAllowed by --allow-tfidf; recorded as dedup_method.")
 
     raw_with_sources: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    FALLBACK_CHUNKS.clear()
     for chunk in chunks:
         source_meta = {
             "doc": chunk["doc"],
@@ -458,6 +505,20 @@ def extract_concepts_from_chunks(
         extracted = extract_concepts_from_chunk(chunk)
         for concept in extracted:
             raw_with_sources.append((concept, source_meta))
+
+    fell_back = list(FALLBACK_CHUNKS)
+    if fell_back and chunks:
+        share = len(fell_back) / len(chunks)
+        message = (
+            f"{len(fell_back)} of {len(chunks)} chunks ({share:.0%}) got their concepts from "
+            "the keyword catalog because the LLM failed for them."
+        )
+        if share > MAX_FALLBACK_SHARE and not allow_rule_based:
+            raise ExtractionError(
+                message + f"\nThat is more than {MAX_FALLBACK_SHARE:.0%}: check the LLM and "
+                "re-run (answers that worked are cached), or pass --allow-rule-based."
+            )
+        _loud("WARNING: " + message + "\nTheir ids are in extraction_fallback_chunks.")
 
     DEDUP_COUNTS.clear()
     canonical_concepts = merge_and_canonicalize(
@@ -481,6 +542,10 @@ def extract_concepts_from_chunks(
     return {
         "schema_version": SCHEMA_VERSION,
         "course_id": course_id,
+        "extraction_method": (
+            "llm" if not fell_back else "rule_based" if len(fell_back) == len(chunks) else "mixed"
+        ),
+        "extraction_fallback_chunks": fell_back,
         "dedup_method": method,
         "dedup_comparisons": counts,
         "concepts": canonical_concepts,
