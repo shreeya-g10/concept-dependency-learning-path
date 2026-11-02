@@ -27,6 +27,7 @@ FALLBACK_LABELS = {
     "[fallback: nearest prerequisite]": S.QUIZ_LABEL_BASELINE,  # LLM reply unusable
 }
 NO_EXPLANATION = "(no explanation given)"  # what the tracer says when the LLM gave none
+MAX_LISTED = 15  # topics listed at once, so a big course stays light on weak internet
 
 
 def split_explanation(text: str | None) -> tuple[str | None, str | None]:
@@ -49,11 +50,11 @@ def reset_quiz() -> None:
     st.session_state.quiz_feedback = None  # the kind message waiting to be read
     st.session_state.quiz_just_right = False
     st.session_state.quiz_not_saved = False
-    st.session_state.quiz_no_questions = False
 
 
 course = common.get_active_course()
 names = common.concept_names()
+aliases = {c["id"]: c.get("aliases", []) for c in common.load("concepts.json")["concepts"]}
 graph_data = common.load("validated_graph.json")
 quiz_data = common.load("quiz_items.json")
 
@@ -66,13 +67,22 @@ valid_items = [
     q for q in quiz_items if isinstance(q, dict) and (q.get("question") or q.get("item_id"))
 ]
 
-# The API raises on a topic that is not in the graph, and most topics may not be in it yet.
-in_graph = {node["id"] for node in graph_data.get("nodes", [])} | {
+# Only topics a student can use: on an accepted link, with a question to ask for them. The
+# others stay in concepts.json and on See your topics; the teacher page lists them.
+on_accepted_link = {
     end
     for edge in graph_data.get("edges", [])
     if edge.get("decision") == "ACCEPT"
     for end in (edge["source"], edge["target"])
 }
+ready = sorted(
+    (
+        c
+        for c in names
+        if c in on_accepted_link and api.next_question(graph_data, valid_items, {}, c) is not None
+    ),
+    key=lambda c: names[c].lower(),
+)
 
 # Answers belong to one course: another course starts a new quick check.
 if "quiz_mastery" not in st.session_state or st.session_state.get("quiz_course") != course:
@@ -90,12 +100,9 @@ def next_item(target: str) -> dict | None:
 
 
 def finish() -> None:
-    """Out of questions: open the plan by itself, unless there is nothing to base it on."""
+    """Out of questions: open the plan by itself. A ready topic always has a first question."""
     st.session_state.quiz_picking = True  # coming back here starts with a new topic
-    if st.session_state.quiz_answers:
-        st.switch_page(ui.PAGES["plan"].path)
-    st.session_state.quiz_no_questions = True
-    st.rerun()
+    st.switch_page(ui.PAGES["plan"].path)
 
 
 def go_on(target: str) -> None:
@@ -138,12 +145,20 @@ def root_cause_line(info: dict, concept_id: str) -> str | None:
     here from the topic it points to.
     """
     label, text = split_explanation(info.get("explanation"))
-    topic = names.get(info.get("traced_concept"))
+    traced = info.get("traced_concept")
+    # Never send a student back to a topic they just answered right: the tracer's fallback can
+    # only point at the nearest earlier topic, whatever the answers were.
+    if st.session_state.quiz_mastery.get("__observed__", {}).get(traced):
+        traced = concept_id
+    topic = names.get(traced)
     guess = S.QUIZ_GUESS_TOPIC.format(topic=topic) if topic else None
     if label:
         why = guess or (plain_text(text) if text else None)
         return S.QUIZ_WHY_GUESS.format(label=label, why=why) if why else None
-    if concept_id in in_graph and api.prerequisite_order(graph_data, concept_id) == [concept_id]:
+    has_earlier_topic = concept_id in on_accepted_link and api.prerequisite_order(
+        graph_data, concept_id
+    ) != [concept_id]
+    if concept_id in on_accepted_link and not has_earlier_topic:
         return S.QUIZ_WHY_NO_EARLIER  # no earlier topic to trace to: the AI helper was not asked
     why = guess if text in (None, NO_EXPLANATION) else plain_text(text)
     return S.QUIZ_WHY_AI.format(why=why) if why else None
@@ -208,37 +223,41 @@ def show_not_saved() -> None:
         st.session_state.quiz_not_saved = False
 
 
+def search(query: str, topic_ids: list[str]) -> list[str]:
+    """Ready topics whose name or other name holds the typed words."""
+    typed = query.strip().lower()
+    return [
+        c
+        for c in topic_ids
+        if typed in names[c].lower() or any(typed in a.lower() for a in aliases.get(c, []))
+    ]
+
+
 def pick_topic_screen() -> None:
     ui.page_header(S.QUIZ_TITLE, S.QUIZ_INTRO, step=3, source_file="quiz_items.json")
-    concept_ids = sorted(names, key=lambda c: names[c].lower())
-    if not concept_ids:
+    if not names:
         ui.empty_state(
             S.QUIZ_NO_TOPICS, S.QUIZ_NO_TOPICS_NEXT, action=S.TOPICS_ADD, page="add", icon="📄"
         )
         st.stop()
+    if not ready:
+        st.info(S.QUIZ_NONE_READY, icon="ℹ️")
+        st.stop()
 
-    remembered = st.session_state.get("study_target")
-    # A selectbox filters as you type, in the browser: no wait on weak internet.
-    target = st.selectbox(
-        S.QUIZ_TARGET,
-        concept_ids,
-        index=concept_ids.index(remembered) if remembered in names else None,
-        placeholder=S.QUIZ_SEARCH_HINT,
-        format_func=lambda c: names.get(c, c),
-    )
-    ready = target in in_graph
-    if target and not ready:
-        st.info(S.QUIZ_NOT_READY, icon="ℹ️")
-    if st.session_state.quiz_no_questions and ready:
-        st.info(S.QUIZ_NO_QUESTIONS, icon="ℹ️")
-
-    if ui.action_button(S.QUIZ_START, icon="✏️", key="quiz_start", disabled=not ready):
-        st.session_state.study_target = target  # a plain key: widgets do not survive other pages
-        st.session_state.quiz_picking = False
-        st.session_state.quiz_no_questions = False
-        st.session_state.quiz_first_answer = len(st.session_state.quiz_answers)
-        st.session_state.quiz_progress = 0.0
-        go_on(target)
+    st.markdown(S.QUIZ_READY_COUNT.format(ready=len(ready), total=len(names)))
+    query = st.text_input(S.QUIZ_TARGET, placeholder=S.QUIZ_SEARCH_HINT, key="quiz_search")
+    found = search(query, ready)
+    if not found:
+        st.info(S.QUIZ_TOPIC_NOT_READY, icon="ℹ️")
+    for concept_id in found[:MAX_LISTED]:
+        if ui.action_button(names[concept_id], key=f"topic_{concept_id}", primary=False):
+            st.session_state.study_target = concept_id  # a plain key: survives other pages
+            st.session_state.quiz_picking = False
+            st.session_state.quiz_first_answer = len(st.session_state.quiz_answers)
+            st.session_state.quiz_progress = 0.0
+            go_on(concept_id)
+    if len(found) > MAX_LISTED:
+        st.caption(S.QUIZ_TYPE_MORE)
     if st.session_state.quiz_answers:
         ui.action_button(S.QUIZ_TO_PLAN, page="plan", icon="🗺️", primary=False)
 
@@ -286,8 +305,9 @@ def question_screen(target: str, question: dict) -> None:
 
     q_id = question.get("id", question.get("item_id", answered))
     for index, option in enumerate(options):
-        # A button label is Markdown: without this, "a * b * c" would lose its stars.
-        label = re.sub(r"([\\`*_~$\[\]:])", r"\\\1", option)
+        # A button label is Markdown: without this, "a * b * c" would lose its stars. Backticks
+        # stay, so `w` shows as code, just as it does in the question above the buttons.
+        label = re.sub(r"([\\*_~$\[\]:])", r"\\\1", option)
         if ui.action_button(label, key=f"answer_{q_id}_{index}", primary=False):
             record_answer(question, option)
             if st.session_state.quiz_just_right:
@@ -303,7 +323,7 @@ def question_screen(target: str, question: dict) -> None:
 
 
 active_target = st.session_state.get("study_target")
-if st.session_state.quiz_picking or active_target not in in_graph:
+if st.session_state.quiz_picking or active_target not in ready:
     pick_topic_screen()
 elif st.session_state.quiz_feedback:
     feedback_screen(active_target)
