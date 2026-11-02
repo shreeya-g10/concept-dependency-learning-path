@@ -48,12 +48,20 @@ def chat(
     prompt_version: str = "unversioned",
     json_mode: bool = False,
     seed: int = DEFAULT_SEED,
+    num_ctx: int | None = None,
 ) -> str:
+    """num_ctx: Ollama context window in tokens (its default is 4096, which cuts off long
+    prompts such as a full concept list and its answer). It joins the cache key only when
+    set, so every existing cached response keeps its key. OpenAI-compatible endpoints
+    size the context themselves and ignore it."""
     model = model or DEFAULT_MODEL
     messages = ([{"role": "system", "content": system}] if system else []) + [
         {"role": "user", "content": prompt}
     ]
-    key = json.dumps([PROVIDER, model, temperature, seed, json_mode, messages], sort_keys=True)
+    key_parts = [PROVIDER, model, temperature, seed, json_mode, messages]
+    if num_ctx is not None:
+        key_parts.append({"num_ctx": num_ctx})
+    key = json.dumps(key_parts, sort_keys=True)
     cache_file = CACHE_DIR / f"{hashlib.sha256(key.encode()).hexdigest()}.json"
     if cache_file.exists():
         response = json.loads(cache_file.read_text())["response"]
@@ -67,6 +75,8 @@ def chat(
             "stream": False,
             "options": {"temperature": temperature, "seed": seed},
         }
+        if num_ctx is not None:
+            body["options"]["num_ctx"] = num_ctx
         if json_mode:
             body["format"] = "json"
         resp = requests.post(f"{BASE_URL}/api/chat", json=body, timeout=600)
@@ -96,6 +106,7 @@ def chat(
                 "model": model,
                 "temperature": temperature,
                 "seed": seed,
+                "num_ctx": num_ctx,
                 "prompt_version": prompt_version,
                 "messages": messages,
                 "response": text,

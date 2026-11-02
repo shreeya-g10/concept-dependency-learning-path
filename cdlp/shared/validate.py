@@ -34,6 +34,8 @@ FILE_SCHEMAS = {
     "root_cause_testset.json": "root_cause_testset",  # added to 1.1 after release
     # added in 1.3: the RQ1 baseline uses the relationships contract
     "relationships_baseline.json": "relationships",
+    # added in 1.6: teacher decisions on HUMAN_REVIEW edges (website page 3)
+    "review_decisions.json": "review_decisions",
 }
 
 

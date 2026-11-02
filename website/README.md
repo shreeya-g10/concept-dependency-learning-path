@@ -8,6 +8,8 @@ streamlit run website/Home.py
 
 Every page reads pipeline outputs from `outputs/`. When those don't exist yet, it falls back to `cdlp/shared/examples/`, so each page works from day one.
 
+**Answer log (page 5).** Every quiz answer is appended to `outputs/<course>/student_answers.json` under a random per-session id (`anon_<hex>`); no name, login or IP is stored. The file feeds root-cause tracing (`pipeline.py`) and the real-student study. Writes are atomic but not locked across sessions. The real-student study runs **locally** (`streamlit run website/Home.py` on the maintainer's laptop), so the log stays on that disk and no hosted storage is needed; a hosted deployment (Streamlit Community Cloud wipes its disk on redeploy) is for demos only and its answers are not study data. A root cause that comes from a fallback (LLM unreachable or unusable) is labelled "offline estimate" / "baseline estimate", never shown as an LLM explanation.
+
 ## Pages
 
 Maintainer: Shreeya. Shell and pages 1, 4, 5 were built by Vaidehi (pages 4 and 5 from Shrestha's initial code); page 2 started from Sneha's code.

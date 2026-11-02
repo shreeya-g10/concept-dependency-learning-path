@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.6",
+  "course_id": "ds101",
+  "decisions": [
+    {
+      "edge_id": "r5",
+      "source": "trees",
+      "target": "graphs",
+      "decision": "ACCEPT",
+      "decided_by": "teacher",
+      "decided_at": "2026-11-02T10:00:00+00:00",
+      "comment": "Graphs are taught after trees in this course; tree terms (node, edge, path) are reused."
+    }
+  ]
+}
