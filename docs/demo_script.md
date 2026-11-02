@@ -113,7 +113,7 @@ Also take one screenshot of each page (⇧⌘4) into `~/Desktop/demo_backup/scre
 
 | Time | Click | Say |
 |---|---|---|
-| 0:00 | **Home** | The problem: "I don't understand AVL trees." One course graph, a different path per student. The yellow notice says this is a demo: only 28 of the 64 links were checked, picked by a written rule (shown on the teacher pages). |
+| 0:00 | **Home** | The problem: "I don't understand AVL trees." One course graph, a different path per student. The yellow notice says "Sample map: 28 of 64 links checked." The links were picked by a written rule, shown on the teacher pages. |
 | 0:40 | **2 See your topics** | Concepts extracted from the real ds101 textbook chapters, most-used first, each with where to read it. Search "binary search tree", then tap **Read this part**. |
 | 1:20 | **1 Add your notes** | (Optional, live: only if the upload test above worked with the real LLM. It is untested until then.) Drop `demo_notes.md`, name it `Notes101 live`, tap **Read my notes**. It runs in the background; come back at 4:30. |
 | 1:40 | **For teachers → AI suggestions** | The discovery model (qwen) proposes prerequisite edges only for candidate pairs, with an evidence quote for each. |

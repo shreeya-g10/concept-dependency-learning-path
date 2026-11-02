@@ -62,7 +62,7 @@ TEMPERATURE = 0.0
 MAX_CHUNKS = 3  # evidence chunks shown per concept
 MAX_CHUNK_CHARS = 1200  # each chunk is cut to this length in the prompt
 MIN_OPTIONS, MAX_OPTIONS = 2, 6
-SCHEMA_VERSION = "1.9"
+SCHEMA_VERSION = "1.10"
 
 # A student never sees the excerpts, so a question must not lean on them.
 LEAKED_WORDING = re.compile(
