@@ -18,7 +18,6 @@ from typing import Any
 
 from cdlp.learning_path import api
 from cdlp.learning_path.graph import MASTERY_THRESHOLD, generic_path, is_mastered, load_graph
-from cdlp.learning_path.quiz import get_quiz_items
 from cdlp.learning_path.sim_students import generate_simulated_students
 from cdlp.shared.io import EXAMPLES, read_json
 
@@ -248,9 +247,8 @@ def main() -> None:
     sim_data = generate_simulated_students(graph_data, num_students=500, seed=42)
     students = sim_data["students"]
 
-    # Load quiz items
-    quiz_data = get_quiz_items(course_id="ds101")
-    quiz_items = quiz_data["items"]
+    # Quiz items for the example graph (hand-written ds101 items, one per concept)
+    quiz_items = read_json(EXAMPLES / "quiz_items.json")["items"]
 
     results = evaluate_rq2_and_rq4(graph_data, quiz_items, students, target="avl_tree")
 
