@@ -26,6 +26,7 @@ Use **ACCEPT edges only**. Ignore REJECT; HUMAN_REVIEW is excluded by default (m
 - [ ] Personalized path: ancestors − mastered concepts, soft prerequisites only when needed, topological order
 - [ ] Implement the three functions in `api.py` (the CLI and the website both use them)
 - [ ] RQ2 evaluation on simulated students: diagnosis accuracy vs number of questions, against "ask every concept" and "random order" → `cdlp/learning_path/results/`
+- [x] Quiz items generated per course from `chunks.jsonl` (`python -m cdlp.learning_path.quiz`, or `--concepts/--chunks` on the main CLI); bad items skipped and counted
 - [x] Quiz items and simulated students moved here from `cdlp/discovery/` (no cross-module imports)
 - [ ] Website pages 4 and 5: interactive pyvis graph; live quiz followed by the personal path
 

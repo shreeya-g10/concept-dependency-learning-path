@@ -8,6 +8,12 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.6
+
+- `quiz_items.json` may carry a new optional top-level `generation` object: `model`, `prompt_version`, `temperature`, `seed`, `max_chunks_per_concept`, `concepts`, `concepts_without_chunks`, `concepts_without_items` and `skipped` (count of dropped items per reason). Written by `python -m cdlp.learning_path.quiz`, which generates the items from any course's `chunks.jsonl` (`cdlp/learning_path/prompts/quiz_v1.txt`). `examples/quiz_items.json` is hand-written, so it stays at 1.0 without the block.
+- `pipeline.py` no longer falls back to the ds101 example quiz: it generates `quiz_items.json` per course.
+- Purely additive; every older file stays valid.
+
 ## 1.5
 
 - `validated_graph.json`: every check (`evidence`, `semantic`, `necessity`, `graph`) may now be `skipped`, meaning the check was not run (an RQ1 ablation such as `--skip-evidence`, or a benchmark without course text). A skipped check never blocks ACCEPT and is left out of the decision score.
