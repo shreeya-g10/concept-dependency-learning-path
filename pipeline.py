@@ -70,12 +70,25 @@ def main() -> None:
         "--target", help="default: the concept with the most ancestors among ACCEPT edges"
     )
     parser.add_argument("--out-dir", help="default: outputs/<course>/")
+    parser.add_argument(
+        "--allow-tfidf",
+        action="store_true",
+        help="passed to extraction: deduplicate with TF-IDF if the embedding model fails",
+    )
+    parser.add_argument(
+        "--allow-rule-based",
+        action="store_true",
+        help="passed to extraction: keyword-catalog concepts if the LLM is unreachable",
+    )
     args = parser.parse_args()
     raw = Path(args.input) if args.input else course_input(args.course)
     out = Path(args.out_dir) if args.out_dir else Path("outputs") / args.course
     out.mkdir(parents=True, exist_ok=True)
 
-    run("cdlp.extraction", "--input", str(raw), "--out-dir", str(out), "--course-id", args.course)
+    extraction_args = ["--input", str(raw), "--out-dir", str(out), "--course-id", args.course]
+    extraction_args += ["--allow-tfidf"] if args.allow_tfidf else []
+    extraction_args += ["--allow-rule-based"] if args.allow_rule_based else []
+    run("cdlp.extraction", *extraction_args)
     run(
         "cdlp.discovery",
         "--concepts",

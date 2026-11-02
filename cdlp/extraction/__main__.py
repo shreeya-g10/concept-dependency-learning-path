@@ -6,11 +6,17 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 
-from cdlp.extraction.extract import extract_concepts_from_chunks
+from cdlp.extraction.extract import ExtractionError, extract_concepts_from_chunks
 from cdlp.extraction.parse import is_course_file, parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
+
+
+def fail(message: str, code: int = 1) -> None:
+    print(f"extraction failed: {message}", file=sys.stderr)
+    sys.exit(code)
 
 
 def main() -> None:
@@ -23,6 +29,18 @@ def main() -> None:
     )
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--course-id", "--course", dest="course_id", type=str, default=None)
+    parser.add_argument(
+        "--allow-tfidf",
+        action="store_true",
+        help="deduplicate with TF-IDF when the embedding model is unavailable (loud warning; "
+        "recorded as dedup_method in concepts.json). Default: fail.",
+    )
+    parser.add_argument(
+        "--allow-rule-based",
+        action="store_true",
+        help="use the keyword catalog when the LLM is unreachable or fails for many chunks "
+        "(loud warning; recorded as extraction_method). Default: fail.",
+    )
     args = parser.parse_args()
 
     input_dir = Path(args.input)
@@ -39,31 +57,39 @@ def main() -> None:
         else:
             course_id = "ds101"
 
+    # Course files present: every failure is reported (exit 1 / 2), never replaced by the
+    # shared examples. The examples are used only when the folder has no course file
+    # (e.g. the contract test runs on data/raw/, which holds only a README).
+    course_files = input_dir.is_dir() and any(is_course_file(p) for p in input_dir.iterdir())
+    if not course_files:
+        print(f"note: no course files in {input_dir}; writing the shared example files")
+        write_jsonl(out_dir / "chunks.jsonl", read_jsonl(EXAMPLES / "chunks.jsonl"))
+        write_json(out_dir / "concepts.json", read_json(EXAMPLES / "concepts.json"))
+        return
+
     # 1. Parsing & Chunking
-    chunks = []
-    if input_dir.exists() and input_dir.is_dir():
-        try:
-            chunks = parse_directory(input_dir, course_id=course_id)
-        except Exception:
-            chunks = []
-
-    # Fallback to examples if no course file was found
+    try:
+        chunks = parse_directory(input_dir, course_id=course_id)
+    except Exception as exc:
+        fail(f"parsing {input_dir} failed: {exc!r}")
     if not chunks:
-        chunks = read_jsonl(EXAMPLES / "chunks.jsonl")
-
-    chunks_file = out_dir / "chunks.jsonl"
-    write_jsonl(chunks_file, chunks)
+        fail(f"{input_dir} has course files but no text was extracted (is PyMuPDF installed?)")
+    write_jsonl(out_dir / "chunks.jsonl", chunks)
 
     # 2. Concept Extraction, Canonicalization, and Filtering
-    concepts_data = None
-    if input_dir.is_dir() and any(is_course_file(p) for p in input_dir.iterdir()):
-        try:
-            concepts_data = extract_concepts_from_chunks(chunks, course_id=course_id)
-        except Exception:
-            concepts_data = None
-
-    if not concepts_data or not concepts_data.get("concepts"):
-        concepts_data = read_json(EXAMPLES / "concepts.json")
+    try:
+        concepts_data = extract_concepts_from_chunks(
+            chunks,
+            course_id=course_id,
+            allow_tfidf=args.allow_tfidf,
+            allow_rule_based=args.allow_rule_based,
+        )
+    except ExtractionError as exc:  # LLM or embedding unavailable and not allowed
+        fail(str(exc), code=2)
+    except Exception as exc:
+        fail(f"concept extraction failed: {exc!r}")
+    if not concepts_data.get("concepts"):
+        fail("concept extraction found no concepts")
 
     concepts_file = out_dir / "concepts.json"
     write_json(concepts_file, concepts_data)

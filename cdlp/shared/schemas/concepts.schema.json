@@ -66,6 +66,38 @@
           }
         }
       }
+    },
+    "extraction_method": {
+      "enum": [
+        "llm",
+        "rule_based",
+        "mixed"
+      ],
+      "description": "added in 1.7: where the concepts came from. llm = every chunk from the LLM; rule_based = the built-in keyword catalog for every chunk (only with --allow-rule-based); mixed = the catalog for the chunks in extraction_fallback_chunks."
+    },
+    "extraction_fallback_chunks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "added in 1.7: ids of the chunks whose concepts came from the keyword catalog because the LLM failed for them."
+    },
+    "dedup_method": {
+      "enum": [
+        "embedding",
+        "tfidf",
+        "jaccard",
+        "mixed"
+      ],
+      "description": "added in 1.7: how concept names were compared when merging duplicates. embedding = sentence embeddings (all-MiniLM-L6-v2); tfidf / jaccard = fallbacks, used only with --allow-tfidf; mixed = more than one in one run."
+    },
+    "dedup_comparisons": {
+      "type": "object",
+      "description": "added in 1.7: number of fuzzy name comparisons per method (embedding, tfidf, jaccard) and failed embedding attempts (embedding_failed). Exact and acronym matches are not counted.",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
     }
   }
 }

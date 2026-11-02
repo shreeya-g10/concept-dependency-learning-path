@@ -1,13 +1,34 @@
 """LLM-based concept extraction, canonicalization, deduplication, and granularity filtering.
 
-Owner: Vaidehi.
 Conforms to cdlp/shared/schemas/concepts.schema.json.
+
+Deduplication compares concept names with sentence embeddings (all-MiniLM-L6-v2, local
+files only). If the model cannot be loaded or fails while encoding (e.g. out of GPU
+memory while Ollama holds a model), names are compared with character TF-IDF (or word
+Jaccard without scikit-learn). That changes which concepts merge, so it is never silent:
+extract_concepts_from_chunks() raises DedupError unless allow_tfidf=True (CLI:
+--allow-tfidf), prints a loud warning when it is allowed, and records the method used in
+concepts.json (`dedup_method`, `dedup_comparisons`; contract 1.7).
+
+Concepts come from the LLM. The rule-based keyword catalog (fallback_extract) is used
+only where the LLM failed, and never silently:
+- LLM unreachable before the run: ExtractionError, unless allow_rule_based=True (CLI:
+  --allow-rule-based), which uses the catalog for every chunk with a loud warning.
+- LLM error or malformed reply for a chunk: that chunk uses the catalog, its id is
+  recorded in `extraction_fallback_chunks`, and a warning is printed. If more than
+  MAX_FALLBACK_SHARE of the chunks fell back (e.g. Ollama stopped mid-run), the run
+  fails unless allow_rule_based=True. (Failing on one bad reply would make a re-run
+  fail too, because replies are cached.)
+- An empty concept list is a valid answer (a chunk with no concepts), not a failure.
+`extraction_method` records llm / rule_based / mixed.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -64,11 +85,27 @@ ACRONYMS = {
 }
 
 _EMBEDDER = None
+_EMBEDDER_ERROR = ""  # why the embedder is unavailable (for the DedupError message)
+# fuzzy name comparisons per method in the current run: embedding / tfidf / jaccard
+DEDUP_COUNTS: Counter = Counter()
+SCHEMA_VERSION = "1.7"  # 1.7: dedup_method, dedup_comparisons
+
+
+class ExtractionError(RuntimeError):
+    """Concepts could not come from the LLM and the rule-based fallback was not allowed."""
+
+
+class DedupError(ExtractionError):
+    """Embedding-based deduplication is unavailable and the fallback was not allowed."""
+
+
+MAX_FALLBACK_SHARE = 0.2  # more chunks than this on the keyword catalog: the run fails
+FALLBACK_CHUNKS: list[str] = []  # chunk ids that used the catalog in the current run
 
 
 def get_embedder():
     """Load sentence-transformers model if cached locally, else None."""
-    global _EMBEDDER
+    global _EMBEDDER, _EMBEDDER_ERROR
     if _EMBEDDER is None:
         model_path = (
             Path.home()
@@ -83,10 +120,11 @@ def get_embedder():
                 from sentence_transformers import SentenceTransformer
 
                 _EMBEDDER = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
-            except Exception:
-                _EMBEDDER = False
+            except Exception as exc:
+                _EMBEDDER, _EMBEDDER_ERROR = False, f"loading the model failed: {exc}"
         else:
             _EMBEDDER = False
+            _EMBEDDER_ERROR = f"all-MiniLM-L6-v2 is not downloaded (no {model_path})"
     return _EMBEDDER if _EMBEDDER is not False else None
 
 
@@ -185,9 +223,11 @@ def semantic_similarity(name1: str, name2: str) -> float:
             norm1 = np.linalg.norm(embeddings[0])
             norm2 = np.linalg.norm(embeddings[1])
             if norm1 > 0 and norm2 > 0:
+                DEDUP_COUNTS["embedding"] += 1
                 return float(np.dot(embeddings[0], embeddings[1]) / (norm1 * norm2))
-        except Exception:
-            pass
+        except Exception as exc:  # e.g. out of GPU memory: counted, never silent
+            logger.warning("embedding failed for %r / %r (%s); using TF-IDF", name1, name2, exc)
+            DEDUP_COUNTS["embedding_failed"] += 1
 
     # High-precision character n-gram cosine similarity (fast, local, TF-IDF style)
     try:
@@ -197,6 +237,7 @@ def semantic_similarity(name1: str, name2: str) -> float:
         vec = TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 4))
         tfidf = vec.fit_transform([name1, name2])
         score = float(cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0])
+        DEDUP_COUNTS["tfidf"] += 1
         return score
     except Exception:
         pass
@@ -205,6 +246,7 @@ def semantic_similarity(name1: str, name2: str) -> float:
     w1 = set(to_slug(name1).split("_"))
     w2 = set(to_slug(name2).split("_"))
     union = w1 | w2
+    DEDUP_COUNTS["jaccard"] += 1
     if not union:
         return 0.0
     return len(w1 & w2) / len(union)
@@ -278,8 +320,12 @@ def fallback_extract(chunk: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def extract_concepts_from_chunk(chunk: dict[str, Any]) -> list[dict[str, Any]]:
-    """Extract candidate concepts from a single text chunk using the LLM prompt."""
+    """Concepts of one chunk from the LLM; the keyword catalog when the LLM fails.
+
+    A fallback is recorded in FALLBACK_CHUNKS (see the module docstring).
+    """
     if not is_llm_available():
+        FALLBACK_CHUNKS.append(chunk.get("chunk_id", "?"))
         return fallback_extract(chunk)
 
     prompt_template = PROMPT_FILE.read_text(encoding="utf-8")
@@ -296,12 +342,14 @@ def extract_concepts_from_chunk(chunk: dict[str, Any]) -> list[dict[str, Any]]:
             system="You are an expert curriculum extractor. Return valid JSON only.",
             prompt_version="extract_v1",
         )
-        concepts = response.get("concepts", [])
-        if isinstance(concepts, list) and len(concepts) > 0:
-            return concepts
+        concepts = response.get("concepts")
+        if isinstance(concepts, list):
+            return concepts  # an empty list is a valid answer: no concepts here
+        logger.warning("chunk %s: reply has no concept list", chunk.get("chunk_id"))
     except Exception as e:
-        logger.info(f"LLM call failed ({e}), falling back to rule-based extraction.")
+        logger.warning("chunk %s: LLM call failed (%s)", chunk.get("chunk_id"), e)
 
+    FALLBACK_CHUNKS.append(chunk.get("chunk_id", "?"))
     return fallback_extract(chunk)
 
 
@@ -378,14 +426,76 @@ def merge_and_canonicalize(
     return canonical_list
 
 
+def fallback_method() -> str:
+    """tfidf when scikit-learn is installed, else jaccard (see semantic_similarity)."""
+    try:
+        import sklearn  # noqa: F401
+    except ImportError:
+        return "jaccard"
+    return "tfidf"
+
+
+def dedup_method(counts: Counter, embedder_loaded: bool) -> str:
+    """embedding / tfidf / jaccard, or mixed when one run used more than one."""
+    used = [m for m in ("embedding", "tfidf", "jaccard") if counts.get(m)]
+    if not used:  # every merge was exact or an acronym: the method that would have run
+        return "embedding" if embedder_loaded else fallback_method()
+    return used[0] if len(used) == 1 else "mixed"
+
+
+def _loud(message: str) -> None:
+    bar = "!" * 78
+    print(f"\n{bar}\n{message}\n{bar}\n", file=sys.stderr, flush=True)
+
+
 def extract_concepts_from_chunks(
     chunks: list[dict[str, Any]],
     course_id: str = "ds101",
     similarity_threshold: float = 0.85,
+    allow_tfidf: bool = False,
+    allow_rule_based: bool = False,
 ) -> dict[str, Any]:
-    """Run extraction across all chunks, merge duplicates, and return concepts contract dict."""
-    raw_with_sources: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    """Run extraction across all chunks, merge duplicates, and return concepts contract dict.
 
+    Raises DedupError before any LLM call when the embedding model is unavailable, and
+    after merging when an encode failed during the run, unless allow_tfidf is True.
+    Raises ExtractionError when the LLM is unreachable before the run, or when more than
+    MAX_FALLBACK_SHARE of the chunks fell back to the keyword catalog, unless
+    allow_rule_based is True.
+    """
+    if not is_llm_available():
+        from cdlp.shared.llm import BASE_URL
+
+        message = (
+            f"No LLM is reachable at {BASE_URL}. Concepts would come from the small "
+            "built-in keyword catalog instead of the course text."
+        )
+        if not allow_rule_based:
+            raise ExtractionError(
+                message + "\nStart Ollama (`ollama serve`) or set LLM_BASE_URL, or pass "
+                "--allow-rule-based."
+            )
+        _loud(
+            "WARNING: " + message + "\nAllowed by --allow-rule-based; recorded as "
+            "extraction_method."
+        )
+    embedder_loaded = get_embedder() is not None
+    if not embedder_loaded:
+        message = (
+            "Concept deduplication cannot use sentence embeddings: "
+            f"{_EMBEDDER_ERROR or 'the model did not load'}.\n"
+            "Names would be compared with character TF-IDF instead, which merges different "
+            "concepts than an embedding run."
+        )
+        if not allow_tfidf:
+            raise DedupError(
+                message + "\nFix the embedding model (download all-MiniLM-L6-v2; stop Ollama "
+                "models with `ollama stop <model>` if the GPU is full), or pass --allow-tfidf."
+            )
+        _loud("WARNING: " + message + "\nAllowed by --allow-tfidf; recorded as dedup_method.")
+
+    raw_with_sources: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    FALLBACK_CHUNKS.clear()
     for chunk in chunks:
         source_meta = {
             "doc": chunk["doc"],
@@ -396,14 +506,48 @@ def extract_concepts_from_chunks(
         for concept in extracted:
             raw_with_sources.append((concept, source_meta))
 
+    fell_back = list(FALLBACK_CHUNKS)
+    if fell_back and chunks:
+        share = len(fell_back) / len(chunks)
+        message = (
+            f"{len(fell_back)} of {len(chunks)} chunks ({share:.0%}) got their concepts from "
+            "the keyword catalog because the LLM failed for them."
+        )
+        if share > MAX_FALLBACK_SHARE and not allow_rule_based:
+            raise ExtractionError(
+                message + f"\nThat is more than {MAX_FALLBACK_SHARE:.0%}: check the LLM and "
+                "re-run (answers that worked are cached), or pass --allow-rule-based."
+            )
+        _loud("WARNING: " + message + "\nTheir ids are in extraction_fallback_chunks.")
+
+    DEDUP_COUNTS.clear()
     canonical_concepts = merge_and_canonicalize(
         raw_with_sources,
         similarity_threshold=similarity_threshold,
     )
+    counts = {k: v for k, v in sorted(DEDUP_COUNTS.items()) if v}
+    method = dedup_method(DEDUP_COUNTS, embedder_loaded)
+    if embedder_loaded and method != "embedding":
+        message = (
+            f"Embedding failed during deduplication for {counts.get('embedding_failed', 0)} "
+            f"name pair(s), which were compared with TF-IDF instead (comparisons: {counts})."
+        )
+        if not allow_tfidf:
+            raise DedupError(
+                message + "\nFree the GPU (`ollama stop <model>`) and re-run (LLM answers are "
+                "cached), or pass --allow-tfidf."
+            )
+        _loud("WARNING: " + message + f"\nAllowed by --allow-tfidf; dedup_method={method}.")
 
     return {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "course_id": course_id,
+        "extraction_method": (
+            "llm" if not fell_back else "rule_based" if len(fell_back) == len(chunks) else "mixed"
+        ),
+        "extraction_fallback_chunks": fell_back,
+        "dedup_method": method,
+        "dedup_comparisons": counts,
         "concepts": canonical_concepts,
     }
 
