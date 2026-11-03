@@ -21,7 +21,7 @@ import pytest
 
 from cdlp.learning_path import quiz
 
-DEV = json.loads((Path(__file__).parent / "quiz_dev_examples.json").read_text())
+DEV = json.loads((Path(__file__).parent / "quiz_dev_examples.json").read_text(encoding="utf-8"))
 EXAMPLES = DEV["examples"]
 BST = DEV["concepts"]["binary_search_tree"]
 ROTATION = DEV["concepts"]["rotation"]

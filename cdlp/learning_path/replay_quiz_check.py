@@ -36,7 +36,7 @@ def read_cached_drafts(cache_dir: Path) -> dict[str, list]:
     """{concept id: raw drafts}, from the cached quiz_v2 replies. Sorted, so runs are stable."""
     drafts = {}
     for path in sorted(cache_dir.glob("*.json")):
-        row = json.loads(path.read_text())
+        row = json.loads(path.read_text(encoding="utf-8"))
         if row.get("prompt_version") == quiz.PROMPT_VERSION:
             concept_id = re.search(r"CONCEPT ID:\s*(\S+)", row["messages"][-1]["content"]).group(1)
             drafts[concept_id] = json.loads(row["response"])["items"]
@@ -132,7 +132,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.before:
         before = {
             (d["concept_id"], d["question"]): d
-            for d in json.loads(args.before.read_text())["drafts"]
+            for d in json.loads(args.before.read_text(encoding="utf-8"))["drafts"]
         }
         for row in rows:
             old = before[(row["concept_id"], row["question"])]
