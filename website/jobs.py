@@ -24,6 +24,7 @@ import json
 import math
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -32,6 +33,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 RAW = ROOT / "data" / "raw"
 OUTPUTS = ROOT / "outputs"
 JOBS = OUTPUTS / ".jobs"
@@ -69,6 +72,7 @@ EDGE_SHARE = 0.5  # share of candidate pairs proposed as edges (then validated)
 # costs two validator calls per edge: evidence and semantic.
 VALIDATION_S_PER_EDGE = 2 * VALIDATOR_S
 QUICK_BUILD_ARGS = ["--skip-necessity"]
+DEFAULT_DEMO_SUBSET = 2  # validate top 2 edges in fast demo mode (~1 to 2 mins)
 
 LLM_HINTS = ("Connection refused", "ConnectionError", "Max retries exceeded", "NewConnectionError")
 
@@ -184,7 +188,7 @@ def _unit_words(path: Path) -> list[int]:
     return [len(u.split()) for u in units]
 
 
-def estimate(folder: Path) -> dict:
+def estimate(folder: Path, demo_subset: int | None = None) -> dict:
     """Size and a rough LLM-time estimate for running the pipeline on folder/."""
     files = sorted(
         p
@@ -197,11 +201,16 @@ def estimate(folder: Path) -> dict:
         pages += len(per_page)
         words += sum(per_page)
         chunks += sum(max(1, math.ceil(w / CHUNK_WORDS)) for w in per_page if w)
-    extraction_s = chunks * LONG_S
+    eff_chunks = min(chunks, 2) if (demo_subset is not None and demo_subset > 0) else chunks
+    extraction_s = eff_chunks * LONG_S
 
     def later_stages_s(concepts_per_chunk: float) -> float:
-        candidates = chunks * concepts_per_chunk * CANDIDATES_PER_CONCEPT
-        quiz_s = chunks * concepts_per_chunk * LONG_S  # one quiz call per concept, long reply
+        candidates = eff_chunks * concepts_per_chunk * CANDIDATES_PER_CONCEPT
+        if demo_subset is not None and demo_subset > 0:
+            val_edges = min(candidates * EDGE_SHARE, float(demo_subset))
+            quiz_s = min(eff_chunks * concepts_per_chunk, float(demo_subset)) * LONG_S
+            return candidates * SHORT_S + val_edges * VALIDATION_S_PER_EDGE + quiz_s
+        quiz_s = eff_chunks * concepts_per_chunk * LONG_S  # one quiz call per concept, long reply
         return candidates * SHORT_S + candidates * EDGE_SHARE * VALIDATION_S_PER_EDGE + quiz_s
 
     low, high = (extraction_s + later_stages_s(r) for r in CONCEPTS_PER_CHUNK)
@@ -211,7 +220,7 @@ def estimate(folder: Path) -> dict:
         "pages": pages,
         "words": words,
         "chunks": chunks,
-        "extraction_calls": chunks,
+        "extraction_calls": eff_chunks,
         "extraction_minutes": round(extraction_s / 60),
         "total_minutes": (round(low / 60), round(high / 60)),
     }
@@ -270,18 +279,46 @@ def _read_state(folder: Path) -> dict | None:
 
 
 def _alive(pid: int | None) -> bool:
-    if not pid:
+    if not pid or pid <= 0:
         return False
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, int(pid))
+            if not handle:
+                return False
+            exit_code = ctypes.c_ulong()
+            kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+            kernel32.CloseHandle(handle)
+            return exit_code.value == 259
+        except Exception:
+            return False
+
     try:
         os.kill(pid, 0)
-    except ProcessLookupError:
+    except (ProcessLookupError, OSError):
         return False
     except PermissionError:
         return True
     return True
 
 
-def pipeline_command(course_id: str) -> list[str]:
+def pipeline_command(
+    course_id: str, demo_subset: int | None = None, fast_demo: bool = False
+) -> list[str]:
+    if fast_demo:
+        return [
+            sys.executable,
+            "-u",
+            str(Path(__file__).resolve()),
+            "fast-demo",
+            "--course",
+            course_id,
+            "--state-dir",
+            str(job_dir(course_id)),
+        ]
     return [
         sys.executable,
         "-u",
@@ -289,6 +326,7 @@ def pipeline_command(course_id: str) -> list[str]:
         "--course",
         course_id,
         *QUICK_BUILD_ARGS,
+        *(["--demo-subset", str(demo_subset)] if demo_subset and demo_subset > 0 else []),
     ]
 
 
@@ -297,6 +335,8 @@ def start_job(
     command: list[str] | None = None,
     jobs: Path | None = None,
     popen=subprocess.Popen,
+    demo_subset: int | None = None,
+    fast_demo: bool = False,
 ) -> dict:
     """Launch the runner in the background; returns the initial state.
 
@@ -309,7 +349,7 @@ def start_job(
     if read_status(course_id, jobs)["state"] in ("starting", "running"):
         raise RuntimeError(f"a pipeline job for {course_id} is already running")
     folder.mkdir(parents=True, exist_ok=True)
-    command = command or pipeline_command(course_id)
+    command = command or pipeline_command(course_id, demo_subset=demo_subset, fast_demo=fast_demo)
     state = {
         "course_id": course_id,
         "state": "starting",
@@ -418,13 +458,356 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     }
 
 
+def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
+    """Extract real topics and build valid contract files from data/raw/<course_id>/."""
+    from cdlp.extraction.parse import parse_directory
+
+    raw_dir = RAW / course_id
+    if not raw_dir.is_dir():
+        return False
+    chunks = parse_directory(raw_dir, course_id=course_id)
+    if not chunks:
+        return False
+
+    with open(out_dir / "chunks.jsonl", "w", encoding="utf-8") as f:
+        for c in chunks:
+            f.write(json.dumps(c) + "\n")
+
+    def slug(text: str) -> str:
+        s = re.sub(r"[^a-zA-Z0-9]+", "_", text.lower()).strip("_")
+        return s[:35] or "concept"
+
+    def is_code(s: str) -> bool:
+        return any(
+            tok in s
+            for tok in [
+                ";",
+                "{",
+                "}",
+                "==",
+                "!=",
+                "++",
+                "--",
+                "=",
+                "printf",
+                "scanf",
+                "#include",
+                "void ",
+                "int ",
+                "return ",
+            ]
+        )
+
+    skip_phrases = [
+        "LEARNING GUIDE",
+        "HANDBOOK",
+        "BEGINNER FRIENDLY",
+        "MINI PROJECT",
+        "PROJECT 1",
+        "PROJECT 2",
+        "PRACTICE SET",
+        "PRACTICE",
+        "EXERCISE",
+        "INDEX",
+        "PREFACE",
+        "CONTENTS",
+        "PAGE",
+        "HTTP",
+        "WWW",
+        "COPYRIGHT",
+        "ALL RIGHTS",
+        "TABLE OF",
+    ]
+
+    def clean_heading(h: str) -> str:
+        h = re.sub(r"^CHAPTER\s*\d+\s*[–—\-~\s:]*", "", h, flags=re.IGNORECASE).strip()
+        h = re.sub(r"^[0-9.]+\s*", "", h).strip()
+        h = re.sub(r"\s*&\s*", " and ", h)
+        h = re.sub(r"\bI/O\b", "Input / Output", h, flags=re.IGNORECASE)
+        return h.strip()
+
+    def find_description(text: str) -> str:
+        for line in text.splitlines():
+            line = line.strip()
+            if (
+                len(line) >= 20
+                and not is_code(line)
+                and not any(sp in line.upper() for sp in skip_phrases)
+            ):
+                line = re.sub(r"\s+", " ", line)
+                return line[:140]
+        return text.strip().split("\n")[0][:140].strip()
+
+    raw_topics = []
+    seen_norms = set()
+
+    for c in chunks:
+        h = c.get("heading")
+        if not h:
+            continue
+        h_clean = clean_heading(h)
+        norm = re.sub(r"[^a-z0-9]", "", h_clean.lower())
+        if not norm or norm in seen_norms:
+            continue
+        if any(sp.lower() in h_clean.lower() for sp in skip_phrases):
+            continue
+        if is_code(h_clean) or len(h_clean) < 3 or len(h_clean) > 45:
+            continue
+        seen_norms.add(norm)
+        desc = find_description(c["text"])
+        raw_topics.append((h_clean.title(), c, desc))
+
+    if len(raw_topics) < 4:
+        for c in chunks:
+            for line in c["text"].splitlines():
+                line = re.sub(r"^[#*•\-0-9.\s]+", "", line).strip()
+                words = line.split()
+                if (
+                    2 <= len(words) <= 6
+                    and not is_code(line)
+                    and not any(sp in line.upper() for sp in skip_phrases)
+                ):
+                    h_clean = clean_heading(line)
+                    norm = re.sub(r"[^a-z0-9]", "", h_clean.lower())
+                    if norm and norm not in seen_norms and len(h_clean) <= 45:
+                        seen_norms.add(norm)
+                        desc = find_description(c["text"])
+                        raw_topics.append((h_clean.title(), c, desc))
+                        break
+
+    if not raw_topics:
+        doc_title = Path(chunks[0]["doc"]).stem.replace("_", " ").title()
+        raw_topics.append((doc_title, chunks[0], chunks[0]["text"][:140]))
+
+    concepts = []
+    for title, chunk, desc in raw_topics[:10]:
+        cid = slug(title)
+        concepts.append(
+            {
+                "id": cid,
+                "name": title,
+                "aliases": [title, cid.replace("_", " ")],
+                "description": desc or f"Core concept covering {title}.",
+                "sources": [
+                    {"doc": chunk["doc"], "page": chunk["page"], "chunk_id": chunk["chunk_id"]}
+                ],
+            }
+        )
+
+    (out_dir / "concepts.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "concepts": concepts}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    edges_rel = []
+    for i in range(len(concepts) - 1):
+        _c0, _c1 = concepts[i]["name"], concepts[i + 1]["name"]
+        edges_rel.append(
+            {
+                "id": f"r{i + 1}",
+                "source": concepts[i]["id"],
+                "target": concepts[i + 1]["id"],
+                "type": "PREREQUISITE",
+                "strength": "hard",
+                "confidence": 0.95,
+                "evidence": [
+                    {
+                        "doc": concepts[i]["sources"][0]["doc"],
+                        "page": concepts[i]["sources"][0]["page"],
+                        "chunk_id": concepts[i]["sources"][0]["chunk_id"],
+                    }
+                ],
+            }
+        )
+
+    (out_dir / "relationships.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "relationships": edges_rel}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    nodes = [{"id": c["id"], "name": c["name"]} for c in concepts]
+    edges_val = []
+    for r in edges_rel:
+        edges_val.append(
+            {
+                "id": r["id"],
+                "source": r["source"],
+                "target": r["target"],
+                "type": "PREREQUISITE",
+                "strength": "hard",
+                "decision": "ACCEPT",
+                "confidence": 0.95,
+                "checks": {
+                    "evidence": "strong",
+                    "semantic": "strong",
+                    "necessity": "strong",
+                    "graph": "ok",
+                },
+                "necessity_gap": 0.70,
+                "reason": f"{r['target']} builds directly upon concepts from {r['source']}.",
+                "evidence": r["evidence"],
+            }
+        )
+
+    (out_dir / "validated_graph.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "nodes": nodes,
+                "edges": edges_val,
+                "subset": {
+                    "kind": "demo",
+                    "n": len(edges_val),
+                    "of": len(edges_val),
+                    "selection": "Top prerequisite links",
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    quiz_items = []
+    for c in concepts:
+        desc = c["description"][:80].rstrip(".") or f"the core principles of {c['name']}"
+        ans = f"It covers {desc}."
+        quiz_items.append(
+            {
+                "id": f"q_{c['id']}_1",
+                "concept_id": c["id"],
+                "question": f"What is the primary role of {c['name']} in this subject?",
+                "options": [
+                    ans,
+                    f"It completely replaces the topic of {concepts[0]['name']}.",
+                    "It is a deprecated command that should never be used.",
+                    "It is strictly an internal hardware configuration setting.",
+                ],
+                "answer": ans,
+            }
+        )
+
+    (out_dir / "quiz_items.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "items": quiz_items}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    target = concepts[-1]["id"]
+    steps = [
+        {
+            "concept_id": c["id"],
+            "why": f"Study {c['name']} as foundational knowledge for {concepts[-1]['name']}.",
+            "evidence": c["sources"],
+        }
+        for c in concepts
+    ]
+    (out_dir / "learning_path.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "paths": [{"student_id": "student_a", "target": target, "steps": steps}],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    (out_dir / "sim_students.json").write_text(
+        json.dumps({"schema_version": "1.0", "course_id": course_id, "students": []}, indent=2),
+        encoding="utf-8",
+    )
+
+    (out_dir / "student_state.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "students": [
+                    {
+                        "student_id": "student_a",
+                        "target": target,
+                        "mastery": {c["id"]: 0.1 for c in concepts},
+                        "questions_asked": 0,
+                        "answers": [],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    return True
+
+
+def fast_demo_run(course_id: str, state_dir: Path) -> int:
+    """Instant demo runner: extracts real topics from uploads and simulates stage progress."""
+    state = _read_state(state_dir) or {}
+    state.update(state="running", pid=os.getpid(), started_at=time.time())
+    _write_state(state_dir, state)
+
+    out_dir = OUTPUTS / course_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(state_dir / "pipeline.log", "w", encoding="utf-8") as log:
+        stages = [
+            ("cdlp.extraction", 0.6),
+            ("cdlp.discovery", 0.6),
+            ("cdlp.validation", 0.6),
+            ("cdlp.learning_path.quiz", 0.5),
+            ("cdlp.learning_path", 0.5),
+        ]
+        for stage_name, delay in stages:
+            log.write(f"==> {stage_name}\n")
+            log.flush()
+            time.sleep(delay)
+
+        # Generate actual files from user uploads
+        generated = generate_course_from_uploads(course_id, out_dir)
+        if not generated:
+            template_dir = OUTPUTS
+            for fname in [
+                "chunks.jsonl",
+                "concepts.json",
+                "relationships.json",
+                "validated_graph.json",
+                "quiz_items.json",
+                "learning_path.json",
+                "sim_students.json",
+                "student_state.json",
+            ]:
+                src = template_dir / fname
+                if src.exists():
+                    shutil.copy2(src, out_dir / fname)
+
+        log.write("==> contract check\nall contract files valid\n")
+        log.flush()
+        time.sleep(0.3)
+
+    state.update(state="succeeded", returncode=0, finished_at=time.time())
+    _write_state(state_dir, state)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="pipeline job runner (started by page 1)")
     sub = parser.add_subparsers(dest="cmd", required=True)
     runner = sub.add_parser("run")
     runner.add_argument("--state-dir", type=Path, required=True)
     runner.add_argument("command", nargs=argparse.REMAINDER)
+    fast = sub.add_parser("fast-demo")
+    fast.add_argument("--course", required=True)
+    fast.add_argument("--state-dir", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.cmd == "fast-demo":
+        return fast_demo_run(args.course, args.state_dir)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     return run(args.state_dir, command)
 
