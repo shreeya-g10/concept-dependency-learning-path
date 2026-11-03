@@ -89,7 +89,7 @@ ADD_TIME = (
 ADD_FAST_MODE = "⚡ Fast Demo Mode (takes ~3 to 5 seconds, recommended)"
 ADD_FAST_SECONDS = "3 to 5 seconds"
 ADD_FAST_MODE_HELP = (
-    "Extracts key topics and validates the top prerequisite relationships. "
+    "Finds key topics and checks which order to study them. "
     "Recommended for quick class presentations and protects laptop memory."
 )
 ADD_MINUTES = "{low} to {high} minutes"

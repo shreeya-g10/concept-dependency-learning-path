@@ -359,9 +359,6 @@ def start_job(
     _write_state(folder, state)
     (folder / "pipeline.log").write_text("", encoding="utf-8")
     runner = [sys.executable, str(Path(__file__).resolve()), "run", "--state-dir", str(folder)]
-    env = dict(os.environ)
-    if demo_subset is not None and demo_subset > 0:
-        env["CDLP_MAX_CHUNKS"] = "2"
     popen(
         [*runner, "--", *command],
         cwd=str(ROOT),
@@ -369,7 +366,6 @@ def start_job(
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,  # keeps running if Streamlit restarts
-        env=env,
     )
     return state
 
@@ -481,32 +477,102 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
         s = re.sub(r"[^a-zA-Z0-9]+", "_", text.lower()).strip("_")
         return s[:35] or "concept"
 
+    def is_code(s: str) -> bool:
+        return any(
+            tok in s
+            for tok in [
+                ";",
+                "{",
+                "}",
+                "==",
+                "!=",
+                "++",
+                "--",
+                "=",
+                "printf",
+                "scanf",
+                "#include",
+                "void ",
+                "int ",
+                "return ",
+            ]
+        )
+
+    skip_phrases = [
+        "LEARNING GUIDE",
+        "HANDBOOK",
+        "BEGINNER FRIENDLY",
+        "MINI PROJECT",
+        "PROJECT 1",
+        "PROJECT 2",
+        "PRACTICE SET",
+        "PRACTICE",
+        "EXERCISE",
+        "INDEX",
+        "PREFACE",
+        "CONTENTS",
+        "PAGE",
+        "HTTP",
+        "WWW",
+        "COPYRIGHT",
+        "ALL RIGHTS",
+        "TABLE OF",
+    ]
+
+    def clean_heading(h: str) -> str:
+        h = re.sub(r"^CHAPTER\s*\d+\s*[–—\-~\s:]*", "", h, flags=re.IGNORECASE).strip()
+        h = re.sub(r"^[0-9.]+\s*", "", h).strip()
+        h = re.sub(r"\s*&\s*", " and ", h)
+        h = re.sub(r"\bI/O\b", "Input / Output", h, flags=re.IGNORECASE)
+        return h.strip()
+
+    def find_description(text: str) -> str:
+        for line in text.splitlines():
+            line = line.strip()
+            if (
+                len(line) >= 20
+                and not is_code(line)
+                and not any(sp in line.upper() for sp in skip_phrases)
+            ):
+                line = re.sub(r"\s+", " ", line)
+                return line[:140]
+        return text.strip().split("\n")[0][:140].strip()
+
     raw_topics = []
+    seen_norms = set()
+
     for c in chunks:
         h = c.get("heading")
-        if h and len(h.split()) <= 8:
-            clean = re.sub(r"^CHAPTER\s*\d+\s*[–—\-~\s]*", "", h, flags=re.IGNORECASE).strip()
-            clean = re.sub(r"^[0-9.]+\s*", "", clean).strip()
-            if clean and not any(
-                skip in clean.upper()
-                for skip in ["PREFACE", "CONTENTS", "PRACTICE SET", "INDEX", "REFERENCES"]
-            ):
-                title = clean.title()
-                if title not in [t[0] for t in raw_topics]:
-                    desc = c["text"].strip().split("\n")[0][:140].strip()
-                    raw_topics.append((title, c, desc))
+        if not h:
+            continue
+        h_clean = clean_heading(h)
+        norm = re.sub(r"[^a-z0-9]", "", h_clean.lower())
+        if not norm or norm in seen_norms:
+            continue
+        if any(sp.lower() in h_clean.lower() for sp in skip_phrases):
+            continue
+        if is_code(h_clean) or len(h_clean) < 3 or len(h_clean) > 45:
+            continue
+        seen_norms.add(norm)
+        desc = find_description(c["text"])
+        raw_topics.append((h_clean.title(), c, desc))
 
     if len(raw_topics) < 4:
         for c in chunks:
             for line in c["text"].splitlines():
                 line = re.sub(r"^[#*•\-0-9.\s]+", "", line).strip()
                 words = line.split()
-                if 2 <= len(words) <= 6 and not any(
-                    skip in line.upper() for skip in ["PAGE", "HTTP", "WWW", "CHAPTER"]
+                if (
+                    2 <= len(words) <= 6
+                    and not is_code(line)
+                    and not any(sp in line.upper() for sp in skip_phrases)
                 ):
-                    title = line.title()
-                    if title not in [t[0] for t in raw_topics]:
-                        raw_topics.append((title, c, c["text"][:140].strip()))
+                    h_clean = clean_heading(line)
+                    norm = re.sub(r"[^a-z0-9]", "", h_clean.lower())
+                    if norm and norm not in seen_norms and len(h_clean) <= 45:
+                        seen_norms.add(norm)
+                        desc = find_description(c["text"])
+                        raw_topics.append((h_clean.title(), c, desc))
                         break
 
     if not raw_topics:
