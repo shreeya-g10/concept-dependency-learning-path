@@ -275,6 +275,8 @@ def test_pipeline_passes_quick_build_flags_to_validation(tmp_path, monkeypatch):
             "--skip-necessity",
             "--demo-subset",
             "25",
+            "--necessity-sample",
+            "40",
         ],
     )
     with pytest.raises(SystemExit):
@@ -282,3 +284,4 @@ def test_pipeline_passes_quick_build_flags_to_validation(tmp_path, monkeypatch):
 
     v = seen["cdlp.validation"]
     assert "--skip-necessity" in v and arg(v, "--demo-subset") == "25"
+    assert arg(v, "--necessity-sample") == "40"

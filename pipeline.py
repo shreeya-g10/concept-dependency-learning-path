@@ -81,6 +81,11 @@ def main() -> None:
         help="passed to validation: skip the report-only necessity test (quick builds)",
     )
     parser.add_argument(
+        "--necessity-sample",
+        type=int,
+        help="passed to validation: run the necessity test on a seeded sample of N edges only",
+    )
+    parser.add_argument(
         "--demo-subset",
         type=int,
         help="passed to validation: validate only the N highest-confidence edges (a demo)",
@@ -119,6 +124,11 @@ def main() -> None:
         "--out",
         str(out / "validated_graph.json"),
         *(["--skip-necessity"] if args.skip_necessity else []),
+        *(
+            ["--necessity-sample", str(args.necessity_sample)]
+            if args.necessity_sample is not None
+            else []
+        ),
         *(["--demo-subset", str(args.demo_subset)] if args.demo_subset else []),
     )
     # teacher decisions (website review page) survive a re-run: apply them to the new graph

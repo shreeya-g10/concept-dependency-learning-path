@@ -8,6 +8,21 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.11
+
+- `relationships.json` may carry an optional top-level `pair_answers` (both raw answers per asked pair, `asks[0]` being the hash order) and an optional `discovery.both_orders` (counts per pair and the rule version), and edges may carry an optional `order_agreement` (`stable`, `unstable` or `reversed`). Written by course runs, which now ask every candidate pair in both orders under `cdlp/discovery/configs/order_rule_v1.json`. In such a file `discovery.answers` counts the hash-order asks only. `--pairs` benchmark runs and `--one-order` do not write them. Both edges of a reversed pair go to the validator, whose contradiction label sends both to HUMAN_REVIEW.
+- `quiz_items.json` items may carry an optional `second_model` (the reply, for the record), and `generation` may carry optional `check_version` and `dropped` (every dropped draft with its reason). Quiz generation now defaults to `quiz_check_v3` (no-LLM subject and answer-support checks, a formatting-tolerant quote match, then the unchanged `quiz_check_v2` prompt as a veto).
+- Discovery and quiz generation write `schema_version` 1.11.
+- No field renamed, removed, retyped or made required; older files stay valid.
+
+## 1.10
+
+- `relationships.json` may carry an optional top-level `discovery` (`prompt_version`, `pair_order_rule`, `answers`), and edges may carry an optional `pair_order` (`a`, `b`, `rule`, `answer`). Written by the neutral prompts, now `discover_v3_1` by default for course runs, so a position bias can be measured. `--pairs` benchmark runs keep `discover_v2` and do not write them. Discovery now writes `schema_version` 1.10 (`relationships_baseline.json` stays at 1.3). Example: `examples/neutral_relationships.json`.
+- `quiz_items.json` `generation` may carry optional `min_items_per_topic`, `retry_prompt_version`, `topics_retried` and `skipped_on_retry`; `skipped` now counts retries too. The check prompt is now `quiz_check_v2`. Quiz generation writes `schema_version` 1.10. Example: `examples/checked_quiz_items.json`.
+- Not a contract change: `python -m cdlp.extraction.concept_filter` writes an ordinary `concepts.json` with kept concepts unchanged, and its `concept_filter_report.json` is not a contract file.
+- Versions are labels, not decimals: 1.10 comes after 1.9.
+- No field renamed, removed, retyped or made required; older files stay valid.
+
 ## 1.9
 
 - `quiz_items.json` items may carry an optional `source_quote` (word-for-word from `chunk_id`), and `generation` may carry `check_model`, `check_prompt_version` and `items_checked`. Written by prompt `quiz_v2` with the second-model check `quiz_check_v1`.

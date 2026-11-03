@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.11",
+  "course_id": "ds101",
+  "items": [
+    {
+      "id": "q_rec_1",
+      "concept_id": "recursion",
+      "question": "What stops a recursive function from running forever?",
+      "options": [
+        "A base case",
+        "A loop counter",
+        "A global variable",
+        "Tail call"
+      ],
+      "answer": "A base case",
+      "chunk_id": "ch_l5_p03",
+      "source_quote": "Word-for-word sentence from the chunk that proves the answer.",
+      "second_model": {
+        "verdicts": {
+          "A": true,
+          "B": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      }
+    }
+  ],
+  "generation": {
+    "model": "qwen2.5:7b-instruct",
+    "prompt_version": "quiz_v2",
+    "temperature": 0.0,
+    "seed": 42,
+    "max_chunks_per_concept": 3,
+    "check_model": "llama3.1:8b",
+    "check_prompt_version": "quiz_check_v2",
+    "items_checked": 3,
+    "min_items_per_topic": 2,
+    "retry_prompt_version": "quiz_retry_v1",
+    "topics_retried": [
+      "recursion"
+    ],
+    "concepts": 1,
+    "concepts_without_chunks": [],
+    "concepts_without_items": [],
+    "skipped": {
+      "check_failed": 2
+    },
+    "skipped_on_retry": {
+      "check_failed": 1
+    },
+    "check_version": "quiz_check_v3",
+    "dropped": [
+      {
+        "concept_id": "recursion",
+        "question": "An example of a dropped question?",
+        "reason": "answer_not_supported",
+        "detail": "0.00 of the answer's content words are in the quote"
+      }
+    ]
+  }
+}

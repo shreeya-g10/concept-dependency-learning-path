@@ -240,7 +240,7 @@ def test_cli_v3_output_matches_contract(tmp_path, monkeypatch, capsys):
     cli.main(
         [
             *["--concepts", f"{EX}/concepts.json", "--chunks", f"{EX}/chunks.jsonl"],
-            *["--out-dir", str(tmp_path), "--prompt-version", V3],
+            *["--out-dir", str(tmp_path), "--prompt-version", V3, "--one-order"],
         ]
     )
     assert check_file(tmp_path / "relationships.json") == []
@@ -373,7 +373,7 @@ def test_cli_default_is_v3_1_and_the_file_records_the_rule(tmp_path, monkeypatch
     cli.main(
         [
             *["--concepts", f"{EX}/concepts.json", "--chunks", f"{EX}/chunks.jsonl"],
-            *["--out-dir", str(tmp_path)],
+            *["--out-dir", str(tmp_path), "--one-order"],
         ]
     )
     assert check_file(tmp_path / "relationships.json") == []

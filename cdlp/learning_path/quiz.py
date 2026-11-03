@@ -37,6 +37,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from cdlp.learning_path import quiz_check_v3
+from cdlp.learning_path.quiz_check_v3 import _name_forms
 from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 from cdlp.shared.llm import chat_json
@@ -46,6 +48,9 @@ logger = logging.getLogger(__name__)
 
 PROMPT_VERSION = "quiz_v2"
 CHECK_PROMPT_VERSION = "quiz_check_v2"  # quiz_check_v1 is kept for the record
+# The checks as a whole. quiz_check_v3 is v2's prompt with no-LLM checks added (quiz_check_v3.py).
+CHECK_VERSION = "quiz_check_v3"
+OLD_CHECK_VERSION = "quiz_check_v2"
 RETRY_PROMPT_VERSION = "quiz_retry_v1"
 CHECK_ITEMS = True  # a second model must confirm every item (quiz_v2)
 N_QUESTIONS = 4
@@ -62,7 +67,7 @@ TEMPERATURE = 0.0
 MAX_CHUNKS = 3  # evidence chunks shown per concept
 MAX_CHUNK_CHARS = 1200  # each chunk is cut to this length in the prompt
 MIN_OPTIONS, MAX_OPTIONS = 2, 6
-SCHEMA_VERSION = "1.9"
+SCHEMA_VERSION = "1.11"
 
 # A student never sees the excerpts, so a question must not lean on them.
 LEAKED_WORDING = re.compile(
@@ -93,6 +98,8 @@ FAILURE_ADVICE = {
     "no_source_quote": '"source_quote" was missing or too short to prove anything.',
     "quote_not_in_book": '"source_quote" was not copied word for word from one excerpt.',
     "near_duplicate": "It asked the same thing as another question, or used the same quote.",
+    "subject_not_in_source": "It named something the quote and its section never mention.",
+    "answer_not_supported": "The quote did not state the correct answer in its own words.",
     "check_reply_not_json": "A checker could not judge it. Make it simpler and clearer.",
     "check_bad_verdicts": "A checker could not judge it. Make it simpler and clearer.",
     "check_off_topic": "A checker found that it was really about a different topic.",
@@ -258,26 +265,6 @@ def focused_chunks(concept: dict, chunks: list[dict], k: int = MAX_CHUNKS) -> li
     return [chunk for _, _, chunk in sorted(scored, key=lambda x: x[:2])[:k]]
 
 
-def _name_forms(squashed: str) -> set[str]:
-    """A lowercase name with no separators, plus its plural or singular forms."""
-    forms = {squashed, squashed + "s", squashed + "es"}
-    if squashed.endswith("y"):
-        forms.add(squashed[:-1] + "ies")
-    if squashed.endswith(("ix", "ex")):
-        forms.add(squashed[:-2] + "ices")
-    if squashed.endswith("is"):
-        forms.add(squashed[:-2] + "es")
-    if squashed.endswith("ies"):
-        forms.add(squashed[:-3] + "y")
-    if squashed.endswith("ices"):
-        forms |= {squashed[:-4] + "ix", squashed[:-4] + "ex"}
-    if squashed.endswith("es"):
-        forms.add(squashed[:-2])
-    if squashed.endswith("s") and not squashed.endswith("ss"):
-        forms.add(squashed[:-1])
-    return forms
-
-
 def names_topic(text: str, concept: dict) -> bool:
     """Does the text name the concept, or an alias, as whole words?
 
@@ -319,6 +306,44 @@ def v2_problem(raw: dict, concept: dict, evidence: list[dict]) -> str | None:
     return None
 
 
+def v3_problem(raw: dict, topic: dict) -> tuple[str, str] | None:
+    """(reason, detail) if a structurally valid item must be dropped under quiz_check_v3."""
+    concept, evidence, v3 = topic["concept"], topic["evidence"], topic["v3"]
+    text = " ".join([raw.get("question", ""), *raw.get("options", [])])
+    if LEAKED_WORDING.search(text):
+        return "mentions_the_source", ""
+    answer = raw.get("answer") or raw.get("correct_answer") or ""
+    if not names_topic(f"{raw.get('question', '')} {answer}", concept):
+        return "not_about_topic", ""
+    quote = raw.get("source_quote")
+    if not isinstance(quote, str) or len(_norm(quote)) < MIN_QUOTE_CHARS:
+        return "no_source_quote", ""
+    chunk = quiz_check_v3.quote_chunk(quote, evidence)
+    if not chunk:
+        return "quote_not_in_book", ""
+    missing = quiz_check_v3.missing_subject(
+        raw["question"], quote, chunk.get("text", ""), v3["terms"], v3["concepts"]
+    )
+    if missing:
+        return "subject_not_in_source", missing
+    support = quiz_check_v3.answer_support(answer, quote, v3["cfg"], COMMON_WORDS)
+    if support < v3["cfg"]["min_answer_support"]:
+        return (
+            "answer_not_supported",
+            f"{support:.2f} of the answer's content words are in the quote",
+        )
+    return None
+
+
+def v3_context(concepts: list[dict]) -> dict:
+    """What v3_problem needs: the whole course's concepts, not only the ones being asked about."""
+    return {
+        "cfg": quiz_check_v3.load_config(),
+        "terms": quiz_check_v3.concept_terms(concepts),
+        "concepts": {c["id"]: c for c in concepts},
+    }
+
+
 def _content_words(text: str) -> set[str]:
     words = {w.casefold() for w in re.findall(r"[^\W_]+", text)} - COMMON_WORDS
     return {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words}
@@ -357,13 +382,19 @@ def _truth(value: Any) -> bool | None:
 
 
 def check_item(
-    item: dict, concept: dict, excerpt: str, template: str, model: str | None
+    item: dict,
+    concept: dict,
+    excerpt: str,
+    template: str,
+    model: str | None,
+    record: dict | None = None,
 ) -> str | None:
     """Ask a second model, which is never told the answer. Returns why it failed, or None.
 
     The model judges each option true or false from the excerpt, says which option the quote
     proves and whether the question and quote share a subject. This code compares that with
     the answer, so the model cannot just agree with it. A reply that cannot be read fails.
+    The reply's fields are copied into `record` when one is given.
     """
     options = sorted(item["options"], key=_norm)  # the position must not hint at the answer
     letters = "ABCDEF"[: len(options)]
@@ -382,6 +413,9 @@ def check_item(
         return "check_reply_not_json"
     if not isinstance(reply, dict):
         return "check_reply_not_json"
+    if record is not None:
+        for field in ("verdicts", "quote_proves", "same_subject", "about_topic"):
+            record[field] = reply.get(field)
     if _truth(reply.get("about_topic")) is not True:
         return "check_off_topic"
     raw_verdicts = reply.get("verdicts")
@@ -457,9 +491,17 @@ def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
     new = []
     for one in raw:
         question = one.get("question") if isinstance(one, dict) else None
-        problem = item_problem(one) or v2_problem(one, concept, evidence)
+        detail = ""
+        v3 = topic.get("v3")
+        problem = item_problem(one)
+        if not problem and v3:
+            problem, detail = v3_problem(one, topic) or (None, "")
+        elif not problem:
+            problem = v2_problem(one, concept, evidence)
         if not problem:
-            source = quote_chunk(one["source_quote"], evidence)
+            source = (quiz_check_v3.quote_chunk if v3 else quote_chunk)(
+                one["source_quote"], evidence
+            )
             item = clean_item(
                 {**one, "evidence_chunk_ids": [source["chunk_id"]]},
                 concept["id"],
@@ -472,6 +514,14 @@ def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
         if problem:
             skipped[problem] += 1
             topic["failures"].append((question if isinstance(question, str) else "", problem))
+            topic.setdefault("dropped", []).append(
+                {
+                    "concept_id": concept["id"],
+                    "question": question if isinstance(question, str) else "",
+                    "reason": problem,
+                    "detail": detail,
+                }
+            )
             continue
         topic["numbered"] += 1
         item["id"] = f"q_{concept['id']}_{topic['numbered']}"
@@ -484,11 +534,23 @@ def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
 def _check_drafts(new: list[dict], topic: dict, template: str, model: str | None, skipped) -> None:
     for item in new:
         excerpt = topic["excerpts"][item["id"]]
-        problem = check_item(item, topic["concept"], excerpt, template, model)
+        reply: dict = {}
+        problem = check_item(item, topic["concept"], excerpt, template, model, record=reply)
+        if topic.get("v3"):
+            item["second_model"] = reply  # kept for the record: a pass proves little on its own
         if problem:
             skipped[problem] += 1
             topic["failures"].append((item["question"], problem))
             topic["items"].remove(item)
+            topic.setdefault("dropped", []).append(
+                {
+                    "concept_id": topic["concept"]["id"],
+                    "question": item["question"],
+                    "reason": problem,
+                    "detail": "",
+                    "second_model": reply,
+                }
+            )
 
 
 def generate_quiz_items(
@@ -501,6 +563,8 @@ def generate_quiz_items(
     limit: int | None = None,
     check: bool | None = None,
     check_model: str | None = None,
+    check_version: str = CHECK_VERSION,
+    all_concepts: list[dict] | None = None,
 ) -> dict[str, Any]:
     """quiz_items.json for any course: one LLM call per concept that has chunks.
 
@@ -509,12 +573,17 @@ def generate_quiz_items(
     fail are dropped and counted. A topic left with fewer than MIN_ITEMS_PER_TOPIC gets one
     retry that says why its drafts failed, and the new drafts pass the same checks. A topic
     can still end up with no questions: it is then not ready.
+
+    all_concepts: the whole course, when concepts_data holds only some of it. quiz_check_v3 uses
+    it to see which concepts a question names.
     """
     prompt_version = prompt_version or PROMPT_VERSION
     check = CHECK_ITEMS if check is None else check
     is_v2 = prompt_version != "quiz_v1"
     check_model = check_model or os.getenv("LLM_VALIDATOR_MODEL") or None
     template = load_prompt(prompt_version)
+    use_v3 = is_v2 and check_version != OLD_CHECK_VERSION
+    v3 = v3_context(all_concepts or concepts_data["concepts"]) if use_v3 else None
     concepts = concepts_data["concepts"][:limit] if limit else concepts_data["concepts"]
     skipped: Counter = Counter()
     no_chunks, items = [], []
@@ -533,7 +602,10 @@ def generate_quiz_items(
                 "failures": [],
                 "excerpts": {},
                 "numbered": 0,
+                "dropped": [],
             }
+            if v3:
+                topic["v3"] = v3
             topics.append(topic)
             raw = _ask_for_drafts(
                 _v2_prompt(concept, evidence, template), topic, prompt_version, model, skipped
@@ -599,6 +671,7 @@ def generate_quiz_items(
             "max_chunks_per_concept": MAX_CHUNKS,
             "check_model": (check_model or llm.DEFAULT_MODEL) if is_v2 and check else None,
             "check_prompt_version": CHECK_PROMPT_VERSION if is_v2 and check else None,
+            "check_version": check_version if is_v2 else None,
             "items_checked": checked,
             "min_items_per_topic": MIN_ITEMS_PER_TOPIC if is_v2 else None,
             "retry_prompt_version": RETRY_PROMPT_VERSION if is_v2 else None,
@@ -610,6 +683,7 @@ def generate_quiz_items(
             ),
             "skipped": dict(sorted(skipped.items())),  # every attempt, retries included
             "skipped_on_retry": dict(sorted((skipped - skipped_first_try).items())),
+            "dropped": [row for topic in topics for row in topic.get("dropped", [])],
         },
     }
 
@@ -636,10 +710,12 @@ def main(argv: list[str] | None = None) -> None:
         type=Path,
         help="only concepts on ACCEPT edges of this validated_graph.json (fewer LLM calls)",
     )
+    parser.add_argument("--check-version", default=CHECK_VERSION, help=f"default: {CHECK_VERSION}")
     args = parser.parse_args(argv)
     if _contract_of(args.out) != "quiz_items":  # before any LLM call: saving is the last step
         parser.error(f"--out {args.out}: the file name must end in quiz_items.json")
     concepts_data = read_json(args.concepts)
+    all_concepts = concepts_data["concepts"]
     if args.only_graph:
         accepted = {
             end
@@ -656,6 +732,8 @@ def main(argv: list[str] | None = None) -> None:
         limit=args.limit,
         prompt_version=args.prompt_version,
         check=False if args.no_check else None,
+        check_version=args.check_version,
+        all_concepts=all_concepts,
     )
     write_json(args.out, quiz)
     g = quiz["generation"]

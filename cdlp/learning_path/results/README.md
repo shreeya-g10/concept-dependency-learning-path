@@ -55,3 +55,12 @@ How to read this:
 - The simulated answers are independent given the concept. A real student who guesses one question may well get a similar one right too, so the gain here is probably an upper limit.
 - This is the example graph, with 5 concepts. Rerun on real course graphs before citing it in the paper. The real ds101 quiz has 2 to 3 items per concept, so the strategy could run there.
 - To reproduce: the code is in commit ae6327cb7 (`python -m cdlp.learning_path.evaluate`), and was removed in the next commit because it was not kept.
+
+## quiz_check replays on the ds101 review drafts (2026-11-03)
+
+`quiz_check_v2_replay_ds101` and `quiz_check_v3_replay_ds101` (`.json` with every reply, `.md` to read) run the 32 real `quiz_v2` drafts of the review run through each version of the checks, with `llama3.1:8b` as the second model (`python -m cdlp.learning_path.replay_quiz_check`).
+
+- **A working test only.** These questions shaped the checks, so no accuracy figure may come from them.
+- **The v3 threshold (`configs/quiz_check_v3.json`) was set from its stated reasoning before the v3 replay, and was not changed after it.**
+- v2 ran on the 259-concept list and v3 on the 85 filtered concepts. On the 259 list, v3's subject check would also drop the AVL key property question (`search operations`, an alias of `find_operation`).
+- Known wrong drops under v3: `time complexity` is an alias of `running_time_analysis`, so a question using those words is dropped when the chunk says only "O(n + m) time".

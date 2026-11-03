@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.11",
+  "course_id": "ds101",
+  "discovery": {
+    "prompt_version": "discover_v3_1",
+    "pair_order_rule": "sha256_of_pair_v1",
+    "answers": {
+      "A_BEFORE_B": 0,
+      "B_BEFORE_A": 1,
+      "NEITHER": 0,
+      "off_topic": 0,
+      "hard": 1,
+      "soft": 0,
+      "confidence": {
+        "0.93": 1
+      }
+    },
+    "both_orders": {
+      "rule_version": "order_rule_v1",
+      "pairs": 1,
+      "stable": 1,
+      "unstable": 0,
+      "reversed": 0,
+      "neither": 0,
+      "answers_all_asks": {
+        "B_BEFORE_A": 1,
+        "A_BEFORE_B": 1
+      }
+    }
+  },
+  "relationships": [
+    {
+      "id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.93,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "A binary tree is a tree in which"
+        }
+      ],
+      "method": "llm_discovery_v0",
+      "pair_order": {
+        "a": "binary_tree",
+        "b": "trees",
+        "rule": "sha256_of_pair_v1",
+        "answer": "B_BEFORE_A"
+      },
+      "order_agreement": "stable"
+    }
+  ],
+  "pair_answers": [
+    {
+      "order_agreement": "stable",
+      "asks": [
+        {
+          "source": "trees",
+          "target": "binary_tree",
+          "relationship": "DIRECT",
+          "strength": "hard",
+          "confidence": "HIGH",
+          "evidence_chunk_ids": [],
+          "answer": "B_BEFORE_A",
+          "on_topic": true,
+          "pair_a": "binary_tree",
+          "pair_b": "trees"
+        },
+        {
+          "source": "trees",
+          "target": "binary_tree",
+          "relationship": "DIRECT",
+          "strength": "hard",
+          "confidence": "HIGH",
+          "evidence_chunk_ids": [],
+          "answer": "A_BEFORE_B",
+          "on_topic": true,
+          "pair_a": "trees",
+          "pair_b": "binary_tree"
+        }
+      ]
+    }
+  ]
+}

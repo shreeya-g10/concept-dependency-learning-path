@@ -1,0 +1,11 @@
+{
+  "prompt_version": "discover_v3_1",
+  "seed": 42,
+  "sample_size": 30,
+  "gold_edges": "data/gold/ds101/gold_edges.csv",
+  "gold_id_to_concept": {
+    "trees": "general_tree",
+    "graphs": "graph"
+  },
+  "gold_id_note": "The gold labels say trees and graphs; the filtered concepts name them general_tree (alias Tree) and graph (alias Graphs). No other gold id changes."
+}
