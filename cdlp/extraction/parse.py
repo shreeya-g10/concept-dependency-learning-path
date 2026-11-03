@@ -18,6 +18,7 @@ Files named README* are documentation, not course material, and are skipped.
 from __future__ import annotations
 
 import math
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -449,6 +450,9 @@ def parse_directory(input_dir: Path, course_id: str = "ds101") -> list[dict[str,
         chunks = parse_file(file_path, course_id=course_id)
         all_chunks.extend(chunks)
 
+    max_chunks = int(os.environ.get("CDLP_MAX_CHUNKS", "0") or "0")
+    if max_chunks > 0 and len(all_chunks) > max_chunks:
+        return all_chunks[:max_chunks]
     return all_chunks
 
 

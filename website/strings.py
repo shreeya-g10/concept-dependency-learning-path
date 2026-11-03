@@ -86,6 +86,12 @@ ADD_TIME = (
     "This may take about **{span}**. This is only a rough guess. "
     "You can leave this page while we work."
 )
+ADD_FAST_MODE = "⚡ Fast Demo Mode (takes ~3 to 5 seconds, recommended)"
+ADD_FAST_SECONDS = "3 to 5 seconds"
+ADD_FAST_MODE_HELP = (
+    "Extracts key topics and validates the top prerequisite relationships. "
+    "Recommended for quick class presentations and protects laptop memory."
+)
 ADD_MINUTES = "{low} to {high} minutes"
 ADD_HOURS = "{low} to {high} hours"
 ADD_TIME_FAILED = "We could not guess how long this will take. You can still start."

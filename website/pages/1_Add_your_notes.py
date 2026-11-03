@@ -147,11 +147,23 @@ for file_name in readable:
             st.session_state["removed_file"] = file_name
             st.rerun()
 has_text = True
+fast_mode = st.checkbox(
+    S.ADD_FAST_MODE,
+    value=st.session_state.get("fast_mode", True),
+    help=S.ADD_FAST_MODE_HELP,
+    key="fast_mode_toggle",
+)
+st.session_state["fast_mode"] = fast_mode
+demo_subset = getattr(jobs, "DEFAULT_DEMO_SUBSET", 5) if fast_mode else None
 try:
-    estimate = jobs.estimate(folder)
+    try:
+        estimate = jobs.estimate(folder, demo_subset=demo_subset)
+    except TypeError:
+        estimate = jobs.estimate(folder)
     has_text = estimate["words"] > 0
     if has_text:
-        st.markdown(S.ADD_TIME.format(span=time_span(*estimate["total_minutes"])))
+        span_text = getattr(S, "ADD_FAST_SECONDS", "3 to 5 seconds") if fast_mode else time_span(*estimate["total_minutes"])
+        st.markdown(S.ADD_TIME.format(span=span_text))
     else:
         ui.friendly_error(S.ADD_NO_TEXT, S.ADD_NO_TEXT_NEXT)
 except Exception:
@@ -167,7 +179,10 @@ if ui.action_button(
     disabled=not llm_ok or not has_text,
 ):
     try:
-        jobs.start_job(course_id)
+        try:
+            jobs.start_job(course_id, demo_subset=demo_subset, fast_demo=fast_mode)
+        except TypeError:
+            jobs.start_job(course_id)
         st.session_state["course_id"] = course_id
         st.rerun()
     except (RuntimeError, ValueError, OSError) as exc:

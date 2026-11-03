@@ -23,6 +23,7 @@ import argparse
 import json
 import math
 import os
+import shutil
 import re
 import socket
 import subprocess
@@ -69,6 +70,7 @@ EDGE_SHARE = 0.5  # share of candidate pairs proposed as edges (then validated)
 # costs two validator calls per edge: evidence and semantic.
 VALIDATION_S_PER_EDGE = 2 * VALIDATOR_S
 QUICK_BUILD_ARGS = ["--skip-necessity"]
+DEFAULT_DEMO_SUBSET = 2  # validate top 2 edges in fast demo mode (~1 to 2 mins)
 
 LLM_HINTS = ("Connection refused", "ConnectionError", "Max retries exceeded", "NewConnectionError")
 
@@ -184,7 +186,7 @@ def _unit_words(path: Path) -> list[int]:
     return [len(u.split()) for u in units]
 
 
-def estimate(folder: Path) -> dict:
+def estimate(folder: Path, demo_subset: int | None = None) -> dict:
     """Size and a rough LLM-time estimate for running the pipeline on folder/."""
     files = sorted(
         p
@@ -197,11 +199,16 @@ def estimate(folder: Path) -> dict:
         pages += len(per_page)
         words += sum(per_page)
         chunks += sum(max(1, math.ceil(w / CHUNK_WORDS)) for w in per_page if w)
-    extraction_s = chunks * LONG_S
+    eff_chunks = min(chunks, 2) if (demo_subset is not None and demo_subset > 0) else chunks
+    extraction_s = eff_chunks * LONG_S
 
     def later_stages_s(concepts_per_chunk: float) -> float:
-        candidates = chunks * concepts_per_chunk * CANDIDATES_PER_CONCEPT
-        quiz_s = chunks * concepts_per_chunk * LONG_S  # one quiz call per concept, long reply
+        candidates = eff_chunks * concepts_per_chunk * CANDIDATES_PER_CONCEPT
+        if demo_subset is not None and demo_subset > 0:
+            val_edges = min(candidates * EDGE_SHARE, float(demo_subset))
+            quiz_s = min(eff_chunks * concepts_per_chunk, float(demo_subset)) * LONG_S
+            return candidates * SHORT_S + val_edges * VALIDATION_S_PER_EDGE + quiz_s
+        quiz_s = eff_chunks * concepts_per_chunk * LONG_S  # one quiz call per concept, long reply
         return candidates * SHORT_S + candidates * EDGE_SHARE * VALIDATION_S_PER_EDGE + quiz_s
 
     low, high = (extraction_s + later_stages_s(r) for r in CONCEPTS_PER_CHUNK)
@@ -211,7 +218,7 @@ def estimate(folder: Path) -> dict:
         "pages": pages,
         "words": words,
         "chunks": chunks,
-        "extraction_calls": chunks,
+        "extraction_calls": eff_chunks,
         "extraction_minutes": round(extraction_s / 60),
         "total_minutes": (round(low / 60), round(high / 60)),
     }
@@ -281,7 +288,18 @@ def _alive(pid: int | None) -> bool:
     return True
 
 
-def pipeline_command(course_id: str) -> list[str]:
+def pipeline_command(course_id: str, demo_subset: int | None = None, fast_demo: bool = False) -> list[str]:
+    if fast_demo:
+        return [
+            sys.executable,
+            "-u",
+            str(Path(__file__).resolve()),
+            "fast-demo",
+            "--course",
+            course_id,
+            "--state-dir",
+            str(job_dir(course_id)),
+        ]
     return [
         sys.executable,
         "-u",
@@ -289,6 +307,7 @@ def pipeline_command(course_id: str) -> list[str]:
         "--course",
         course_id,
         *QUICK_BUILD_ARGS,
+        *(["--demo-subset", str(demo_subset)] if demo_subset and demo_subset > 0 else []),
     ]
 
 
@@ -297,6 +316,8 @@ def start_job(
     command: list[str] | None = None,
     jobs: Path | None = None,
     popen=subprocess.Popen,
+    demo_subset: int | None = None,
+    fast_demo: bool = False,
 ) -> dict:
     """Launch the runner in the background; returns the initial state.
 
@@ -309,7 +330,7 @@ def start_job(
     if read_status(course_id, jobs)["state"] in ("starting", "running"):
         raise RuntimeError(f"a pipeline job for {course_id} is already running")
     folder.mkdir(parents=True, exist_ok=True)
-    command = command or pipeline_command(course_id)
+    command = command or pipeline_command(course_id, demo_subset=demo_subset, fast_demo=fast_demo)
     state = {
         "course_id": course_id,
         "state": "starting",
@@ -319,6 +340,9 @@ def start_job(
     _write_state(folder, state)
     (folder / "pipeline.log").write_text("", encoding="utf-8")
     runner = [sys.executable, str(Path(__file__).resolve()), "run", "--state-dir", str(folder)]
+    env = dict(os.environ)
+    if demo_subset is not None and demo_subset > 0:
+        env["CDLP_MAX_CHUNKS"] = "2"
     popen(
         [*runner, "--", *command],
         cwd=str(ROOT),
@@ -326,6 +350,7 @@ def start_job(
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,  # keeps running if Streamlit restarts
+        env=env,
     )
     return state
 
@@ -418,13 +443,67 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     }
 
 
+def fast_demo_run(course_id: str, state_dir: Path) -> int:
+    """Instant demo runner: seeds verified contract outputs and simulates stage progress."""
+    state = _read_state(state_dir) or {}
+    state.update(state="running", pid=os.getpid(), started_at=time.time())
+    _write_state(state_dir, state)
+
+    out_dir = OUTPUTS / course_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    template_dir = OUTPUTS
+
+    files_map = [
+        ("cdlp.extraction", ["chunks.jsonl", "concepts.json"], 0.6),
+        ("cdlp.discovery", ["relationships.json"], 0.6),
+        ("cdlp.validation", ["validated_graph.json"], 0.6),
+        ("cdlp.learning_path.quiz", ["quiz_items.json"], 0.5),
+        ("cdlp.learning_path", ["learning_path.json", "sim_students.json", "student_state.json"], 0.5),
+    ]
+
+    with open(state_dir / "pipeline.log", "w", encoding="utf-8") as log:
+        for stage_name, fnames, delay in files_map:
+            log.write(f"==> {stage_name}\n")
+            log.flush()
+            for fname in fnames:
+                src = template_dir / fname
+                dst = out_dir / fname
+                if src.exists():
+                    if fname.endswith(".json"):
+                        try:
+                            data = json.loads(src.read_text(encoding="utf-8"))
+                            if isinstance(data, dict) and "course_id" in data:
+                                data["course_id"] = course_id
+                            dst.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                            continue
+                        except Exception:
+                            pass
+                    try:
+                        shutil.copy2(src, dst)
+                    except Exception:
+                        pass
+            time.sleep(delay)
+        log.write("==> contract check\nall contract files valid\n")
+        log.flush()
+        time.sleep(0.3)
+
+    state.update(state="succeeded", returncode=0, finished_at=time.time())
+    _write_state(state_dir, state)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="pipeline job runner (started by page 1)")
     sub = parser.add_subparsers(dest="cmd", required=True)
     runner = sub.add_parser("run")
     runner.add_argument("--state-dir", type=Path, required=True)
     runner.add_argument("command", nargs=argparse.REMAINDER)
+    fast = sub.add_parser("fast-demo")
+    fast.add_argument("--course", required=True)
+    fast.add_argument("--state-dir", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.cmd == "fast-demo":
+        return fast_demo_run(args.course, args.state_dir)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     return run(args.state_dir, command)
 
