@@ -277,8 +277,23 @@ def _read_state(folder: Path) -> dict | None:
 
 
 def _alive(pid: int | None) -> bool:
-    if not pid:
+    if not pid or pid <= 0:
         return False
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            handle = kernel32.OpenProcess(0x1000, False, int(pid))
+            if not handle:
+                return False
+            exit_code = ctypes.c_ulong()
+            kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+            kernel32.CloseHandle(handle)
+            return exit_code.value == 259
+        except Exception:
+            return False
+
     try:
         os.kill(pid, 0)
     except (ProcessLookupError, OSError):
