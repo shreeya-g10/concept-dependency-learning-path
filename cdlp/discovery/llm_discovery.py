@@ -6,6 +6,7 @@ validator's graph check (cdlp/validation/graph_checks.py).
 """
 
 import hashlib
+import json
 from collections import Counter
 from itertools import chain, zip_longest
 from pathlib import Path
@@ -18,6 +19,7 @@ PROMPT_VERSION = "discover_v3_1"  # course runs: discover_v3 with a hash-chosen 
 # RQ1 results stay comparable. discover_v1 is kept for the record; it leaked gold pairs.
 DIRECTIONAL_PROMPT_VERSION = "discover_v2"
 TEMPERATURE = 0.0
+ORDER_RULE_PATH = Path(__file__).parent / "configs" / "order_rule_v1.json"
 
 # Versions that ask one neutral question per unordered pair (A before B, B before A or
 # neither), so the direction comes from the model and not from the course file order.
@@ -174,6 +176,11 @@ def neutral_order(x: dict, y: dict, prompt_version: str) -> tuple[dict, dict]:
 def build_neutral_prompt(x: dict, y: dict, evidence: list[dict], prompt_version: str) -> str:
     """The same text whichever way round the pair arrives: see neutral_order()."""
     a, b = neutral_order(x, y, prompt_version)
+    return format_neutral_prompt(a, b, evidence, prompt_version)
+
+
+def format_neutral_prompt(a: dict, b: dict, evidence: list[dict], prompt_version: str) -> str:
+    """The prompt with this exact A and B. order_bias.py asks both ways through this."""
     return load_prompt(prompt_version).format(
         a_id=a["id"],
         a_name=a["name"],
@@ -221,6 +228,16 @@ def _normalise_neutral_result(result, a: dict, b: dict, allowed_chunks: set) -> 
     }
 
 
+def _ask_neutral(a: dict, b: dict, evidence: list[dict], prompt_version: str) -> dict:
+    """One question with this exact A and B."""
+    prompt = format_neutral_prompt(a, b, evidence, prompt_version)
+    try:
+        result = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
+    except ValueError:  # the model returned text that is not JSON
+        result = {}
+    return _normalise_neutral_result(result, a, b, {item["chunk_id"] for item in evidence})
+
+
 def discover_pair_neutral(
     x: dict, y: dict, chunk_map: dict, prompt_version: str = PROMPT_VERSION
 ) -> dict:
@@ -228,12 +245,58 @@ def discover_pair_neutral(
     # Chosen by ID, not by A and B, so a pair gets the same evidence under every order rule
     # and a change in the answers can only come from the order.
     evidence = select_neutral_evidence(*sorted((x, y), key=lambda c: c["id"]), chunk_map)
-    prompt = build_neutral_prompt(a, b, evidence, prompt_version)
-    try:
-        result = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
-    except ValueError:  # the model returned text that is not JSON
-        result = {}
-    return _normalise_neutral_result(result, a, b, {item["chunk_id"] for item in evidence})
+    return _ask_neutral(a, b, evidence, prompt_version)
+
+
+def load_order_rule(path: Path | str = ORDER_RULE_PATH) -> dict:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def apply_order_rule(first: dict, second: dict) -> tuple[str, list[dict]]:
+    """(order_agreement, the links to propose) from the two asks of one pair, first = hash order.
+
+    The rule is fixed in configs/order_rule_v1.json. It never picks a direction when the
+    two orders disagree.
+    """
+    links = [r for r in (first, second) if r["answer"] != "NEITHER"]
+    if not links:
+        return "neither", []
+    if len(links) == 1:
+        return "unstable", links
+    if (first["source"], first["target"]) == (second["source"], second["target"]):
+        cited = dict.fromkeys(first["evidence_chunk_ids"] + second["evidence_chunk_ids"])
+        return "stable", [{**first, "evidence_chunk_ids": list(cited)}]
+    return "reversed", links
+
+
+def discover_pair_both_orders(
+    x: dict, y: dict, chunk_map: dict, prompt_version: str = PROMPT_VERSION
+) -> list[dict]:
+    """One record per proposed link (or one NONE record), each carrying both raw answers."""
+    a, b = neutral_order(x, y, prompt_version)
+    evidence = select_neutral_evidence(*sorted((x, y), key=lambda c: c["id"]), chunk_map)
+    first = _ask_neutral(a, b, evidence, prompt_version)  # the same ask as a one-order run
+    second = _ask_neutral(b, a, evidence, prompt_version)
+    agreement, links = apply_order_rule(first, second)
+    asks = [first, second]
+    if not links:
+        return [{**first, "order_agreement": agreement, "pair_asks": asks}]
+    return [{**link, "order_agreement": agreement, "pair_asks": asks} for link in links]
+
+
+def pair_answers(relationships: list[dict]) -> list[dict]:
+    """Both raw answers per pair (asks[0] is the hash order), from a both-orders run."""
+    rows = {}
+    for r in relationships:
+        if "pair_asks" in r:
+            key = frozenset((r["pair_a"], r["pair_b"]))
+            rows.setdefault(key, {"order_agreement": r["order_agreement"], "asks": r["pair_asks"]})
+    return list(rows.values())
+
+
+def single_order_relationships(answers: list[dict]) -> list[dict]:
+    """What a one-order run would have recorded, from the same both-orders run."""
+    return [row["asks"][0] for row in answers]
 
 
 def neutral_summary(relationships: list[dict]) -> dict:
@@ -307,6 +370,7 @@ def discover_candidates(
     chunks: list[dict],
     remove_transitive: bool = False,
     prompt_version: str = PROMPT_VERSION,
+    both_orders: bool = False,
 ) -> list[dict]:
     concept_map = {concept["id"]: concept for concept in concepts}
     chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
@@ -316,6 +380,11 @@ def discover_candidates(
         # one question per unordered pair; the candidate's direction and reasons are not used
         for pair in dict.fromkeys(frozenset((c.source, c.target)) for c in candidates):
             x, y = sorted(pair)
+            if both_orders:
+                relationships += discover_pair_both_orders(
+                    concept_map[x], concept_map[y], chunk_map, prompt_version
+                )
+                continue
             relationships.append(
                 discover_pair_neutral(concept_map[x], concept_map[y], chunk_map, prompt_version)
             )
@@ -389,5 +458,7 @@ def build_contract_relationships(
                 "rule": PAIR_ORDER_RULES[prompt_version],
                 "answer": relationship["answer"],
             }
+        if relationship.get("order_agreement"):
+            edge["order_agreement"] = relationship["order_agreement"]
         contract.append(edge)
     return contract

@@ -1,0 +1,15 @@
+{
+  "version": "order_rule_v1",
+  "fixed_on": "2026-11-03",
+  "fixed_before": "any Stage 3 result. Do not change it after seeing results; a change is a new version.",
+  "applies_to": "course runs (no --pairs) with a neutral prompt. --pairs benchmark runs never use it.",
+  "rule": {
+    "same direction in both orders": "proposed link, order_agreement = stable",
+    "link in one order, NEITHER in the other": "proposed link, order_agreement = unstable",
+    "direction reverses": "both directions proposed to the validator, order_agreement = reversed; never pick one automatically",
+    "NEITHER in both": "no link"
+  },
+  "link_fields": "Strength and confidence come from the ask that proposed the link; when both did, from the hash-order ask, which is what a one-order run would have used. Evidence is the union of what both asks cited, hash-order ask first.",
+  "reasoning": "From the 30 non-gold sample pairs of cdlp/discovery/results/order_bias_ds101.json: 20 said NEITHER both ways, 1 gave the same link both ways, 7 gave a link in one order only (3 of them in the hash order) and 2 reversed. One order would keep or lose a link, or fix its direction, on the hash alone. Asking both ways keeps every link for the validator, marks how stable it was, and leaves a reversal for a teacher.",
+  "also_seen": "The 5 positive ds101 gold pairs were also seen when choosing this rule; see cdlp/discovery/results/README.md."
+}

@@ -129,6 +129,15 @@
                 ]
               }
             }
+          },
+          "order_agreement": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "unstable",
+              "reversed"
+            ],
+            "description": "optional (1.11): how the link fared across both orders; rule in cdlp/discovery/configs/order_rule_v1.json"
           }
         }
       }
@@ -182,6 +191,101 @@
               "additionalProperties": {
                 "type": "integer",
                 "minimum": 0
+              }
+            }
+          }
+        },
+        "both_orders": {
+          "type": "object",
+          "description": "optional (1.11): counts per pair under the order rule. answers then counts the hash-order asks only.",
+          "required": [
+            "rule_version",
+            "pairs",
+            "stable",
+            "unstable",
+            "reversed",
+            "neither"
+          ],
+          "properties": {
+            "rule_version": {
+              "type": "string"
+            },
+            "pairs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "stable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unstable": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "reversed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "neither": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "answers_all_asks": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "pair_answers": {
+      "type": "array",
+      "description": "optional (1.11): both raw answers per asked pair, including NEITHER. asks[0] is the hash-order ask, so one-order results can be computed from the same run.",
+      "items": {
+        "type": "object",
+        "required": [
+          "order_agreement",
+          "asks"
+        ],
+        "properties": {
+          "order_agreement": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "unstable",
+              "reversed",
+              "neither"
+            ]
+          },
+          "asks": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "pair_a",
+                "pair_b",
+                "answer"
+              ],
+              "properties": {
+                "pair_a": {
+                  "type": "string"
+                },
+                "pair_b": {
+                  "type": "string"
+                },
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "A_BEFORE_B",
+                    "B_BEFORE_A",
+                    "NEITHER"
+                  ]
+                }
               }
             }
           }

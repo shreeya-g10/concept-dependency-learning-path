@@ -1,0 +1,1381 @@
+{
+  "note": "Working test on the questions that shaped the checks. Not an accuracy result.",
+  "date": "2026-11-03",
+  "check_model": "llama3.1:8b",
+  "check_prompt_version": "quiz_check_v2",
+  "check_prompt_sha256": "1f40a8d907a9dd71ff6b136ba981efccb8e59f64ffabad0cd2198b49f492b426",
+  "temperature": 0.0,
+  "seed": 42,
+  "draft_prompt_version": "quiz_v2",
+  "drafts_from": "quiz_v2 replies of the 2026-11-03 ds101 review run (cached)",
+  "chunks_sha256": "915893d9fb1b0c407ab85d6250cf6fcf24981ac57edeb7f8b7eac3876796ebb4",
+  "concepts_sha256": "b22f5e182c428a0fa2c9129fb97c2d064a9873b0bf09a2a0e49fc107ceb74d04",
+  "raw_drafts": 32,
+  "reached_second_model": 21,
+  "model_calls_this_run": 21,
+  "seconds_per_call": [
+    0.0,
+    0.0,
+    0.0,
+    13.1,
+    11.7,
+    16.7,
+    22.3,
+    34.3,
+    14.4,
+    9.4,
+    9.7,
+    9.6,
+    10.5,
+    7.1,
+    6.9,
+    9.6,
+    6.5,
+    8.9,
+    8.5,
+    6.5,
+    6.5
+  ],
+  "llm_stats": {
+    "llm_calls": 18,
+    "cache_hits": 3,
+    "model": "llama3.1:8b",
+    "prompt_versions": [
+      "quiz_check_v2"
+    ]
+  },
+  "outcomes": {
+    "quote_not_in_book": 4,
+    "not_about_topic": 4,
+    "keep": 15,
+    "check_several_true": 4,
+    "near_duplicate": 2,
+    "no_source_quote": 1,
+    "check_quote_no_proof": 1,
+    "check_disagrees": 1
+  },
+  "drafts": [
+    {
+      "concept_id": "avl_tree",
+      "question": "What is the maximum depth of an AVL tree with n nodes?",
+      "draft": {
+        "question": "What is the maximum depth of an AVL tree with n nodes?",
+        "options": [
+          "O(n)",
+          "O(log n)",
+          "O(n^2)",
+          "O(n log n)"
+        ],
+        "correct_answer": "O(log n)",
+        "source_quote": "As long as the tree maintains this property, if the tree contains n nodes, then it has a depth of at most O(log n).",
+        "chunk_id": "avl_tree"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "quote_not_in_book"
+    },
+    {
+      "concept_id": "avl_tree",
+      "question": "How many cases are there for the bottommost unbalanced node after an insertion?",
+      "draft": {
+        "question": "How many cases are there for the bottommost unbalanced node after an insertion?",
+        "options": [
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "correct_answer": "4",
+        "source_quote": "For the bottommost unbalanced node, call it S, there are 4 cases:",
+        "chunk_id": "avl_tree"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "not_about_topic"
+    },
+    {
+      "concept_id": "avl_tree",
+      "question": "What is the key property of an AVL tree that ensures efficient search operations?",
+      "draft": {
+        "question": "What is the key property of an AVL tree that ensures efficient search operations?",
+        "options": [
+          "Each node has at most one red child",
+          "The tree is always perfectly balanced",
+          "The heights of the left and right subtrees differ by at most 1",
+          "Nodes are colored red and black"
+        ],
+        "correct_answer": "The heights of the left and right subtrees differ by at most 1",
+        "source_quote": "AVL trees are height-balanced: At each node u, the height of the subtree rooted at u.left and the subtree rooted at u.right differ by at most one.",
+        "chunk_id": "avl_tree"
+      },
+      "item": {
+        "id": "q_avl_tree_1",
+        "concept_id": "avl_tree",
+        "question": "What is the key property of an AVL tree that ensures efficient search operations?",
+        "options": [
+          "Each node has at most one red child",
+          "The tree is always perfectly balanced",
+          "The heights of the left and right subtrees differ by at most 1",
+          "Nodes are colored red and black"
+        ],
+        "answer": "The heights of the left and right subtrees differ by at most 1",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p22_0",
+        "source_quote": "AVL trees are height-balanced: At each node u, the height of the subtree rooted at u.left and the subtree rooted at u.right differ by at most one."
+      },
+      "excerpt": "9.4\nRed-black trees were ﬁrst introduced by Guibas and Sedgewick [38]. De-\nspite their high implementation complexity they are found in some of\nthe most commonly used libraries and applications. Most algorithms and\ndata structures textbooks discuss some variant of red-black trees.\nAndersson [6] describes a left-leaning version of balanced trees that is\nsimilar to red-black trees but has the additional constraint that any node\nhas at most one red child. This implies that these trees simulate 2-3 trees\nrather than 2-4 trees. They are signiﬁcantly simpler, though, than the\nRedBlackTree structure presented in this chapter.\nSedgewick [64] describes two versions of left-leaning red-black trees.\nThese use recursion along with a simulation of top-down splitting and\nmerging in 2-4 trees. The combination of these two techniques makes for\nparticularly short and elegant code.\nA related, and older, data structure is the AVL tree [3]. AVL trees\nare height-balanced: At each node u, the height of the subtree rooted at\nu.left and the subtree rooted at u.right diﬀer by at most one. It follows\nimmediately that, if F(h) is the minimum number of leaves in a tree of\nheight h, then F(h) obeys the Fibonacci recurrence\nF(h) = F(h −1) + F(h −2)\nwith base cases F(0) = 1 and F(1) = 1. This means F(h) is approximately\nϕh/\n√\n5, where ϕ = (1 +\n√\n5)/2 ≈1.61803399 is the golden ratio. (More\nprecisely, |ϕh/\n√\n5 −F(h)| ≤1/2.) Arguing as in the proof of Lemma 9.1,\nthis implies\nh ≤logϕ n ≈1.440420088logn ,\nso AVL trees have smaller height than red-black trees. The height balanc-\ning can be maintained during add(x) and remove(x) operations by walk-\ning back up the path to the root and performing a rebalancing operation\nat each node u where the height of u’s left and right subtrees diﬀer by\ntwo. See Figure 9.10.\nAndersson’s variant of red-black trees, Sedgewick’s variant of red-\nblack trees, and AVL trees are all simpler to implement than the Red-\nBlackTree structure deﬁned here. Unfortunately, none of them can guar-",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Each node has at most one red child",
+        "B": "Nodes are colored red and black",
+        "C": "The heights of the left and right subtrees differ by at most 1",
+        "D": "The tree is always perfectly balanced"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 0.0
+    },
+    {
+      "concept_id": "avl_tree",
+      "question": "What is the time complexity of insert and delete operations in an AVL tree?",
+      "draft": {
+        "question": "What is the time complexity of insert and delete operations in an AVL tree?",
+        "options": [
+          "O(1)",
+          "O(log n)",
+          "O(n)",
+          "O(n log n)"
+        ],
+        "correct_answer": "O(log n)",
+        "source_quote": "As a result, search for any node will cost O(log n), and if the updates can be done in time proportional to the depth of the node inserted or deleted, then updates will also cost O(log n), even in the worst case.",
+        "chunk_id": "avl_tree"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "quote_not_in_book"
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "question": "What is the binary search tree property in a BinarySearchTree?",
+      "draft": {
+        "question": "What is the binary search tree property in a BinarySearchTree?",
+        "options": [
+          "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+          "Every node stores a data value and the data values in the left subtree are greater than the node’s value while the data values in the right subtree are less.",
+          "Every node stores a data value and the data values in both left and right subtrees are equal to the node’s value.",
+          "Every node stores a data value and the data values in the left subtree are greater than or equal to the node’s value while the data values in the right subtree are less than or equal to the node’s value."
+        ],
+        "correct_answer": "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+        "source_quote": "the data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "item": {
+        "id": "q_binary_search_tree_1",
+        "concept_id": "binary_search_tree",
+        "question": "What is the binary search tree property in a BinarySearchTree?",
+        "options": [
+          "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+          "Every node stores a data value and the data values in the left subtree are greater than the node’s value while the data values in the right subtree are less.",
+          "Every node stores a data value and the data values in both left and right subtrees are equal to the node’s value.",
+          "Every node stores a data value and the data values in the left subtree are greater than or equal to the node’s value while the data values in the right subtree are less than or equal to the node’s value."
+        ],
+        "answer": "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+        "source_quote": "the data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x."
+      },
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Every node stores a data value and the data values in both left and right subtrees are equal to the node’s value.",
+        "B": "Every node stores a data value and the data values in the left subtree are greater than or equal to the node’s value while the data values in the right subtree are less than or equal to the node’s value.",
+        "C": "Every node stores a data value and the data values in the left subtree are greater than the node’s value while the data values in the right subtree are less.",
+        "D": "Every node stores a data value and the data values in the left subtree are less than the node’s value while the data values in the right subtree are greater."
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": true,
+          "C": false,
+          "D": true
+        },
+        "quote_proves": "D",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_several_true",
+      "seconds": 0.0
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "question": "What can happen to a BinarySearchTree?",
+      "draft": {
+        "question": "What can happen to a BinarySearchTree?",
+        "options": [
+          "It can become unbalanced, leading to slower search times.",
+          "It can only have nodes with two children.",
+          "It can only store numerical data values.",
+          "It can only be used for storing strings."
+        ],
+        "correct_answer": "It can become unbalanced, leading to slower search times.",
+        "source_quote": "A BinarySearchTree is a special kind of binary tree in which each node, u, also stores a data value, u.x, from some total order. The data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x. An example of a BinarySearchTree is shown in Figure 6.5.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "item": {
+        "id": "q_binary_search_tree_2",
+        "concept_id": "binary_search_tree",
+        "question": "What can happen to a BinarySearchTree?",
+        "options": [
+          "It can become unbalanced, leading to slower search times.",
+          "It can only have nodes with two children.",
+          "It can only store numerical data values.",
+          "It can only be used for storing strings."
+        ],
+        "answer": "It can become unbalanced, leading to slower search times.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+        "source_quote": "A BinarySearchTree is a special kind of binary tree in which each node, u, also stores a data value, u.x, from some total order. The data values in a binary search tree obey the binary search tree property: For a node, u, every data value stored in the subtree rooted at u.left is less than u.x and every data value stored in the subtree rooted at u.right is greater than u.x. An example of a BinarySearchTree is shown in Figure 6.5."
+      },
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "It can become unbalanced, leading to slower search times.",
+        "B": "It can only be used for storing strings.",
+        "C": "It can only have nodes with two children.",
+        "D": "It can only store numerical data values."
+      },
+      "answer_letter": "A",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 0.0
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "question": "What is a potential problem with BinarySearchTrees?",
+      "draft": {
+        "question": "What is a potential problem with BinarySearchTrees?",
+        "options": [
+          "They can become unbalanced, leading to slower search times.",
+          "They can only store integer values.",
+          "They can only be used for storing boolean values.",
+          "They can only be used for storing character values."
+        ],
+        "correct_answer": "They can become unbalanced, leading to slower search times.",
+        "source_quote": "The Binary Search Tree <BST> <BST> has a serious deficiency for practical use as a search structure. That is the fact that it can easily become unbalanced, so that some nodes are deep in the tree.",
+        "chunk_id": "ch_opendsa_balanced_trees_md_p1_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "near_duplicate"
+    },
+    {
+      "concept_id": "binary_search_tree",
+      "question": "What is an example of a BinarySearchTree?",
+      "draft": {
+        "question": "What is an example of a BinarySearchTree?",
+        "options": [
+          "A tree where nodes can have up to four children.",
+          "A tree where nodes can have up to two children.",
+          "A tree where nodes can have any number of children.",
+          "A tree where nodes can have no children."
+        ],
+        "correct_answer": "A tree where nodes can have up to two children.",
+        "source_quote": "An example of a BinarySearchTree is shown in Figure 6.5.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0"
+      },
+      "item": {
+        "id": "q_binary_search_tree_3",
+        "concept_id": "binary_search_tree",
+        "question": "What is an example of a BinarySearchTree?",
+        "options": [
+          "A tree where nodes can have up to four children.",
+          "A tree where nodes can have up to two children.",
+          "A tree where nodes can have any number of children.",
+          "A tree where nodes can have no children."
+        ],
+        "answer": "A tree where nodes can have up to two children.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p7_0",
+        "source_quote": "An example of a BinarySearchTree is shown in Figure 6.5."
+      },
+      "excerpt": "r\nFigure 6.4: During a breadth-ﬁrst traversal, the nodes of a binary tree are visited\nlevel-by-level, and left-to-right within each level.\nbf traverse()\nq ←ArrayQueue()\nif r , nil then q.add(r)\nwhile q.size() > 0 do\nu ←q.remove()\nif u.left , nil then q.add(u.left)\nif u.right , nil then q.add(u.right)\n6.2\nBinarySearchTree: An Unbalanced Binary Search Tree\nA BinarySearchTree is a special kind of binary tree in which each node, u,\nalso stores a data value, u.x, from some total order. The data values in a\nbinary search tree obey the binary search tree property: For a node, u, every\ndata value stored in the subtree rooted at u.left is less than u.x and every\ndata value stored in the subtree rooted at u.right is greater than u.x. An\nexample of a BinarySearchTree is shown in Figure 6.5.\n6.2.1\nSearching\nThe binary search tree property is extremely useful because it allows us\nto quickly locate a value, x, in a binary search tree. To do this we start",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "A tree where nodes can have any number of children.",
+        "B": "A tree where nodes can have no children.",
+        "C": "A tree where nodes can have up to four children.",
+        "D": "A tree where nodes can have up to two children."
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": false,
+          "D": true
+        },
+        "quote_proves": "D",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 13.1
+    },
+    {
+      "concept_id": "binary_tree",
+      "question": "What is the root node in a binary tree?",
+      "draft": {
+        "question": "What is the root node in a binary tree?",
+        "options": [
+          "The node with the highest value",
+          "The node with the lowest value",
+          "A special node of degree at most two",
+          "The node in the middle of the tree"
+        ],
+        "correct_answer": "A special node of degree at most two",
+        "source_quote": "A special node, r, of degree at most two is called the root of the tree.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0"
+      },
+      "item": {
+        "id": "q_binary_tree_1",
+        "concept_id": "binary_tree",
+        "question": "What is the root node in a binary tree?",
+        "options": [
+          "The node with the highest value",
+          "The node with the lowest value",
+          "A special node of degree at most two",
+          "The node in the middle of the tree"
+        ],
+        "answer": "A special node of degree at most two",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0",
+        "source_quote": "A special node, r, of degree at most two is called the root of the tree."
+      },
+      "excerpt": "This chapter introduces one of the most fundamental structures in com-\nputer science: binary trees. The use of the word tree here comes from\nthe fact that, when we draw them, the resultant drawing often resembles\nthe trees found in a forest. There are many ways of ways of deﬁning bi-\nnary trees. Mathematically, a binary tree is a connected, undirected, ﬁnite\ngraph with no cycles, and no vertex of degree greater than three.\nFor most computer science applications, binary trees are rooted: A\nspecial node, r, of degree at most two is called the root of the tree. For\nevery node, u , r, the second node on the path from u to r is called the\nparent of u. Each of the other nodes adjacent to u is called a child of u.\nMost of the binary trees we are interested in are ordered, so we distinguish\nbetween the left child and right child of u.\nIn illustrations, binary trees are usually drawn from the root down-\nward, with the root at the top of the drawing and the left and right chil-\ndren respectively given by left and right positions in the drawing (Fig-\nure 6.1). For example, Figure 6.2.a shows a binary tree with nine nodes.\nBecause binary trees are so important, a certain terminology has de-\nveloped for them: The depth of a node, u, in a binary tree is the length of\nthe path from u to the root of the tree. If a node, w, is on the path from u\nto r, then w is called an ancestor of u and u a descendant of w. The subtree\nof a node, u, is the binary tree that is rooted at u and contains all of u’s\ndescendants. The height of a node, u, is the length of the longest path\nfrom u to one of its descendants. The height of a tree is the height of its\nroot. A node, u, is a leaf if it has no children.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "A special node of degree at most two",
+        "B": "The node in the middle of the tree",
+        "C": "The node with the highest value",
+        "D": "The node with the lowest value"
+      },
+      "answer_letter": "A",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 11.7
+    },
+    {
+      "concept_id": "binary_tree",
+      "question": "How are the children of a node in a binary tree typically distinguished?",
+      "draft": {
+        "question": "How are the children of a node in a binary tree typically distinguished?",
+        "options": [
+          "By their color",
+          "By their size",
+          "By their position, left and right",
+          "By their value"
+        ],
+        "correct_answer": "By their position, left and right",
+        "source_quote": "Most of the binary trees we are interested in are ordered, so we distinguish between the left child and right child of u.",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0"
+      },
+      "item": {
+        "id": "q_binary_tree_2",
+        "concept_id": "binary_tree",
+        "question": "How are the children of a node in a binary tree typically distinguished?",
+        "options": [
+          "By their color",
+          "By their size",
+          "By their position, left and right",
+          "By their value"
+        ],
+        "answer": "By their position, left and right",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0",
+        "source_quote": "Most of the binary trees we are interested in are ordered, so we distinguish between the left child and right child of u."
+      },
+      "excerpt": "This chapter introduces one of the most fundamental structures in com-\nputer science: binary trees. The use of the word tree here comes from\nthe fact that, when we draw them, the resultant drawing often resembles\nthe trees found in a forest. There are many ways of ways of deﬁning bi-\nnary trees. Mathematically, a binary tree is a connected, undirected, ﬁnite\ngraph with no cycles, and no vertex of degree greater than three.\nFor most computer science applications, binary trees are rooted: A\nspecial node, r, of degree at most two is called the root of the tree. For\nevery node, u , r, the second node on the path from u to r is called the\nparent of u. Each of the other nodes adjacent to u is called a child of u.\nMost of the binary trees we are interested in are ordered, so we distinguish\nbetween the left child and right child of u.\nIn illustrations, binary trees are usually drawn from the root down-\nward, with the root at the top of the drawing and the left and right chil-\ndren respectively given by left and right positions in the drawing (Fig-\nure 6.1). For example, Figure 6.2.a shows a binary tree with nine nodes.\nBecause binary trees are so important, a certain terminology has de-\nveloped for them: The depth of a node, u, in a binary tree is the length of\nthe path from u to the root of the tree. If a node, w, is on the path from u\nto r, then w is called an ancestor of u and u a descendant of w. The subtree\nof a node, u, is the binary tree that is rooted at u and contains all of u’s\ndescendants. The height of a node, u, is the length of the longest path\nfrom u to one of its descendants. The height of a tree is the height of its\nroot. A node, u, is a leaf if it has no children.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "By their color",
+        "B": "By their position, left and right",
+        "C": "By their size",
+        "D": "By their value"
+      },
+      "answer_letter": "B",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": true,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "B",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 16.7
+    },
+    {
+      "concept_id": "binary_tree",
+      "question": "What is the maximum degree of any node in a binary tree?",
+      "draft": {
+        "question": "What is the maximum degree of any node in a binary tree?",
+        "options": [
+          "4",
+          "3",
+          "2",
+          "1"
+        ],
+        "correct_answer": "3",
+        "source_quote": "and no vertex of degree greater than three",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0"
+      },
+      "item": {
+        "id": "q_binary_tree_3",
+        "concept_id": "binary_tree",
+        "question": "What is the maximum degree of any node in a binary tree?",
+        "options": [
+          "4",
+          "3",
+          "2",
+          "1"
+        ],
+        "answer": "3",
+        "chunk_id": "ch_ods_ch06_binary_trees_p1_0",
+        "source_quote": "and no vertex of degree greater than three"
+      },
+      "excerpt": "This chapter introduces one of the most fundamental structures in com-\nputer science: binary trees. The use of the word tree here comes from\nthe fact that, when we draw them, the resultant drawing often resembles\nthe trees found in a forest. There are many ways of ways of deﬁning bi-\nnary trees. Mathematically, a binary tree is a connected, undirected, ﬁnite\ngraph with no cycles, and no vertex of degree greater than three.\nFor most computer science applications, binary trees are rooted: A\nspecial node, r, of degree at most two is called the root of the tree. For\nevery node, u , r, the second node on the path from u to r is called the\nparent of u. Each of the other nodes adjacent to u is called a child of u.\nMost of the binary trees we are interested in are ordered, so we distinguish\nbetween the left child and right child of u.\nIn illustrations, binary trees are usually drawn from the root down-\nward, with the root at the top of the drawing and the left and right chil-\ndren respectively given by left and right positions in the drawing (Fig-\nure 6.1). For example, Figure 6.2.a shows a binary tree with nine nodes.\nBecause binary trees are so important, a certain terminology has de-\nveloped for them: The depth of a node, u, in a binary tree is the length of\nthe path from u to the root of the tree. If a node, w, is on the path from u\nto r, then w is called an ancestor of u and u a descendant of w. The subtree\nof a node, u, is the binary tree that is rooted at u and contains all of u’s\ndescendants. The height of a node, u, is the length of the longest path\nfrom u to one of its descendants. The height of a tree is the height of its\nroot. A node, u, is a leaf if it has no children.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "1",
+        "B": "2",
+        "C": "3",
+        "D": "4"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 22.3
+    },
+    {
+      "concept_id": "binary_tree",
+      "question": "What is the height of a binary tree?",
+      "draft": {
+        "question": "What is the height of a binary tree?",
+        "options": [
+          "The number of nodes in the tree",
+          "The number of edges in the tree",
+          "The maximum depth of a node in the tree",
+          "The number of leaves in the tree"
+        ],
+        "correct_answer": "The maximum depth of a node in the tree",
+        "source_quote": "return 1 + max(height(u.left),height(u.right))",
+        "chunk_id": "ch_ods_ch06_binary_trees_p4_0"
+      },
+      "item": {
+        "id": "q_binary_tree_4",
+        "concept_id": "binary_tree",
+        "question": "What is the height of a binary tree?",
+        "options": [
+          "The number of nodes in the tree",
+          "The number of edges in the tree",
+          "The maximum depth of a node in the tree",
+          "The number of leaves in the tree"
+        ],
+        "answer": "The maximum depth of a node in the tree",
+        "chunk_id": "ch_ods_ch06_binary_trees_p4_0",
+        "source_quote": "return 1 + max(height(u.left),height(u.right))"
+      },
+      "excerpt": "binary tree rooted at node u, we recursively compute the sizes of the two\nsubtrees rooted at the children of u, sum up these sizes, and add one:\nsize(u)\nif u = nil then return 0\nreturn 1 + size(u.left) + size(u.right)\nTo compute the height of a node u, we can compute the height of u’s\ntwo subtrees, take the maximum, and add one:\nheight(u)\nif u = nil then return 0\nreturn 1 + max(height(u.left),height(u.right))\n6.1.2\nTraversing Binary Trees\nThe two algorithms from the previous section both use recursion to visit\nall the nodes in a binary tree. Each of them visits the nodes of the binary\ntree in the same order as the following code:\ntraverse(u)\nif u = nil then return\ntraverse(u.left)\ntraverse(u.right)\nUsing recursion this way produces very short, simple code, but it can\nalso be problematic. The maximum depth of the recursion is given by the\nmaximum depth of a node in the binary tree, i.e., the tree’s height. If the\nheight of the tree is very large, then this recursion could very well use\nmore stack space than is available, causing a crash.\nTo traverse a binary tree without recursion, you can use an algorithm\nthat relies on where it came from to determine where it will go next. See\nFigure 6.3. If we arrive at a node u from u.parent, then the next thing to",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "The maximum depth of a node in the tree",
+        "B": "The number of edges in the tree",
+        "C": "The number of leaves in the tree",
+        "D": "The number of nodes in the tree"
+      },
+      "answer_letter": "A",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 34.3
+    },
+    {
+      "concept_id": "breadth_first_traversal",
+      "question": "What is the primary data structure used to implement the queue in a breadth-first traversal?",
+      "draft": {
+        "question": "What is the primary data structure used to implement the queue in a breadth-first traversal?",
+        "options": [
+          "stack",
+          "array",
+          "linked list",
+          "queue"
+        ],
+        "correct_answer": "queue",
+        "source_quote": "q ←SLList()",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "no_source_quote"
+    },
+    {
+      "concept_id": "breadth_first_traversal",
+      "question": "Why is an auxiliary boolean array used in the breadth-first traversal algorithm?",
+      "draft": {
+        "question": "Why is an auxiliary boolean array used in the breadth-first traversal algorithm?",
+        "options": [
+          "to keep track of the traversal path",
+          "to store the traversal result",
+          "to ensure vertices are not added to the queue more than once",
+          "to determine the shortest path"
+        ],
+        "correct_answer": "to ensure vertices are not added to the queue more than once",
+        "source_quote": "It does this by using an auxiliary boolean array, seen, that tracks which vertices have already been discovered.",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0"
+      },
+      "item": {
+        "id": "q_breadth_first_traversal_1",
+        "concept_id": "breadth_first_traversal",
+        "question": "Why is an auxiliary boolean array used in the breadth-first traversal algorithm?",
+        "options": [
+          "to keep track of the traversal path",
+          "to store the traversal result",
+          "to ensure vertices are not added to the queue more than once",
+          "to determine the shortest path"
+        ],
+        "answer": "to ensure vertices are not added to the queue more than once",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0",
+        "source_quote": "It does this by using an auxiliary boolean array, seen, that tracks which vertices have already been discovered."
+      },
+      "excerpt": "i. Both of these algorithms are best suited to graphs represented using\nan adjacency list representation. Therefore, when analyzing these algo-\nrithms we will assume that the underlying representation is an Adjacen-\ncyLists.\n12.3.1\nBreadth-First Search\nThe bread-ﬁrst-search algorithm starts at a vertex i and visits, ﬁrst the\nneighbours of i, then the neighbours of the neighbours of i, then the\nneighbours of the neighbours of the neighbours of i, and so on.\nThis algorithm is a generalization of the breadth-ﬁrst traversal algo-\nrithm for binary trees (Section 6.1.2), and is very similar; it uses a queue,\nq, that initially contains only i. It then repeatedly extracts an element\nfrom q and adds its neighbours to q, provided that these neighbours have\nnever been in q before. The only major diﬀerence between the breadth-\nﬁrst-search algorithm for graphs and the one for trees is that the algo-\nrithm for graphs has to ensure that it does not add the same vertex to q\nmore than once. It does this by using an auxiliary boolean array, seen, that\ntracks which vertices have already been discovered.\nbfs(g,r)\nseen ←new boolean array(n)\nq ←SLList()\nq.add(r)\nseen[r] ←true\nwhile q.size() > 0 do\ni ←q.remove()\nfor j in g.out edges(i) do\nif seen[j] = false then\nq.add(j)\nseen[j] ←true\nAn example of running bfs(g,0) on the graph from Figure 12.1 is shown\nin Figure 12.4. Diﬀerent executions are possible, depending on the or-\ndering of the adjacency lists; Figure 12.4 uses the adjacency lists in Fig-",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "to determine the shortest path",
+        "B": "to ensure vertices are not added to the queue more than once",
+        "C": "to keep track of the traversal path",
+        "D": "to store the traversal result"
+      },
+      "answer_letter": "B",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": true,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "B",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 14.4
+    },
+    {
+      "concept_id": "breadth_first_traversal",
+      "question": "What is the time complexity of the breadth-first traversal algorithm?",
+      "draft": {
+        "question": "What is the time complexity of the breadth-first traversal algorithm?",
+        "options": [
+          "O(n^2)",
+          "O(n + m)",
+          "O(m^2)",
+          "O(n * m)"
+        ],
+        "correct_answer": "O(n + m)",
+        "source_quote": "The entire algorithm runs in O(n + m) time.",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0"
+      },
+      "item": {
+        "id": "q_breadth_first_traversal_2",
+        "concept_id": "breadth_first_traversal",
+        "question": "What is the time complexity of the breadth-first traversal algorithm?",
+        "options": [
+          "O(n^2)",
+          "O(n + m)",
+          "O(m^2)",
+          "O(n * m)"
+        ],
+        "answer": "O(n + m)",
+        "chunk_id": "ch_ods_ch12_graphs_p11_0",
+        "source_quote": "The entire algorithm runs in O(n + m) time."
+      },
+      "excerpt": "3\n7\n8\n4\n5\n2\n6\n10\n9\n11\nFigure 12.4: An example of bread-ﬁrst-search starting at node 0. Nodes are la-\nbelled with the order in which they are added to q. Edges that result in nodes\nbeing added to q are drawn in black, other edges are drawn in grey.\nure 12.3.\nAnalyzing the running-time of the bfs(g,i) routine is fairly straight-\nforward. The use of the seen array ensures that no vertex is added to q\nmore than once. Adding (and later removing) each vertex from q takes\nconstant time per vertex for a total of O(n) time. Since each vertex is pro-\ncessed by the inner loop at most once, each adjacency list is processed at\nmost once, so each edge of G is processed at most once. This processing,\nwhich is done in the inner loop takes constant time per iteration, for a\ntotal of O(m) time. Therefore, the entire algorithm runs in O(n + m) time.\nThe following theorem summarizes the performance of the bfs(g,r)\nalgorithm.\nTheorem 12.3. When given as input a Graph, g, that is implemented using\nthe AdjacencyLists data structure, the bfs(g,r) algorithm runs in O(n + m)\ntime.\nA breadth-ﬁrst traversal has some very special properties. Calling\nbfs(g,r) will eventually enqueue (and eventually dequeue) every vertex\nj such that there is a directed path from r to j. Moreover, the vertices at\ndistance 0 from r (r itself) will enter q before the vertices at distance 1,\nwhich will enter q before the vertices at distance 2, and so on. Thus, the\nbfs(g,r) method visits vertices in increasing order of distance from r and",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "O(m^2)",
+        "B": "O(n * m)",
+        "C": "O(n + m)",
+        "D": "O(n^2)"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 9.4
+    },
+    {
+      "concept_id": "breadth_first_traversal",
+      "question": "What is the order in which nodes are added to the queue during a breadth-first traversal starting from node 0?",
+      "draft": {
+        "question": "What is the order in which nodes are added to the queue during a breadth-first traversal starting from node 0?",
+        "options": [
+          "7, 8, 4, 5, 2, 6, 10, 9, 11",
+          "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11",
+          "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11",
+          "0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12"
+        ],
+        "correct_answer": "7, 8, 4, 5, 2, 6, 10, 9, 11",
+        "source_quote": "Nodes are labelled with the order in which they are added to q.",
+        "chunk_id": "ch_ods_ch12_graphs_p11_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "quote_not_in_book"
+    },
+    {
+      "concept_id": "graph",
+      "question": "What is a graph in mathematics?",
+      "draft": {
+        "question": "What is a graph in mathematics?",
+        "options": [
+          "A set of vertices and edges",
+          "A set of vertices and edges where each edge is an ordered pair of vertices",
+          "A set of vertices and edges where each edge is an unordered pair of vertices",
+          "A set of vertices and edges where each edge is a single vertex"
+        ],
+        "correct_answer": "A set of vertices and edges where each edge is an ordered pair of vertices",
+        "source_quote": "Mathematically, a (directed) graph is a pair G = (V ,E) where V is a set of vertices and E is a set of ordered pairs of vertices called edges.",
+        "chunk_id": "ch_ods_ch12_graphs_p1_0"
+      },
+      "item": {
+        "id": "q_graph_1",
+        "concept_id": "graph",
+        "question": "What is a graph in mathematics?",
+        "options": [
+          "A set of vertices and edges",
+          "A set of vertices and edges where each edge is an ordered pair of vertices",
+          "A set of vertices and edges where each edge is an unordered pair of vertices",
+          "A set of vertices and edges where each edge is a single vertex"
+        ],
+        "answer": "A set of vertices and edges where each edge is an ordered pair of vertices",
+        "chunk_id": "ch_ods_ch12_graphs_p1_0",
+        "source_quote": "Mathematically, a (directed) graph is a pair G = (V ,E) where V is a set of vertices and E is a set of ordered pairs of vertices called edges."
+      },
+      "excerpt": "In this chapter, we study two representations of graphs and basic algo-\nrithms that use these representations.\nMathematically, a (directed) graph is a pair G = (V ,E) where V is a set\nof vertices and E is a set of ordered pairs of vertices called edges. An edge\n(i,j) is directed from i to j; i is called the source of the edge and j is called\nthe target. A path in G is a sequence of vertices v0,...,vk such that, for\nevery i ∈{1,...,k}, the edge (vi−1,vi) is in E. A path v0,...,vk is a cycle if,\nadditionally, the edge (vk,v0) is in E. A path (or cycle) is simple if all of its\nvertices are unique. If there is a path from some vertex vi to some vertex\nvj then we say that vj is reachable from vi. An example of a graph is shown\nin Figure 12.1.\nDue to their ability to model so many phenomena, graphs have an\nenormous number of applications. There are many obvious examples.\nComputer networks can be modelled as graphs, with vertices correspond-\ning to computers and edges corresponding to (directed) communication\nlinks between those computers. City streets can be modelled as graphs,\nwith vertices representing intersections and edges representing streets\njoining consecutive intersections.\nLess obvious examples occur as soon as we realize that graphs can\nmodel any pairwise relationships within a set. For example, in a uni-\nversity setting we might have a timetable conﬂict graph whose vertices\nrepresent courses oﬀered in the university and in which the edge (i,j) is\npresent if and only if there is at least one student that is taking both class\ni and class j. Thus, an edge indicates that the exam for class i should not",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "A set of vertices and edges",
+        "B": "A set of vertices and edges where each edge is a single vertex",
+        "C": "A set of vertices and edges where each edge is an ordered pair of vertices",
+        "D": "A set of vertices and edges where each edge is an unordered pair of vertices"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_several_true",
+      "seconds": 9.7
+    },
+    {
+      "concept_id": "graph",
+      "question": "What is a cycle in a graph?",
+      "draft": {
+        "question": "What is a cycle in a graph?",
+        "options": [
+          "A sequence of vertices where the last vertex is not connected to the first",
+          "A sequence of vertices where the last vertex is connected to the first",
+          "A sequence of vertices where all vertices are unique",
+          "A sequence of vertices where the first and last vertices are the same"
+        ],
+        "correct_answer": "A sequence of vertices where the last vertex is connected to the first",
+        "source_quote": "A path (or cycle) is simple if all of its vertices are unique. A path v0,...,vk is a cycle if, additionally, the edge (vk,v0) is in E.",
+        "chunk_id": "ch_ods_ch12_graphs_p1_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "quote_not_in_book"
+    },
+    {
+      "concept_id": "graph",
+      "question": "What is the purpose of the seen array in the Breadth-First Search algorithm?",
+      "draft": {
+        "question": "What is the purpose of the seen array in the Breadth-First Search algorithm?",
+        "options": [
+          "To keep track of the vertices that have been visited",
+          "To keep track of the vertices that have not been visited",
+          "To keep track of the edges that have been added",
+          "To keep track of the edges that have been removed"
+        ],
+        "correct_answer": "To keep track of the vertices that have been visited",
+        "source_quote": "It uses an auxiliary boolean array, seen, that tracks which vertices have already been discovered.",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "not_about_topic"
+    },
+    {
+      "concept_id": "graph",
+      "question": "What is an adjacency matrix used for in graph representation?",
+      "draft": {
+        "question": "What is an adjacency matrix used for in graph representation?",
+        "options": [
+          "To represent a graph by a matrix of boolean values",
+          "To represent a graph by a matrix of numerical values",
+          "To represent a graph by a matrix of string values",
+          "To represent a graph by a matrix of color values"
+        ],
+        "correct_answer": "To represent a graph by a matrix of boolean values",
+        "source_quote": "An adjacency matrix is a way of representing an n vertex graph G = (V ,E) by an n × n matrix, a, whose entries are boolean values.",
+        "chunk_id": "ch_ods_ch12_graphs_p3_0"
+      },
+      "item": {
+        "id": "q_graph_2",
+        "concept_id": "graph",
+        "question": "What is an adjacency matrix used for in graph representation?",
+        "options": [
+          "To represent a graph by a matrix of boolean values",
+          "To represent a graph by a matrix of numerical values",
+          "To represent a graph by a matrix of string values",
+          "To represent a graph by a matrix of color values"
+        ],
+        "answer": "To represent a graph by a matrix of boolean values",
+        "chunk_id": "ch_ods_ch12_graphs_p3_0",
+        "source_quote": "An adjacency matrix is a way of representing an n vertex graph G = (V ,E) by an n × n matrix, a, whose entries are boolean values."
+      },
+      "excerpt": "However, diﬀerent applications of graphs have diﬀerent performance\nrequirements for these operations and, ideally, we can use the simplest\nimplementation that satisﬁes all the application’s requirements. For this\nreason, we discuss two broad categories of graph representations.\n12.1\nAdjacencyMatrix: Representing a Graph by a Matrix\nAn adjacency matrix is a way of representing an n vertex graph G = (V ,E)\nby an n × n matrix, a, whose entries are boolean values.\ninitialize()\na ←new boolean matrix(n,n)\nThe matrix entry a[i][j] is deﬁned as\na[i][j] =\n\ntrue\nif (i,j) ∈E\nfalse\notherwise\nThe adjacency matrix for the graph in Figure 12.1 is shown in Figure 12.2.\nIn this representation, the operations add edge(i,j), remove edge(i,j),\nand has edge(i,j) just involve setting or reading the matrix entry a[i][j]:\nadd edge(i,j)\na[i][j] ←true\nremove edge(i,j)\na[i][j] ←false\nhas edge(i,j)\nreturn a[i][j]\nThese operations clearly take constant time per operation.\nWhere the adjacency matrix performs poorly is with the out edges(i)\nand in edges(i) operations. To implement these, we must scan all n entries",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "To represent a graph by a matrix of boolean values",
+        "B": "To represent a graph by a matrix of color values",
+        "C": "To represent a graph by a matrix of numerical values",
+        "D": "To represent a graph by a matrix of string values"
+      },
+      "answer_letter": "A",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 9.6
+    },
+    {
+      "concept_id": "queue",
+      "question": "What is the main characteristic of a Queue data structure?",
+      "draft": {
+        "question": "What is the main characteristic of a Queue data structure?",
+        "options": [
+          "Elements are added and removed from the middle",
+          "Elements are added at the tail and removed from the head",
+          "Elements are added and removed from both ends",
+          "Elements are added at the head and removed from the tail"
+        ],
+        "correct_answer": "Elements are added at the tail and removed from the head",
+        "source_quote": "elements are removed (using the remove() operation) from the queue in the same order they are added (using the add(x) operation)",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0"
+      },
+      "item": {
+        "id": "q_queue_1",
+        "concept_id": "queue",
+        "question": "What is the main characteristic of a Queue data structure?",
+        "options": [
+          "Elements are added and removed from the middle",
+          "Elements are added at the tail and removed from the head",
+          "Elements are added and removed from both ends",
+          "Elements are added at the head and removed from the tail"
+        ],
+        "answer": "Elements are added at the tail and removed from the head",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0",
+        "source_quote": "elements are removed (using the remove() operation) from the queue in the same order they are added (using the add(x) operation)"
+      },
+      "excerpt": "In our C++ and Java implementations, the use of fast array copying\nfunctions resulted in speedups of a factor between 2 and 3, depending\non the types of operations performed. Your mileage may vary.\n2.3\nArrayQueue: An Array-Based Queue\nIn this section, we present the ArrayQueue data structure, which imple-\nments a FIFO (ﬁrst-in-ﬁrst-out) queue; elements are removed (using the\nremove() operation) from the queue in the same order they are added\n(using the add(x) operation).\nNotice that an ArrayStack is a poor choice for an implementation of a\nFIFO queue. It is not a good choice because we must choose one end of\nthe list upon which to add elements and then remove elements from the\nother end. One of the two operations must work on the head of the list,\nwhich involves calling add(i,x) or remove(i) with a value of i = 0. This\ngives a running time proportional to n.\nTo obtain an eﬃcient array-based implementation of a queue, we ﬁrst\nnotice that the problem would be easy if we had an inﬁnite array a. We\ncould maintain one index j that keeps track of the next element to remove\nand an integer n that counts the number of elements in the queue. The\nqueue elements would always be stored in\na[j],a[j + 1],...,a[j + n −1] .\nInitially, both j and n would be set to 0. To add an element, we would\nplace it in a[j + n] and increment n. To remove an element, we would\nremove it from a[j], increment j, and decrement n.\nOf course, the problem with this solution is that it requires an inﬁnite\narray. An ArrayQueue simulates this by using a ﬁnite array a and modular\narithmetic. This is the kind of arithmetic used when we are talking about\nthe time of day. For example 10:00 plus ﬁve hours gives 3:00. Formally,\nwe say that\n10 + 5 = 15 ≡3\n(mod 12) .\nWe read the latter part of this equation as “15 is congruent to 3 modulo\n12.” We can also treat mod as a binary operator, so that\n15 mod 12 = 3 .",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Elements are added and removed from both ends",
+        "B": "Elements are added and removed from the middle",
+        "C": "Elements are added at the head and removed from the tail",
+        "D": "Elements are added at the tail and removed from the head"
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": true
+        },
+        "quote_proves": "D",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_several_true",
+      "seconds": 10.5
+    },
+    {
+      "concept_id": "queue",
+      "question": "Why is an ArrayStack not a good choice for implementing a Queue?",
+      "draft": {
+        "question": "Why is an ArrayStack not a good choice for implementing a Queue?",
+        "options": [
+          "Because it can only add elements at the head",
+          "Because it can only remove elements from the tail",
+          "Because it requires copying the entire array",
+          "Because it has a fixed size"
+        ],
+        "correct_answer": "Because it requires copying the entire array",
+        "source_quote": "This gives a running time proportional to n",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0"
+      },
+      "item": {
+        "id": "q_queue_2",
+        "concept_id": "queue",
+        "question": "Why is an ArrayStack not a good choice for implementing a Queue?",
+        "options": [
+          "Because it can only add elements at the head",
+          "Because it can only remove elements from the tail",
+          "Because it requires copying the entire array",
+          "Because it has a fixed size"
+        ],
+        "answer": "Because it requires copying the entire array",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0",
+        "source_quote": "This gives a running time proportional to n"
+      },
+      "excerpt": "In our C++ and Java implementations, the use of fast array copying\nfunctions resulted in speedups of a factor between 2 and 3, depending\non the types of operations performed. Your mileage may vary.\n2.3\nArrayQueue: An Array-Based Queue\nIn this section, we present the ArrayQueue data structure, which imple-\nments a FIFO (ﬁrst-in-ﬁrst-out) queue; elements are removed (using the\nremove() operation) from the queue in the same order they are added\n(using the add(x) operation).\nNotice that an ArrayStack is a poor choice for an implementation of a\nFIFO queue. It is not a good choice because we must choose one end of\nthe list upon which to add elements and then remove elements from the\nother end. One of the two operations must work on the head of the list,\nwhich involves calling add(i,x) or remove(i) with a value of i = 0. This\ngives a running time proportional to n.\nTo obtain an eﬃcient array-based implementation of a queue, we ﬁrst\nnotice that the problem would be easy if we had an inﬁnite array a. We\ncould maintain one index j that keeps track of the next element to remove\nand an integer n that counts the number of elements in the queue. The\nqueue elements would always be stored in\na[j],a[j + 1],...,a[j + n −1] .\nInitially, both j and n would be set to 0. To add an element, we would\nplace it in a[j + n] and increment n. To remove an element, we would\nremove it from a[j], increment j, and decrement n.\nOf course, the problem with this solution is that it requires an inﬁnite\narray. An ArrayQueue simulates this by using a ﬁnite array a and modular\narithmetic. This is the kind of arithmetic used when we are talking about\nthe time of day. For example 10:00 plus ﬁve hours gives 3:00. Formally,\nwe say that\n10 + 5 = 15 ≡3\n(mod 12) .\nWe read the latter part of this equation as “15 is congruent to 3 modulo\n12.” We can also treat mod as a binary operator, so that\n15 mod 12 = 3 .",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Because it can only add elements at the head",
+        "B": "Because it can only remove elements from the tail",
+        "C": "Because it has a fixed size",
+        "D": "Because it requires copying the entire array"
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": true,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "B",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_several_true",
+      "seconds": 7.1
+    },
+    {
+      "concept_id": "queue",
+      "question": "What would make implementing a Queue easier?",
+      "draft": {
+        "question": "What would make implementing a Queue easier?",
+        "options": [
+          "Using a linked list with a fixed size",
+          "Using an infinite array",
+          "Using an array with a fixed size",
+          "Using a stack with a fixed size"
+        ],
+        "correct_answer": "Using an infinite array",
+        "source_quote": "The queue elements would always be stored in a[j],",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0"
+      },
+      "item": {
+        "id": "q_queue_3",
+        "concept_id": "queue",
+        "question": "What would make implementing a Queue easier?",
+        "options": [
+          "Using a linked list with a fixed size",
+          "Using an infinite array",
+          "Using an array with a fixed size",
+          "Using a stack with a fixed size"
+        ],
+        "answer": "Using an infinite array",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0",
+        "source_quote": "The queue elements would always be stored in a[j],"
+      },
+      "excerpt": "In our C++ and Java implementations, the use of fast array copying\nfunctions resulted in speedups of a factor between 2 and 3, depending\non the types of operations performed. Your mileage may vary.\n2.3\nArrayQueue: An Array-Based Queue\nIn this section, we present the ArrayQueue data structure, which imple-\nments a FIFO (ﬁrst-in-ﬁrst-out) queue; elements are removed (using the\nremove() operation) from the queue in the same order they are added\n(using the add(x) operation).\nNotice that an ArrayStack is a poor choice for an implementation of a\nFIFO queue. It is not a good choice because we must choose one end of\nthe list upon which to add elements and then remove elements from the\nother end. One of the two operations must work on the head of the list,\nwhich involves calling add(i,x) or remove(i) with a value of i = 0. This\ngives a running time proportional to n.\nTo obtain an eﬃcient array-based implementation of a queue, we ﬁrst\nnotice that the problem would be easy if we had an inﬁnite array a. We\ncould maintain one index j that keeps track of the next element to remove\nand an integer n that counts the number of elements in the queue. The\nqueue elements would always be stored in\na[j],a[j + 1],...,a[j + n −1] .\nInitially, both j and n would be set to 0. To add an element, we would\nplace it in a[j + n] and increment n. To remove an element, we would\nremove it from a[j], increment j, and decrement n.\nOf course, the problem with this solution is that it requires an inﬁnite\narray. An ArrayQueue simulates this by using a ﬁnite array a and modular\narithmetic. This is the kind of arithmetic used when we are talking about\nthe time of day. For example 10:00 plus ﬁve hours gives 3:00. Formally,\nwe say that\n10 + 5 = 15 ≡3\n(mod 12) .\nWe read the latter part of this equation as “15 is congruent to 3 modulo\n12.” We can also treat mod as a binary operator, so that\n15 mod 12 = 3 .",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Using a linked list with a fixed size",
+        "B": "Using a stack with a fixed size",
+        "C": "Using an array with a fixed size",
+        "D": "Using an infinite array"
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": false,
+          "D": true
+        },
+        "quote_proves": "D",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 6.9
+    },
+    {
+      "concept_id": "queue",
+      "question": "What is the main challenge in implementing an efficient ArrayQueue?",
+      "draft": {
+        "question": "What is the main challenge in implementing an efficient ArrayQueue?",
+        "options": [
+          "Managing the size of the array",
+          "Copying elements when resizing",
+          "Determining the order of elements",
+          "Choosing the head and tail"
+        ],
+        "correct_answer": "Copying elements when resizing",
+        "source_quote": "This gives a running time proportional to n",
+        "chunk_id": "ch_ods_ch02_array_based_lists_p8_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "not_about_topic"
+    },
+    {
+      "concept_id": "rotation",
+      "question": "What does rotation do in a red-black tree?",
+      "draft": {
+        "question": "What does rotation do in a red-black tree?",
+        "options": [
+          "It changes the color of nodes",
+          "It rearranges nodes to maintain balance",
+          "It splits nodes into two",
+          "It merges nodes into one"
+        ],
+        "correct_answer": "It rearranges nodes to maintain balance",
+        "source_quote": "The key to making the AVL tree work is to alter the insert and delete routines so as to maintain the balance property.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "item": {
+        "id": "q_rotation_1",
+        "concept_id": "rotation",
+        "question": "What does rotation do in a red-black tree?",
+        "options": [
+          "It changes the color of nodes",
+          "It rearranges nodes to maintain balance",
+          "It splits nodes into two",
+          "It merges nodes into one"
+        ],
+        "answer": "It rearranges nodes to maintain balance",
+        "chunk_id": "ch_opendsa_avl_trees_md_p1_0",
+        "source_quote": "The key to making the AVL tree work is to alter the insert and delete routines so as to maintain the balance property."
+      },
+      "excerpt": "The AVL tree (named for its inventors Adelson-Velskii and Landis)\nshould be viewed as a BST with the following additional property:\nFor every node, the heights of its left and right subtrees differ by\nat most 1.\nAs long as the tree maintains this property, if the tree contains\nn nodes, then it has a depth of at most O(\\log n).\nAs a result, search for any node will cost O(\\log n),\nand if the updates can be done in time proportional to the depth of\nthe node inserted or deleted, then updates will also cost\nO(\\log n), even in the worst case.\n\nThe key to making the AVL tree work is to alter the insert and delete\nroutines so as to maintain the balance property.\nOf course, to be practical, we must be able to implement the revised\nupdate routines in \\Theta(\\log n) time.\n\nConsider what happens when we insert a node with key value 5,\nas shown in the figure.\nThe tree on the left meets the AVL tree balance requirements.\nAfter the insertion, two nodes no longer meet the requirements.\nBecause the original tree met the balance requirement, nodes in the\nnew tree can only be unbalanced by a difference of at most 2 in the\nsubtrees.\nFor the bottommost unbalanced node, call it S, there are 4\ncases:\nThe extra node is in the left child of the left child of\nS.\nThe extra node is in the right child of the left child of\nS.\nThe extra node is in the left child of the right child of\nS.\nThe extra node is in the right child of the right child of\nS.\n\nCases 1 and 4 are symmetrical, as are cases 2 and 3.\nNote also that the unbalanced nodes must be on the path from\nthe root to the newly inserted node.\n\nOur problem now is how to balance the tree in O(\\log n) time.\nIt turns out that we can do this using a series of local operations\nknown as rotations.\nCases 1 and 4 can be fixed using a single rotation,\nas shown in the figure.\nCases 2 and 3 can be fixed using a double rotation, as shown\nin the figure.\n\nThe AVL tree insert algorithm begins with a normal BST insert.\nThen as the recursion unwinds up the tree, we perform the appropriate\nrotation on any node that is found to be unbalanced.\nDeletion is similar; however, consideration for unbalanced nodes must\nbegin at the level of the deletemin operation.\n\nIn the figure (b), the bottom-most unbalanced\nnode has value 7.\nThe excess node (with value 5) is in the right subtree of the left\nchild of 7, so we have an example of Case 2.\nThis requires a double rotation to fix.\nAfter the rotation, 5 becomes the left child of 24, 2 becomes the\nleft child of 5, and 7 becomes the right child of 5.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "It changes the color of nodes",
+        "B": "It merges nodes into one",
+        "C": "It rearranges nodes to maintain balance",
+        "D": "It splits nodes into two"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 9.6
+    },
+    {
+      "concept_id": "rotation",
+      "question": "When might a rotation be needed in a red-black tree?",
+      "draft": {
+        "question": "When might a rotation be needed in a red-black tree?",
+        "options": [
+          "After every insertion",
+          "When a node becomes unbalanced",
+          "During a leaf addition",
+          "When the tree is fully balanced"
+        ],
+        "correct_answer": "When a node becomes unbalanced",
+        "source_quote": "For the bottommost unbalanced node, call it S, there are 4 cases",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "item": {
+        "id": "q_rotation_2",
+        "concept_id": "rotation",
+        "question": "When might a rotation be needed in a red-black tree?",
+        "options": [
+          "After every insertion",
+          "When a node becomes unbalanced",
+          "During a leaf addition",
+          "When the tree is fully balanced"
+        ],
+        "answer": "When a node becomes unbalanced",
+        "chunk_id": "ch_opendsa_avl_trees_md_p1_0",
+        "source_quote": "For the bottommost unbalanced node, call it S, there are 4 cases"
+      },
+      "excerpt": "The AVL tree (named for its inventors Adelson-Velskii and Landis)\nshould be viewed as a BST with the following additional property:\nFor every node, the heights of its left and right subtrees differ by\nat most 1.\nAs long as the tree maintains this property, if the tree contains\nn nodes, then it has a depth of at most O(\\log n).\nAs a result, search for any node will cost O(\\log n),\nand if the updates can be done in time proportional to the depth of\nthe node inserted or deleted, then updates will also cost\nO(\\log n), even in the worst case.\n\nThe key to making the AVL tree work is to alter the insert and delete\nroutines so as to maintain the balance property.\nOf course, to be practical, we must be able to implement the revised\nupdate routines in \\Theta(\\log n) time.\n\nConsider what happens when we insert a node with key value 5,\nas shown in the figure.\nThe tree on the left meets the AVL tree balance requirements.\nAfter the insertion, two nodes no longer meet the requirements.\nBecause the original tree met the balance requirement, nodes in the\nnew tree can only be unbalanced by a difference of at most 2 in the\nsubtrees.\nFor the bottommost unbalanced node, call it S, there are 4\ncases:\nThe extra node is in the left child of the left child of\nS.\nThe extra node is in the right child of the left child of\nS.\nThe extra node is in the left child of the right child of\nS.\nThe extra node is in the right child of the right child of\nS.\n\nCases 1 and 4 are symmetrical, as are cases 2 and 3.\nNote also that the unbalanced nodes must be on the path from\nthe root to the newly inserted node.\n\nOur problem now is how to balance the tree in O(\\log n) time.\nIt turns out that we can do this using a series of local operations\nknown as rotations.\nCases 1 and 4 can be fixed using a single rotation,\nas shown in the figure.\nCases 2 and 3 can be fixed using a double rotation, as shown\nin the figure.\n\nThe AVL tree insert algorithm begins with a normal BST insert.\nThen as the recursion unwinds up the tree, we perform the appropriate\nrotation on any node that is found to be unbalanced.\nDeletion is similar; however, consideration for unbalanced nodes must\nbegin at the level of the deletemin operation.\n\nIn the figure (b), the bottom-most unbalanced\nnode has value 7.\nThe excess node (with value 5) is in the right subtree of the left\nchild of 7, so we have an example of Case 2.\nThis requires a double rotation to fix.\nAfter the rotation, 5 becomes the left child of 24, 2 becomes the\nleft child of 5, and 7 becomes the right child of 5.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "After every insertion",
+        "B": "During a leaf addition",
+        "C": "When a node becomes unbalanced",
+        "D": "When the tree is fully balanced"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "C",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 6.5
+    },
+    {
+      "concept_id": "rotation",
+      "question": "What is the purpose of rotation in a red-black tree?",
+      "draft": {
+        "question": "What is the purpose of rotation in a red-black tree?",
+        "options": [
+          "To increase the tree's height",
+          "To maintain the balance property",
+          "To change the tree's color",
+          "To sort the nodes alphabetically"
+        ],
+        "correct_answer": "To maintain the balance property",
+        "source_quote": "The key to making the AVL tree work is to alter the insert and delete routines so as to maintain the balance property.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p1_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "near_duplicate"
+    },
+    {
+      "concept_id": "rotation",
+      "question": "How does rotation affect the height of a red-black tree?",
+      "draft": {
+        "question": "How does rotation affect the height of a red-black tree?",
+        "options": [
+          "It always increases the height",
+          "It can increase or decrease the height",
+          "It does not affect the height",
+          "It always decreases the height"
+        ],
+        "correct_answer": "It can increase or decrease the height",
+        "source_quote": "The ﬁrst and last node in this path are black and at most one out of every two internal nodes is red, so this path has at most log(n + 1) black nodes and at most log(n + 1) −1 red nodes.",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p8_0"
+      },
+      "item": {
+        "id": "q_rotation_3",
+        "concept_id": "rotation",
+        "question": "How does rotation affect the height of a red-black tree?",
+        "options": [
+          "It always increases the height",
+          "It can increase or decrease the height",
+          "It does not affect the height",
+          "It always decreases the height"
+        ],
+        "answer": "It can increase or decrease the height",
+        "chunk_id": "ch_ods_ch09_red_black_trees_p8_0",
+        "source_quote": "The ﬁrst and last node in this path are black and at most one out of every two internal nodes is red, so this path has at most log(n + 1) black nodes and at most log(n + 1) −1 red nodes."
+      },
+      "excerpt": "length. In other words, T ′ is a 2-4 tree!\nThe 2-4 tree T ′ has n + 1 leaves that correspond to the n + 1 external\nnodes of the red-black tree. Therefore, this tree has height at most log(n+\n1). Now, every root to leaf path in the 2-4 tree corresponds to a path\nfrom the root of the red-black tree T to an external node. The ﬁrst and\nlast node in this path are black and at most one out of every two internal\nnodes is red, so this path has at most log(n + 1) black nodes and at most\nlog(n + 1) −1 red nodes. Therefore, the longest path from the root to any\ninternal node in T is at most\n2log(n + 1) −2 ≤2logn ,\nfor any n ≥1. This proves the most important property of red-black trees:\nLemma 9.2. The height of red-black tree with n nodes is at most 2logn.\nNow that we have seen the relationship between 2-4 trees and red-\nblack trees, it is not hard to believe that we can eﬃciently maintain a\nred-black tree while adding and removing elements.\nWe have already seen that adding an element in a BinarySearchTree\ncan be done by adding a new leaf. Therefore, to implement add(x) in a\nred-black tree we need a method of simulating splitting a node with ﬁve\nchildren in a 2-4 tree. A 2-4 tree node with ﬁve children is represented\nby a black node that has two red children, one of which also has a red\nchild. We can “split” this node by colouring it red and colouring its two\nchildren black. An example of this is shown in Figure 9.6.\nSimilarly, implementing remove(x) requires a method of merging two\nnodes and borrowing a child from a sibling. Merging two nodes is the in-\nverse of a split (shown in Figure 9.6), and involves colouring two (black)\nsiblings red and colouring their (red) parent black. Borrowing from a sib-\nling is the most complicated of the procedures and involves both rotations\nand recolouring nodes.\nOf course, during all of this we must still maintain the no-red-edge\nproperty and the black-height property. While it is no longer surprising\nthat this can be done, there are a large number of cases that have to be\nconsidered if we try to do a direct simulation of a 2-4 tree by a red-black\ntree. At some point, it just becomes simpler to disregard the underlying",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "It always decreases the height",
+        "B": "It always increases the height",
+        "C": "It can increase or decrease the height",
+        "D": "It does not affect the height"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": true,
+          "D": false
+        },
+        "quote_proves": "NONE",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_quote_no_proof",
+      "seconds": 8.9
+    },
+    {
+      "concept_id": "traversal",
+      "question": "What is the first step in preorder traversal of a general tree?",
+      "draft": {
+        "question": "What is the first step in preorder traversal of a general tree?",
+        "options": [
+          "Visit the root",
+          "Visit the leftmost child",
+          "Visit the right sibling",
+          "Visit the subtree"
+        ],
+        "correct_answer": "Visit the root",
+        "source_quote": "Preorder traversal of a general tree first visits the root of the tree",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0"
+      },
+      "item": {
+        "id": "q_traversal_1",
+        "concept_id": "traversal",
+        "question": "What is the first step in preorder traversal of a general tree?",
+        "options": [
+          "Visit the root",
+          "Visit the leftmost child",
+          "Visit the right sibling",
+          "Visit the subtree"
+        ],
+        "answer": "Visit the root",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0",
+        "source_quote": "Preorder traversal of a general tree first visits the root of the tree"
+      },
+      "excerpt": "There are three traditional\ntree traversals <tree traversal> <BinaryTreeTraversal>\nfor binary trees:\npreorder,\npostorder,\nand inorder.\nFor general trees, preorder and postorder traversals are defined with\nmeanings similar to their binary tree\ncounterparts.\nPreorder traversal of a general tree first visits the root of the\ntree, then performs a preorder traversal of each subtree from left to\nright.\nA postorder traversal of a general tree performs a postorder traversal\nof the root's subtrees from left to right, then visits the root.\nInorder traversal does not have a natural definition for the\ngeneral tree, because there is no particular number of children for an\ninternal node.\nAn arbitrary definition |---| such as visit the leftmost subtree in\ninorder, then the root, then visit the remaining subtrees in inorder |---|\ncan be invented.\nHowever, inorder traversals are generally not useful with\ngeneral trees.\n\nTo perform a preorder traversal, it is necessary to visit each of the\nchildren for a given node (say R) from left to right.\nThis is accomplished by starting at R's leftmost child\n(call it T).\nFrom T, we can move to T's right sibling, and then\nto that node's right sibling, and so on.\n\nUsing the General Tree ADT shown above, here is an\nimplementation to print the nodes of a general tree in\npreorder.\nNote the while loop at the end, which processes the list of\nchildren by beginning with the leftmost child, then repeatedly moving\nto the next child until calling next returns null.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Visit the leftmost child",
+        "B": "Visit the right sibling",
+        "C": "Visit the root",
+        "D": "Visit the subtree"
+      },
+      "answer_letter": "C",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "NONE",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "drop",
+      "reason": "check_disagrees",
+      "seconds": 8.5
+    },
+    {
+      "concept_id": "traversal",
+      "question": "Why is inorder traversal not useful for general trees?",
+      "draft": {
+        "question": "Why is inorder traversal not useful for general trees?",
+        "options": [
+          "Because there is no natural definition",
+          "Because it is too slow",
+          "Because it requires too much memory",
+          "Because it only works for binary trees"
+        ],
+        "correct_answer": "Because there is no natural definition",
+        "source_quote": "Inorder traversal does not have a natural definition for the general tree, because there is no particular number of children for an internal node.",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0"
+      },
+      "item": {
+        "id": "q_traversal_2",
+        "concept_id": "traversal",
+        "question": "Why is inorder traversal not useful for general trees?",
+        "options": [
+          "Because there is no natural definition",
+          "Because it is too slow",
+          "Because it requires too much memory",
+          "Because it only works for binary trees"
+        ],
+        "answer": "Because there is no natural definition",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0",
+        "source_quote": "Inorder traversal does not have a natural definition for the general tree, because there is no particular number of children for an internal node."
+      },
+      "excerpt": "There are three traditional\ntree traversals <tree traversal> <BinaryTreeTraversal>\nfor binary trees:\npreorder,\npostorder,\nand inorder.\nFor general trees, preorder and postorder traversals are defined with\nmeanings similar to their binary tree\ncounterparts.\nPreorder traversal of a general tree first visits the root of the\ntree, then performs a preorder traversal of each subtree from left to\nright.\nA postorder traversal of a general tree performs a postorder traversal\nof the root's subtrees from left to right, then visits the root.\nInorder traversal does not have a natural definition for the\ngeneral tree, because there is no particular number of children for an\ninternal node.\nAn arbitrary definition |---| such as visit the leftmost subtree in\ninorder, then the root, then visit the remaining subtrees in inorder |---|\ncan be invented.\nHowever, inorder traversals are generally not useful with\ngeneral trees.\n\nTo perform a preorder traversal, it is necessary to visit each of the\nchildren for a given node (say R) from left to right.\nThis is accomplished by starting at R's leftmost child\n(call it T).\nFrom T, we can move to T's right sibling, and then\nto that node's right sibling, and so on.\n\nUsing the General Tree ADT shown above, here is an\nimplementation to print the nodes of a general tree in\npreorder.\nNote the while loop at the end, which processes the list of\nchildren by beginning with the leftmost child, then repeatedly moving\nto the next child until calling next returns null.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Because it is too slow",
+        "B": "Because it only works for binary trees",
+        "C": "Because it requires too much memory",
+        "D": "Because there is no natural definition"
+      },
+      "answer_letter": "D",
+      "reply": {
+        "verdicts": {
+          "A": false,
+          "B": false,
+          "C": false,
+          "D": true
+        },
+        "quote_proves": "D",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 6.5
+    },
+    {
+      "concept_id": "traversal",
+      "question": "How does preorder traversal handle the children of a node?",
+      "draft": {
+        "question": "How does preorder traversal handle the children of a node?",
+        "options": [
+          "Visits them from left to right",
+          "Visits them from right to left",
+          "Visits them randomly",
+          "Visits them in a specific order based on their values"
+        ],
+        "correct_answer": "Visits them from left to right",
+        "source_quote": "This is accomplished by starting at R's leftmost child (call it T).",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0"
+      },
+      "item": {
+        "id": "q_traversal_3",
+        "concept_id": "traversal",
+        "question": "How does preorder traversal handle the children of a node?",
+        "options": [
+          "Visits them from left to right",
+          "Visits them from right to left",
+          "Visits them randomly",
+          "Visits them in a specific order based on their values"
+        ],
+        "answer": "Visits them from left to right",
+        "chunk_id": "ch_opendsa_general_trees_md_p5_0",
+        "source_quote": "This is accomplished by starting at R's leftmost child (call it T)."
+      },
+      "excerpt": "There are three traditional\ntree traversals <tree traversal> <BinaryTreeTraversal>\nfor binary trees:\npreorder,\npostorder,\nand inorder.\nFor general trees, preorder and postorder traversals are defined with\nmeanings similar to their binary tree\ncounterparts.\nPreorder traversal of a general tree first visits the root of the\ntree, then performs a preorder traversal of each subtree from left to\nright.\nA postorder traversal of a general tree performs a postorder traversal\nof the root's subtrees from left to right, then visits the root.\nInorder traversal does not have a natural definition for the\ngeneral tree, because there is no particular number of children for an\ninternal node.\nAn arbitrary definition |---| such as visit the leftmost subtree in\ninorder, then the root, then visit the remaining subtrees in inorder |---|\ncan be invented.\nHowever, inorder traversals are generally not useful with\ngeneral trees.\n\nTo perform a preorder traversal, it is necessary to visit each of the\nchildren for a given node (say R) from left to right.\nThis is accomplished by starting at R's leftmost child\n(call it T).\nFrom T, we can move to T's right sibling, and then\nto that node's right sibling, and so on.\n\nUsing the General Tree ADT shown above, here is an\nimplementation to print the nodes of a general tree in\npreorder.\nNote the while loop at the end, which processes the list of\nchildren by beginning with the leftmost child, then repeatedly moving\nto the next child until calling next returns null.",
+      "stage": "second_model",
+      "options_lettered": {
+        "A": "Visits them from left to right",
+        "B": "Visits them from right to left",
+        "C": "Visits them in a specific order based on their values",
+        "D": "Visits them randomly"
+      },
+      "answer_letter": "A",
+      "reply": {
+        "verdicts": {
+          "A": true,
+          "B": false,
+          "C": false,
+          "D": false
+        },
+        "quote_proves": "A",
+        "same_subject": true,
+        "about_topic": true
+      },
+      "final": "keep",
+      "reason": null,
+      "seconds": 6.5
+    },
+    {
+      "concept_id": "traversal",
+      "question": "What is the main difference between breadth-first search in graphs and trees?",
+      "draft": {
+        "question": "What is the main difference between breadth-first search in graphs and trees?",
+        "options": [
+          "It uses a queue",
+          "It starts from a leaf",
+          "It ensures vertices are not added to the queue more than once",
+          "It uses a stack"
+        ],
+        "correct_answer": "It ensures vertices are not added to the queue more than once",
+        "source_quote": "The only major difference between the breadth-first-search algorithm for graphs and the one for trees is that the algorithm for graphs has to ensure that it does not add the same vertex to q more than once.",
+        "chunk_id": "ch_ods_ch12_graphs_p10_0"
+      },
+      "stage": "no_llm",
+      "final": "drop",
+      "reason": "not_about_topic"
+    }
+  ]
+}

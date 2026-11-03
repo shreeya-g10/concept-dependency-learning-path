@@ -101,10 +101,10 @@ def test_good_item_is_kept_with_its_quote_and_source(monkeypatch):
 def test_checker_is_never_told_the_answer(monkeypatch):
     """The prompt is the same whichever option the draft marks as correct."""
     calls = fake(monkeypatch, [item()])
-    quiz.generate_quiz_items(DATA, CHUNKS)
+    quiz.generate_quiz_items(DATA, CHUNKS, check_version=quiz.OLD_CHECK_VERSION)
     first = calls[1][0]
     calls = fake(monkeypatch, [item(answer="Keys are unsorted")])
-    quiz.generate_quiz_items(DATA, CHUNKS)
+    quiz.generate_quiz_items(DATA, CHUNKS, check_version=quiz.OLD_CHECK_VERSION)
     assert calls[1][1]["prompt_version"] == "quiz_check_v2"
     assert calls[1][0] == first
     assert "correct_answer" not in first

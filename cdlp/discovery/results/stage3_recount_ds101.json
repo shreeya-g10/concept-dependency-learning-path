@@ -1,0 +1,90 @@
+{
+  "note": "Planning estimate from measured speeds. Not a result.",
+  "concepts": 85,
+  "candidate_pairs": 1380,
+  "discovery": {
+    "model": "qwen2.5:7b-instruct",
+    "asks": 2760,
+    "cached": 70,
+    "to_ask": 2690,
+    "seconds_per_call": {
+      "mean": 8.356060606060606,
+      "p90": 13.0,
+      "n": 66
+    },
+    "hours": [
+      6.2,
+      9.7
+    ]
+  },
+  "edges_per_pair": {
+    "sample_pairs": 30,
+    "edges_in_sample": 12,
+    "reversed_pairs_in_sample": 2,
+    "point": 0.4,
+    "low_2_5": 0.2,
+    "high_97_5": 0.6333333333333333
+  },
+  "edges_estimate": {
+    "point": 552,
+    "low_2_5": 276,
+    "high_97_5": 874
+  },
+  "reversed_edges_estimate": 184,
+  "evidence_check": {
+    "calls": {
+      "point": 552,
+      "low_2_5": 276,
+      "high_97_5": 874
+    },
+    "seconds_per_call": {
+      "n": 36,
+      "median": 25.945581436157227,
+      "mean": 35.716346469190384
+    },
+    "hours": [
+      2.0,
+      8.7
+    ]
+  },
+  "semantic_check": {
+    "calls": {
+      "point": 552,
+      "low_2_5": 276,
+      "high_97_5": 874
+    },
+    "seconds_per_call": {
+      "n": 32,
+      "median": 8.473031997680664,
+      "mean": 10.91221009939909
+    },
+    "hours": [
+      0.6,
+      2.6
+    ]
+  },
+  "necessity": {
+    "edges": 40,
+    "calls_low": 280,
+    "calls_high": 360,
+    "seconds_per_edge": [
+      134.6863431930542,
+      332.34938039382297
+    ],
+    "learner_seconds": {
+      "n": 9,
+      "median": 11.83388376235962,
+      "mean": 47.28831794526842
+    },
+    "grader_seconds": {
+      "n": 12,
+      "median": 21.061563968658447,
+      "mean": 27.494808852672577
+    },
+    "writer_seconds_assumed": 36,
+    "hours": [
+      1.5,
+      3.7
+    ]
+  }
+}
