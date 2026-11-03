@@ -53,6 +53,10 @@
           "source_quote": {
             "type": "string",
             "description": "optional (1.9): word-for-word sentence from chunk_id that proves the answer"
+          },
+          "second_model": {
+            "type": "object",
+            "description": "optional (1.11): the second model's reply, for the record. A pass proves little on its own: same_subject and about_topic were true on every replayed draft."
           }
         }
       }
@@ -143,6 +147,42 @@
             "type": "integer"
           },
           "description": "optional (1.10): the part of skipped that came from retries, per reason"
+        },
+        "check_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "optional (1.11): the checks as a whole, such as quiz_check_v3"
+        },
+        "dropped": {
+          "type": "array",
+          "description": "optional (1.11): every dropped draft with its reason",
+          "items": {
+            "type": "object",
+            "required": [
+              "concept_id",
+              "question",
+              "reason"
+            ],
+            "properties": {
+              "concept_id": {
+                "type": "string"
+              },
+              "question": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "second_model": {
+                "type": "object"
+              }
+            }
+          }
         }
       }
     }
