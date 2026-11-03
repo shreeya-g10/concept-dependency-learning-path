@@ -18,6 +18,10 @@ candidate's course order. A and B are chosen by a hash of the pair, recorded per
 With --pairs the default stays discover_v2, so benchmark runs do not change. Passing a neutral
 --prompt-version with --pairs asks one call per pair, whatever --pairs-direction says.
 
+Course runs ask every pair in BOTH orders (A and B swapped) and apply the fixed rule in
+configs/order_rule_v1.json: two calls per pair. Both raw answers are kept in "pair_answers", so
+one-order results can be computed from the same run. --one-order asks only the hash order.
+
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
 --baseline-only writes just relationships_baseline.json and skips the candidate
@@ -31,6 +35,7 @@ built by the learning_path module (cdlp/learning_path/quiz.py, sim_students.py).
 import argparse
 import csv
 import sys
+from collections import Counter
 from pathlib import Path
 
 from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
@@ -42,13 +47,16 @@ from cdlp.discovery.llm_discovery import (
     PROMPT_VERSION,
     build_contract_relationships,
     discover_candidates,
+    load_order_rule,
     neutral_summary,
+    pair_answers,
+    single_order_relationships,
 )
 from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
-RELATIONSHIPS_SCHEMA_VERSION = "1.10"  # 1.10: discovery block, pair_order
+RELATIONSHIPS_SCHEMA_VERSION = "1.11"  # 1.10: discovery, pair_order; 1.11: both orders
 BASELINE_SCHEMA_VERSION = "1.3"  # relationships_baseline.json is new in 1.3
 
 
@@ -82,6 +90,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--prompt-version",
         help=f"default: {PROMPT_VERSION}, or {DIRECTIONAL_PROMPT_VERSION} with --pairs",
+    )
+    parser.add_argument(
+        "--one-order",
+        action="store_true",
+        help="course runs: ask each pair once, in the hash order, instead of in both orders",
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
@@ -130,9 +143,13 @@ def main(argv: list[str] | None = None) -> None:
         candidates = generate_candidates(concepts_data, chunks)
     stats = candidate_stats(candidates, len(concepts))
     neutral = args.prompt_version in NEUTRAL_PROMPT_VERSIONS
+    both_orders = neutral and not args.pairs and not args.one_order
     if neutral:
         n_pairs = len({frozenset((c.source, c.target)) for c in candidates})
-        asked = f"(one neutral question each) -> {n_pairs} LLM calls"
+        if both_orders:
+            asked = f"(a neutral question each, in both orders) -> {2 * n_pairs} LLM calls"
+        else:
+            asked = f"(one neutral question each) -> {n_pairs} LLM calls"
     else:
         asked = f"({stats['tied']} tied, asked both ways) -> {stats['llm_calls']} LLM calls"
     print(
@@ -146,6 +163,7 @@ def main(argv: list[str] | None = None) -> None:
         chunks,
         remove_transitive=args.remove_transitive,
         prompt_version=args.prompt_version,
+        both_orders=both_orders,
     )
     output = {
         "schema_version": RELATIONSHIPS_SCHEMA_VERSION,
@@ -154,7 +172,28 @@ def main(argv: list[str] | None = None) -> None:
             relationships, concepts, chunks, args.prompt_version
         ),
     }
-    if neutral:
+    if both_orders:
+        answers = pair_answers(relationships)
+        summary = neutral_summary(single_order_relationships(answers))  # the hash-order asks
+        print(f"{args.prompt_version} hash-order answers: {summary}", file=sys.stderr)
+        rule = load_order_rule()
+        counts = Counter(row["order_agreement"] for row in answers)
+        output["discovery"] = {
+            "prompt_version": args.prompt_version,
+            "pair_order_rule": PAIR_ORDER_RULES[args.prompt_version],
+            "answers": summary,
+            "both_orders": {
+                "rule_version": rule["version"],
+                "pairs": len(answers),
+                **{k: counts[k] for k in ("stable", "unstable", "reversed", "neither")},
+                "answers_all_asks": dict(
+                    Counter(ask["answer"] for row in answers for ask in row["asks"])
+                ),
+            },
+        }
+        output["pair_answers"] = answers
+        print(f"order rule: {output['discovery']['both_orders']}", file=sys.stderr)
+    elif neutral:
         summary = neutral_summary(relationships)
         print(f"{args.prompt_version} answers: {summary}", file=sys.stderr)
         output["discovery"] = {

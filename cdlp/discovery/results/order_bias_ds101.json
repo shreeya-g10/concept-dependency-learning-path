@@ -1,0 +1,1209 @@
+{
+  "note": "Measurement only. Nothing was changed based on it.",
+  "date": "2026-11-03",
+  "model": "qwen2.5:7b-instruct",
+  "prompt_version": "discover_v3_1",
+  "prompt_sha256": "087f0b075a60b47d8026f3aacee0665b27386ad84f284a145f3b11a29e2b668e",
+  "pair_order_rule_for_first_ask": "sha256_of_pair_v1",
+  "temperature": 0.0,
+  "seed": 42,
+  "config": {
+    "prompt_version": "discover_v3_1",
+    "seed": 42,
+    "sample_size": 30,
+    "gold_edges": "data/gold/ds101/gold_edges.csv",
+    "gold_id_to_concept": {
+      "trees": "general_tree",
+      "graphs": "graph"
+    },
+    "gold_id_note": "The gold labels say trees and graphs; the filtered concepts name them general_tree (alias Tree) and graph (alias Graphs). No other gold id changes."
+  },
+  "concepts_sha256": "81eee4cae0ad11a5ef90edd8735559feb2fd55aa790fc0d82fcd7953ff156c29",
+  "chunks_sha256": "915893d9fb1b0c407ab85d6250cf6fcf24981ac57edeb7f8b7eac3876796ebb4",
+  "candidate_pairs": 1380,
+  "llm_stats": {
+    "llm_calls": 66,
+    "cache_hits": 4,
+    "model": "qwen2.5:7b-instruct",
+    "prompt_versions": [
+      "discover_v3_1"
+    ]
+  },
+  "gold_positive": {
+    "pairs": 5,
+    "answers_all_asks": {
+      "B_BEFORE_A": 5,
+      "NEITHER": 5
+    },
+    "answers_hash_order_only": {
+      "B_BEFORE_A": 2,
+      "NEITHER": 3
+    },
+    "off_topic_asks": 0,
+    "both_orders": {
+      "position_followed": 2,
+      "flip_to_neither": 1,
+      "same": 2
+    }
+  },
+  "sample": {
+    "pairs": 30,
+    "answers_all_asks": {
+      "B_BEFORE_A": 9,
+      "NEITHER": 47,
+      "A_BEFORE_B": 4
+    },
+    "answers_hash_order_only": {
+      "B_BEFORE_A": 5,
+      "NEITHER": 24,
+      "A_BEFORE_B": 1
+    },
+    "off_topic_asks": 0,
+    "both_orders": {
+      "flip_to_neither": 7,
+      "position_followed": 2,
+      "same": 21
+    }
+  },
+  "all": {
+    "pairs": 35,
+    "answers_all_asks": {
+      "B_BEFORE_A": 14,
+      "NEITHER": 52,
+      "A_BEFORE_B": 4
+    },
+    "answers_hash_order_only": {
+      "B_BEFORE_A": 7,
+      "NEITHER": 27,
+      "A_BEFORE_B": 1
+    },
+    "off_topic_asks": 0,
+    "both_orders": {
+      "position_followed": 4,
+      "flip_to_neither": 8,
+      "same": 23
+    }
+  },
+  "pairs": [
+    {
+      "group": "gold_positive",
+      "pair": [
+        "binary_search_tree",
+        "avl_tree"
+      ],
+      "comparison": "position_followed",
+      "asks": [
+        {
+          "a": "avl_tree",
+          "b": "binary_search_tree",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "binary_search_tree->avl_tree",
+          "prompt_chars": 8180,
+          "seconds": 0.0
+        },
+        {
+          "a": "binary_search_tree",
+          "b": "avl_tree",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "avl_tree->binary_search_tree",
+          "prompt_chars": 8180,
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "group": "gold_positive",
+      "pair": [
+        "binary_tree",
+        "binary_search_tree"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "binary_search_tree",
+          "b": "binary_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6887,
+          "seconds": 0.0
+        },
+        {
+          "a": "binary_tree",
+          "b": "binary_search_tree",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "binary_search_tree->binary_tree",
+          "prompt_chars": 6887,
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "group": "gold_positive",
+      "pair": [
+        "recursion",
+        "binary_tree"
+      ],
+      "comparison": "position_followed",
+      "asks": [
+        {
+          "a": "binary_tree",
+          "b": "recursion",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "recursion->binary_tree",
+          "prompt_chars": 7997,
+          "seconds": 14.8
+        },
+        {
+          "a": "recursion",
+          "b": "binary_tree",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "binary_tree->recursion",
+          "prompt_chars": 7997,
+          "seconds": 6.6
+        }
+      ]
+    },
+    {
+      "group": "gold_positive",
+      "pair": [
+        "general_tree",
+        "binary_tree"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "general_tree",
+          "b": "binary_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8131,
+          "seconds": 10.1
+        },
+        {
+          "a": "binary_tree",
+          "b": "general_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8131,
+          "seconds": 4.3
+        }
+      ]
+    },
+    {
+      "group": "gold_positive",
+      "pair": [
+        "general_tree",
+        "graph"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "graph",
+          "b": "general_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7955,
+          "seconds": 10.8
+        },
+        {
+          "a": "general_tree",
+          "b": "graph",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7955,
+          "seconds": 3.8
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "rootish_array_stack",
+        "shift_elements"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "shift_elements",
+          "b": "rootish_array_stack",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "rootish_array_stack->shift_elements",
+          "prompt_chars": 7632,
+          "seconds": 15.0
+        },
+        {
+          "a": "rootish_array_stack",
+          "b": "shift_elements",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7632,
+          "seconds": 4.0
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "ancestor",
+        "depth_of_node"
+      ],
+      "comparison": "position_followed",
+      "asks": [
+        {
+          "a": "depth_of_node",
+          "b": "ancestor",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "ancestor->depth_of_node",
+          "prompt_chars": 7049,
+          "seconds": 12.7
+        },
+        {
+          "a": "ancestor",
+          "b": "depth_of_node",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "depth_of_node->ancestor",
+          "prompt_chars": 7049,
+          "seconds": 4.9
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "add_operation",
+        "merging"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "add_operation",
+          "b": "merging",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7222,
+          "seconds": 11.6
+        },
+        {
+          "a": "merging",
+          "b": "add_operation",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7222,
+          "seconds": 3.9
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "block_size",
+        "general_tree"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "block_size",
+          "b": "general_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7928,
+          "seconds": 10.8
+        },
+        {
+          "a": "general_tree",
+          "b": "block_size",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7928,
+          "seconds": 3.8
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "binary_tree",
+        "no_red_edge"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "binary_tree",
+          "b": "no_red_edge",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7032,
+          "seconds": 9.6
+        },
+        {
+          "a": "no_red_edge",
+          "b": "binary_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7032,
+          "seconds": 4.0
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "binary_search_tree",
+        "path"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "path",
+          "b": "binary_search_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7969,
+          "seconds": 15.0
+        },
+        {
+          "a": "binary_search_tree",
+          "b": "path",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7969,
+          "seconds": 4.5
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "array_based_list",
+        "stack"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "stack",
+          "b": "array_based_list",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7546,
+          "seconds": 10.7
+        },
+        {
+          "a": "array_based_list",
+          "b": "stack",
+          "answer": "A_BEFORE_B",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "array_based_list->stack",
+          "prompt_chars": 7546,
+          "seconds": 7.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "amortized_time",
+        "running_time_analysis"
+      ],
+      "comparison": "position_followed",
+      "asks": [
+        {
+          "a": "amortized_time",
+          "b": "running_time_analysis",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "running_time_analysis->amortized_time",
+          "prompt_chars": 7942,
+          "seconds": 14.3
+        },
+        {
+          "a": "running_time_analysis",
+          "b": "amortized_time",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "amortized_time->running_time_analysis",
+          "prompt_chars": 7942,
+          "seconds": 7.4
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "meldable_heap",
+        "subtree"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "meldable_heap",
+          "b": "subtree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7008,
+          "seconds": 11.9
+        },
+        {
+          "a": "subtree",
+          "b": "meldable_heap",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7008,
+          "seconds": 4.2
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "amortized_time",
+        "backing_array"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "backing_array",
+          "b": "amortized_time",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "amortized_time->backing_array",
+          "prompt_chars": 7889,
+          "seconds": 14.6
+        },
+        {
+          "a": "amortized_time",
+          "b": "backing_array",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7889,
+          "seconds": 4.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "queue",
+        "recursion"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "recursion",
+          "b": "queue",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8068,
+          "seconds": 10.1
+        },
+        {
+          "a": "queue",
+          "b": "recursion",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8068,
+          "seconds": 3.9
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "external_node",
+        "recursion"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "recursion",
+          "b": "external_node",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6473,
+          "seconds": 7.6
+        },
+        {
+          "a": "external_node",
+          "b": "recursion",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6473,
+          "seconds": 3.9
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "add_operation",
+        "resize"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "resize",
+          "b": "add_operation",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7990,
+          "seconds": 11.8
+        },
+        {
+          "a": "add_operation",
+          "b": "resize",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7990,
+          "seconds": 3.8
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "add_operation",
+        "recursive_function"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "add_operation",
+          "b": "recursive_function",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6453,
+          "seconds": 10.8
+        },
+        {
+          "a": "recursive_function",
+          "b": "add_operation",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6453,
+          "seconds": 8.4
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "amortized_time",
+        "heap"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "heap",
+          "b": "amortized_time",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7436,
+          "seconds": 11.3
+        },
+        {
+          "a": "amortized_time",
+          "b": "heap",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7436,
+          "seconds": 4.2
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "binary_search_tree",
+        "left_leaning_property"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "left_leaning_property",
+          "b": "binary_search_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7086,
+          "seconds": 11.9
+        },
+        {
+          "a": "binary_search_tree",
+          "b": "left_leaning_property",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7086,
+          "seconds": 4.3
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "binary_search_tree",
+        "unbalanced_binary_search_tree"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "unbalanced_binary_search_tree",
+          "b": "binary_search_tree",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "binary_search_tree->unbalanced_binary_search_tree",
+          "prompt_chars": 7250,
+          "seconds": 11.1
+        },
+        {
+          "a": "binary_search_tree",
+          "b": "unbalanced_binary_search_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7250,
+          "seconds": 4.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "left_leaning_property",
+        "logarithmic_time"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "logarithmic_time",
+          "b": "left_leaning_property",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6720,
+          "seconds": 9.6
+        },
+        {
+          "a": "left_leaning_property",
+          "b": "logarithmic_time",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6720,
+          "seconds": 4.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "random_walk",
+        "remove_operation"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "remove_operation",
+          "b": "random_walk",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7314,
+          "seconds": 11.3
+        },
+        {
+          "a": "random_walk",
+          "b": "remove_operation",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7314,
+          "seconds": 3.8
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "add_operation",
+        "partial_rebuilding"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "partial_rebuilding",
+          "b": "add_operation",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7271,
+          "seconds": 8.3
+        },
+        {
+          "a": "add_operation",
+          "b": "partial_rebuilding",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7271,
+          "seconds": 4.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "no_red_edge_property",
+        "tree_traversal"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "tree_traversal",
+          "b": "no_red_edge_property",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8079,
+          "seconds": 12.2
+        },
+        {
+          "a": "no_red_edge_property",
+          "b": "tree_traversal",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8079,
+          "seconds": 4.0
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "balanced_binary_tree",
+        "block_size"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "balanced_binary_tree",
+          "b": "block_size",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8084,
+          "seconds": 10.5
+        },
+        {
+          "a": "block_size",
+          "b": "balanced_binary_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8084,
+          "seconds": 4.0
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "scapegoat_tree",
+        "sset"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "scapegoat_tree",
+          "b": "sset",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6832,
+          "seconds": 11.3
+        },
+        {
+          "a": "sset",
+          "b": "scapegoat_tree",
+          "answer": "A_BEFORE_B",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "sset->scapegoat_tree",
+          "prompt_chars": 6832,
+          "seconds": 7.8
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "external_node",
+        "no_red_edge"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "external_node",
+          "b": "no_red_edge",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 4627,
+          "seconds": 11.9
+        },
+        {
+          "a": "no_red_edge",
+          "b": "external_node",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 4627,
+          "seconds": 4.3
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "binary_search_tree",
+        "meld"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "binary_search_tree",
+          "b": "meld",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6266,
+          "seconds": 8.1
+        },
+        {
+          "a": "meld",
+          "b": "binary_search_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6266,
+          "seconds": 4.0
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "general_tree",
+        "traversal"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "traversal",
+          "b": "general_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7960,
+          "seconds": 9.7
+        },
+        {
+          "a": "general_tree",
+          "b": "traversal",
+          "answer": "A_BEFORE_B",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "general_tree->traversal",
+          "prompt_chars": 7960,
+          "seconds": 6.4
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "potential_method",
+        "two_four_tree"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "two_four_tree",
+          "b": "potential_method",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8211,
+          "seconds": 12.3
+        },
+        {
+          "a": "potential_method",
+          "b": "two_four_tree",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 8211,
+          "seconds": 4.1
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "block_size",
+        "recursive_algorithm"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "recursive_algorithm",
+          "b": "block_size",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6806,
+          "seconds": 8.8
+        },
+        {
+          "a": "block_size",
+          "b": "recursive_algorithm",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 6806,
+          "seconds": 4.5
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "add_operation",
+        "amortized_analysis"
+      ],
+      "comparison": "flip_to_neither",
+      "asks": [
+        {
+          "a": "add_operation",
+          "b": "amortized_analysis",
+          "answer": "NEITHER",
+          "strength": "none",
+          "confidence": 0.5,
+          "on_topic": true,
+          "says": "NEITHER",
+          "prompt_chars": 7732,
+          "seconds": 13.8
+        },
+        {
+          "a": "amortized_analysis",
+          "b": "add_operation",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "add_operation->amortized_analysis",
+          "prompt_chars": 7732,
+          "seconds": 7.9
+        }
+      ]
+    },
+    {
+      "group": "sample",
+      "pair": [
+        "array_stack",
+        "dual_array_deque"
+      ],
+      "comparison": "same",
+      "asks": [
+        {
+          "a": "array_stack",
+          "b": "dual_array_deque",
+          "answer": "A_BEFORE_B",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "array_stack->dual_array_deque",
+          "prompt_chars": 7759,
+          "seconds": 20.0
+        },
+        {
+          "a": "dual_array_deque",
+          "b": "array_stack",
+          "answer": "B_BEFORE_A",
+          "strength": "hard",
+          "confidence": 0.9,
+          "on_topic": true,
+          "says": "array_stack->dual_array_deque",
+          "prompt_chars": 7759,
+          "seconds": 13.0
+        }
+      ]
+    }
+  ]
+}
