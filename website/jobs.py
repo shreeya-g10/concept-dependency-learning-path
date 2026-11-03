@@ -460,50 +460,265 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     }
 
 
+def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
+    """Extract real topics and build valid contract files from data/raw/<course_id>/."""
+    from cdlp.extraction.parse import parse_directory
+
+    raw_dir = RAW / course_id
+    if not raw_dir.is_dir():
+        return False
+    chunks = parse_directory(raw_dir, course_id=course_id)
+    if not chunks:
+        return False
+
+    with open(out_dir / "chunks.jsonl", "w", encoding="utf-8") as f:
+        for c in chunks:
+            f.write(json.dumps(c) + "\n")
+
+    def slug(text: str) -> str:
+        s = re.sub(r"[^a-zA-Z0-9]+", "_", text.lower()).strip("_")
+        return s[:35] or "concept"
+
+    raw_topics = []
+    for c in chunks:
+        h = c.get("heading")
+        if h and len(h.split()) <= 8:
+            clean = re.sub(r"^CHAPTER\s*\d+\s*[–—\-~\s]*", "", h, flags=re.IGNORECASE).strip()
+            clean = re.sub(r"^[0-9.]+\s*", "", clean).strip()
+            if clean and not any(
+                skip in clean.upper()
+                for skip in ["PREFACE", "CONTENTS", "PRACTICE SET", "INDEX", "REFERENCES"]
+            ):
+                title = clean.title()
+                if title not in [t[0] for t in raw_topics]:
+                    desc = c["text"].strip().split("\n")[0][:140].strip()
+                    raw_topics.append((title, c, desc))
+
+    if len(raw_topics) < 4:
+        for c in chunks:
+            for line in c["text"].splitlines():
+                line = re.sub(r"^[#*•\-0-9.\s]+", "", line).strip()
+                words = line.split()
+                if 2 <= len(words) <= 6 and not any(
+                    skip in line.upper() for skip in ["PAGE", "HTTP", "WWW", "CHAPTER"]
+                ):
+                    title = line.title()
+                    if title not in [t[0] for t in raw_topics]:
+                        raw_topics.append((title, c, c["text"][:140].strip()))
+                        break
+
+    if not raw_topics:
+        doc_title = Path(chunks[0]["doc"]).stem.replace("_", " ").title()
+        raw_topics.append((doc_title, chunks[0], chunks[0]["text"][:140]))
+
+    concepts = []
+    for title, chunk, desc in raw_topics[:10]:
+        cid = slug(title)
+        concepts.append(
+            {
+                "id": cid,
+                "name": title,
+                "aliases": [title, cid.replace("_", " ")],
+                "description": desc or f"Core concept covering {title}.",
+                "sources": [
+                    {"doc": chunk["doc"], "page": chunk["page"], "chunk_id": chunk["chunk_id"]}
+                ],
+            }
+        )
+
+    (out_dir / "concepts.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "concepts": concepts}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    edges_rel = []
+    for i in range(len(concepts) - 1):
+        _c0, _c1 = concepts[i]["name"], concepts[i + 1]["name"]
+        edges_rel.append(
+            {
+                "id": f"r{i + 1}",
+                "source": concepts[i]["id"],
+                "target": concepts[i + 1]["id"],
+                "type": "PREREQUISITE",
+                "strength": "hard",
+                "confidence": 0.95,
+                "evidence": [
+                    {
+                        "doc": concepts[i]["sources"][0]["doc"],
+                        "page": concepts[i]["sources"][0]["page"],
+                        "chunk_id": concepts[i]["sources"][0]["chunk_id"],
+                    }
+                ],
+            }
+        )
+
+    (out_dir / "relationships.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "relationships": edges_rel}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    nodes = [{"id": c["id"], "name": c["name"]} for c in concepts]
+    edges_val = []
+    for r in edges_rel:
+        edges_val.append(
+            {
+                "id": r["id"],
+                "source": r["source"],
+                "target": r["target"],
+                "type": "PREREQUISITE",
+                "strength": "hard",
+                "decision": "ACCEPT",
+                "confidence": 0.95,
+                "checks": {
+                    "evidence": "strong",
+                    "semantic": "strong",
+                    "necessity": "strong",
+                    "graph": "ok",
+                },
+                "necessity_gap": 0.70,
+                "reason": f"{r['target']} builds directly upon concepts from {r['source']}.",
+                "evidence": r["evidence"],
+            }
+        )
+
+    (out_dir / "validated_graph.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "nodes": nodes,
+                "edges": edges_val,
+                "subset": {
+                    "kind": "demo",
+                    "n": len(edges_val),
+                    "of": len(edges_val),
+                    "selection": "Top prerequisite links",
+                },
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    quiz_items = []
+    for c in concepts:
+        desc = c["description"][:80].rstrip(".") or f"the core principles of {c['name']}"
+        ans = f"It covers {desc}."
+        quiz_items.append(
+            {
+                "id": f"q_{c['id']}_1",
+                "concept_id": c["id"],
+                "question": f"What is the primary role of {c['name']} in this subject?",
+                "options": [
+                    ans,
+                    f"It completely replaces the topic of {concepts[0]['name']}.",
+                    "It is a deprecated command that should never be used.",
+                    "It is strictly an internal hardware configuration setting.",
+                ],
+                "answer": ans,
+            }
+        )
+
+    (out_dir / "quiz_items.json").write_text(
+        json.dumps(
+            {"schema_version": "1.0", "course_id": course_id, "items": quiz_items}, indent=2
+        ),
+        encoding="utf-8",
+    )
+
+    target = concepts[-1]["id"]
+    steps = [
+        {
+            "concept_id": c["id"],
+            "why": f"Study {c['name']} as foundational knowledge for {concepts[-1]['name']}.",
+            "evidence": c["sources"],
+        }
+        for c in concepts
+    ]
+    (out_dir / "learning_path.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "paths": [{"student_id": "student_a", "target": target, "steps": steps}],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    (out_dir / "sim_students.json").write_text(
+        json.dumps({"schema_version": "1.0", "course_id": course_id, "students": []}, indent=2),
+        encoding="utf-8",
+    )
+
+    (out_dir / "student_state.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "course_id": course_id,
+                "students": [
+                    {
+                        "student_id": "student_a",
+                        "target": target,
+                        "mastery": {c["id"]: 0.1 for c in concepts},
+                        "questions_asked": 0,
+                        "answers": [],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    return True
+
+
 def fast_demo_run(course_id: str, state_dir: Path) -> int:
-    """Instant demo runner: seeds verified contract outputs and simulates stage progress."""
+    """Instant demo runner: extracts real topics from uploads and simulates stage progress."""
     state = _read_state(state_dir) or {}
     state.update(state="running", pid=os.getpid(), started_at=time.time())
     _write_state(state_dir, state)
 
     out_dir = OUTPUTS / course_id
     out_dir.mkdir(parents=True, exist_ok=True)
-    template_dir = OUTPUTS
-
-    files_map = [
-        ("cdlp.extraction", ["chunks.jsonl", "concepts.json"], 0.6),
-        ("cdlp.discovery", ["relationships.json"], 0.6),
-        ("cdlp.validation", ["validated_graph.json"], 0.6),
-        ("cdlp.learning_path.quiz", ["quiz_items.json"], 0.5),
-        (
-            "cdlp.learning_path",
-            ["learning_path.json", "sim_students.json", "student_state.json"],
-            0.5,
-        ),
-    ]
 
     with open(state_dir / "pipeline.log", "w", encoding="utf-8") as log:
-        for stage_name, fnames, delay in files_map:
+        stages = [
+            ("cdlp.extraction", 0.6),
+            ("cdlp.discovery", 0.6),
+            ("cdlp.validation", 0.6),
+            ("cdlp.learning_path.quiz", 0.5),
+            ("cdlp.learning_path", 0.5),
+        ]
+        for stage_name, delay in stages:
             log.write(f"==> {stage_name}\n")
             log.flush()
-            for fname in fnames:
-                src = template_dir / fname
-                dst = out_dir / fname
-                if src.exists():
-                    if fname.endswith(".json"):
-                        try:
-                            data = json.loads(src.read_text(encoding="utf-8"))
-                            if isinstance(data, dict) and "course_id" in data:
-                                data["course_id"] = course_id
-                            dst.write_text(json.dumps(data, indent=2), encoding="utf-8")
-                            continue
-                        except Exception:
-                            pass
-                    try:
-                        shutil.copy2(src, dst)
-                    except Exception:
-                        pass
             time.sleep(delay)
+
+        # Generate actual files from user uploads
+        generated = generate_course_from_uploads(course_id, out_dir)
+        if not generated:
+            template_dir = OUTPUTS
+            for fname in [
+                "chunks.jsonl",
+                "concepts.json",
+                "relationships.json",
+                "validated_graph.json",
+                "quiz_items.json",
+                "learning_path.json",
+                "sim_students.json",
+                "student_state.json",
+            ]:
+                src = template_dir / fname
+                if src.exists():
+                    shutil.copy2(src, out_dir / fname)
+
         log.write("==> contract check\nall contract files valid\n")
         log.flush()
         time.sleep(0.3)
