@@ -281,7 +281,7 @@ def _alive(pid: int | None) -> bool:
         return False
     try:
         os.kill(pid, 0)
-    except ProcessLookupError:
+    except (ProcessLookupError, OSError):
         return False
     except PermissionError:
         return True
