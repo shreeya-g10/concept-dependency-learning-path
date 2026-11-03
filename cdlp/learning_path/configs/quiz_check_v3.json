@@ -1,0 +1,14 @@
+{
+  "version": "quiz_check_v3",
+  "fixed_on": "2026-11-03",
+  "second_model_prompt": "quiz_check_v2",
+  "min_answer_support": 0.5,
+  "min_answer_support_why": "At least half of the correct answer's content words must appear in the quote. A quote that proves an answer normally restates it, and half leaves room for a paraphrase of the rest. Set from this reasoning before the v3 replay was run, and not adjusted question by question.",
+  "extra_stop_words": "all any as at been being both but each had has have if no not so such than then there these those was were",
+  "number_words": {
+    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6",
+    "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11", "twelve": "12"
+  },
+  "alias_rule": "A concept's name always counts. An alias counts only if no other concept claims it and it is either several words or a single word with a capital after its first letter (BST, AVL, SLList). So ordinary-word aliases such as Add, Tree or general never count.",
+  "mention_rule": "The source must contain the words the question used, or the concept's own name. Another alias is not enough, because aliases are noisy: stack has the alias SLList, so a chunk about SLList does not prove a question about a stack."
+}
