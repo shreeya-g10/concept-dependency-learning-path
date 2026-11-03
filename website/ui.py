@@ -120,20 +120,30 @@ def navigation():
     return st.navigation(nav_dict)
     if False:  # dead branch keeping old signature
         return st.navigation(
-        {
-            S.NAV_GROUP_STUDENTS: group(STUDENT_PAGES),
-            S.NAV_GROUP_TEACHERS: group(TEACHER_PAGES),
-        }
-    )
+            {
+                S.NAV_GROUP_STUDENTS: group(STUDENT_PAGES),
+                S.NAV_GROUP_TEACHERS: group(TEACHER_PAGES),
+            }
+        )
 
 
 def step_indicator(step: int) -> None:
     """'Step 2 of 4' with a progress bar. The words matter; the bar only supports them."""
     crumbs = []
     active_stage = 1 if step in (1, 2) else 2 if step == 3 else 3
-    for num, label in [("1", "Select Subject"), ("2", "Check Knowledge"), ("3", "Study Plan & Map")]:
+    for num, label in [
+        ("1", "Select Subject"),
+        ("2", "Check Knowledge"),
+        ("3", "Study Plan & Map"),
+    ]:
         cur_num = int(num)
-        crumbs.append(f"✅ {num}. {label}" if cur_num < active_stage else f"👉 **{num}. {label}**" if cur_num == active_stage else f"{num}. {label}")
+        crumbs.append(
+            f"✅ {num}. {label}"
+            if cur_num < active_stage
+            else f"👉 **{num}. {label}**"
+            if cur_num == active_stage
+            else f"{num}. {label}"
+        )
     st.caption(" ➔ ".join(crumbs))
     st.markdown(f"**{S.STEP_OF.format(step=step, total=TOTAL_STEPS)}**")
     st.progress(step / TOTAL_STEPS)

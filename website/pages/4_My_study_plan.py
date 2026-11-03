@@ -128,4 +128,6 @@ if (
     st.session_state.quiz_picking = False
     st.switch_page(ui.PAGES["quiz"].path)
 other_topic_button(primary=False)
-ui.action_button("Continue to Next Step: Topic Map", page="map", icon="🔗", primary=True, key="plan_to_map")
+ui.action_button(
+    "Continue to Next Step: Topic Map", page="map", icon="🔗", primary=True, key="plan_to_map"
+)

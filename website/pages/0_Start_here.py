@@ -25,10 +25,13 @@ col1, col2 = st.columns(2)
 with col1:
     with ui.info_card(
         "Explore Sample Subject (Data Structures)",
-        "Recommended for live demo: Instant access to topics, check questions, and personalized study path.",
+        "Recommended for live demo: Instant access to topics, check questions, "
+        "and personalized study path.",
         icon="📚",
     ):
-        if ui.action_button("Start Demo (Data Structures)", icon="🚀", key="demo_start_card", primary=True):
+        if ui.action_button(
+            "Start Demo (Data Structures)", icon="🚀", key="demo_start_card", primary=True
+        ):
             st.session_state["course_id"] = "ds101"
             st.switch_page(ui.PAGES["quiz"].path)
 

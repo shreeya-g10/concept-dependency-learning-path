@@ -162,7 +162,11 @@ try:
         estimate = jobs.estimate(folder)
     has_text = estimate["words"] > 0
     if has_text:
-        span_text = getattr(S, "ADD_FAST_SECONDS", "3 to 5 seconds") if fast_mode else time_span(*estimate["total_minutes"])
+        span_text = (
+            getattr(S, "ADD_FAST_SECONDS", "3 to 5 seconds")
+            if fast_mode
+            else time_span(*estimate["total_minutes"])
+        )
         st.markdown(S.ADD_TIME.format(span=span_text))
     else:
         ui.friendly_error(S.ADD_NO_TEXT, S.ADD_NO_TEXT_NEXT)

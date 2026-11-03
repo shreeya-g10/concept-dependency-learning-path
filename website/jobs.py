@@ -23,8 +23,8 @@ import argparse
 import json
 import math
 import os
-import shutil
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -288,7 +288,9 @@ def _alive(pid: int | None) -> bool:
     return True
 
 
-def pipeline_command(course_id: str, demo_subset: int | None = None, fast_demo: bool = False) -> list[str]:
+def pipeline_command(
+    course_id: str, demo_subset: int | None = None, fast_demo: bool = False
+) -> list[str]:
     if fast_demo:
         return [
             sys.executable,
@@ -458,7 +460,11 @@ def fast_demo_run(course_id: str, state_dir: Path) -> int:
         ("cdlp.discovery", ["relationships.json"], 0.6),
         ("cdlp.validation", ["validated_graph.json"], 0.6),
         ("cdlp.learning_path.quiz", ["quiz_items.json"], 0.5),
-        ("cdlp.learning_path", ["learning_path.json", "sim_students.json", "student_state.json"], 0.5),
+        (
+            "cdlp.learning_path",
+            ["learning_path.json", "sim_students.json", "student_state.json"],
+            0.5,
+        ),
     ]
 
     with open(state_dir / "pipeline.log", "w", encoding="utf-8") as log:
