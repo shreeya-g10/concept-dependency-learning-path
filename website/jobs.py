@@ -33,6 +33,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 RAW = ROOT / "data" / "raw"
 OUTPUTS = ROOT / "outputs"
 JOBS = OUTPUTS / ".jobs"
