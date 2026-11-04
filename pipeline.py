@@ -15,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from cdlp.shared.validate import check_file
+from cdlp.shared.validate import check_file, schema_for
 
 
 def run(module: str, *args: str) -> None:
@@ -60,6 +60,41 @@ def course_input(course: str) -> Path:
         return folder
     print(f"note: {folder} not found, reading data/raw/ instead")
     return Path("data/raw")
+
+
+def contract_check(out: Path) -> bool:
+    """Check every file in the folder that has a contract. True if none failed.
+
+    Real runs also write files with no contract, such as *.stats.json and
+    concept_filter_report.json. Those are listed and not read. Whether a file has a contract is
+    decided before it is read, so a contract file that is broken, even one that is not valid JSON,
+    always fails the run.
+    """
+    print("\n==> contract check")
+    passed, skipped, failed = [], [], []
+    for path in sorted(out.iterdir()):
+        if path.is_dir():
+            print(f"[SKIP] {path} (a folder)")
+            skipped.append(path.name)
+            continue
+        try:
+            schema = schema_for(path)
+        except ValueError:
+            print(f"[SKIP] {path} (no contract)")
+            skipped.append(path.name)
+            continue
+        try:
+            errors = check_file(path, schema)
+        except ValueError as exc:  # broken JSON or text
+            errors = [f"not valid JSON: {exc}"]
+        print(f"[{'OK' if not errors else 'FAIL'}] {path}")
+        for error in errors:
+            print(f"    {error}")
+        (failed if errors else passed).append(path.name)
+    # Last, because the website shows the last line when a run fails.
+    summary = f"contract check: {len(passed)} passed, {len(skipped)} skipped, {len(failed)} failed"
+    print(f"{summary}: {', '.join(failed)}" if failed else summary, flush=True)
+    return not failed
 
 
 def main() -> None:
@@ -187,13 +222,7 @@ def main() -> None:
     else:
         print("\n==> cdlp.root_cause skipped (no student_answers.json)")
 
-    print("\n==> contract check")
-    failed = False
-    for path in sorted(out.iterdir()):
-        errors = check_file(path)
-        print(f"[{'OK' if not errors else 'FAIL'}] {path}")
-        failed |= bool(errors)
-    sys.exit(1 if failed else 0)
+    sys.exit(0 if contract_check(out) else 1)
 
 
 if __name__ == "__main__":
