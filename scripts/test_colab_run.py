@@ -711,7 +711,14 @@ def test_the_notebook_runs_every_stage_with_both_exact_models():
 
 
 def test_no_tunnel_and_no_shortcut_anywhere():
-    words = ("ngrok", "cloudflared", "localtunnel", "--demo-subset", "--allow-rule-based")
+    words = (
+        "ngrok",
+        "cloudflared",
+        "localtunnel",
+        "--demo-subset",
+        "--allow-rule-based",
+        "--allow-tfidf",
+    )
     docs = (cr.ROOT / "docs/colab_steps.md").read_text()
     runner = (cr.ROOT / "scripts/colab_run.py").read_text()
     for text in (notebook_text(), docs, runner):
@@ -740,6 +747,7 @@ def test_the_stage_command_records_the_run_and_sets_both_models(tmp_path, monkey
     monkeypatch.setattr(cr, "ROOT", tmp_path)
     monkeypatch.setattr(cr, "_out", lambda cmd: "Tesla T4, 15360 MiB" if "nvidia" in cmd[0] else "")
     monkeypatch.setattr(cr, "_tags", lambda: tags)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
     for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
         monkeypatch.setenv(name, "before")
     seen = {}
@@ -765,8 +773,184 @@ def test_a_failed_stage_exits_with_an_error(tmp_path, monkeypatch):
     monkeypatch.setattr(cr, "ROOT", tmp_path)
     monkeypatch.setattr(cr, "_out", lambda cmd: "Tesla T4, 15360 MiB" if "nvidia" in cmd[0] else "")
     monkeypatch.setattr(cr, "_tags", lambda: tags)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
     for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
         monkeypatch.setenv(name, "before")
     monkeypatch.setattr(cr, "run_stage", lambda *a, **k: [("x: discover", "exit 3")])
     with pytest.raises(SystemExit, match="failed steps"):
         cr.main(["stage", "course", "--course", "ds101"])
+
+
+# --- the embedding model ---------------------------------------------------------------
+
+
+def fake_home(tmp_path, monkeypatch, *, weights="model.safetensors", modules=True, ref="rev1"):
+    """A Hugging Face cache laid out the way a finished download leaves it."""
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("HF_HOME", raising=False)
+    folder = cr.embedding_model_folder()
+    snapshot = folder / "snapshots" / "rev1"
+    snapshot.mkdir(parents=True)
+    (folder / "refs").mkdir()
+    if ref is not None:
+        (folder / "refs" / "main").write_text(f"{ref}\n")
+    if weights:
+        (snapshot / weights).write_text("x")
+    if modules:
+        (snapshot / "modules.json").write_text("[]")
+    return folder
+
+
+def test_a_finished_download_gives_its_revision(tmp_path, monkeypatch):
+    fake_home(tmp_path, monkeypatch)
+    assert cr.embedding_model_revision() == "rev1"
+    assert cr.require_embedding_model() == "rev1"
+
+
+def test_older_weights_file_also_counts(tmp_path, monkeypatch):
+    fake_home(tmp_path, monkeypatch, weights="pytorch_model.bin")
+    assert cr.embedding_model_revision() == "rev1"
+
+
+def test_no_model_at_all_is_not_downloaded(tmp_path, monkeypatch):
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    assert cr.embedding_model_revision() is None
+
+
+@pytest.mark.parametrize(
+    "broken", [{"weights": None}, {"modules": False}, {"ref": None}, {"ref": ""}, {"ref": "other"}]
+)
+def test_an_interrupted_download_is_not_downloaded(tmp_path, monkeypatch, broken):
+    fake_home(tmp_path, monkeypatch, **broken)
+    assert cr.embedding_model_revision() is None
+
+
+def test_weights_that_point_nowhere_are_not_downloaded(tmp_path, monkeypatch):
+    folder = fake_home(tmp_path, monkeypatch, weights=None)
+    (folder / "snapshots" / "rev1" / "model.safetensors").symlink_to(folder / "blobs" / "gone")
+    assert cr.embedding_model_revision() is None
+
+
+def test_the_message_says_what_is_missing_and_what_to_do(tmp_path, monkeypatch):
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("HF_HOME", raising=False)
+    with pytest.raises(SystemExit) as stopped:
+        cr.require_embedding_model()
+    message = str(stopped.value)
+    assert "sentence-transformers/all-MiniLM-L6-v2 is not downloaded" in message
+    assert "step 3" in message and str(tmp_path) in message
+    assert "HF_HOME" not in message
+
+
+def test_the_message_explains_a_download_saved_where_extraction_never_looks(tmp_path, monkeypatch):
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("HF_HOME", "/content/elsewhere")
+    with pytest.raises(SystemExit, match="HF_HOME is set to /content/elsewhere"):
+        cr.require_embedding_model()
+
+
+def test_it_checks_the_same_folder_extraction_refuses_on(tmp_path, monkeypatch):
+    """If these drift apart, a stage could start and then fail inside extraction."""
+    from cdlp.extraction import extract
+
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(extract, "_EMBEDDER", None)
+    monkeypatch.setattr(extract, "_EMBEDDER_ERROR", "")
+    assert extract.get_embedder() is None
+    assert "is not downloaded" in extract._EMBEDDER_ERROR
+    assert str(cr.embedding_model_folder() / "snapshots") in extract._EMBEDDER_ERROR
+
+
+@pytest.fixture
+def gpu_and_models(monkeypatch):
+    tags = {"models": [{"name": m, "digest": "d", "size": 1} for m in cr.MODELS]}
+    monkeypatch.setattr(cr, "_out", lambda cmd: "Tesla T4, 15360 MiB" if "nvidia" in cmd[0] else "")
+    monkeypatch.setattr(cr, "_tags", lambda: tags)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["stage", "course", "--course", "ds101", "--steps", "extract"],
+        ["stage", "course", "--course", "ds101", "--steps", "validate"],
+        ["stage", "night1"],
+        ["stage", "night2"],
+        ["stage", "real"],
+        ["run", "--stage", "night3"],
+        ["stage", "speed"],
+    ],
+)
+def test_no_stage_starts_without_the_model(tmp_path, monkeypatch, gpu_and_models, argv):
+    monkeypatch.setattr(cr, "ROOT", tmp_path)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: None)
+    monkeypatch.setattr(cr, "run_stage", lambda *a, **k: pytest.fail("a stage started"))
+    monkeypatch.setattr(cr, "speed_stage", lambda *a, **k: pytest.fail("speed started"))
+    with pytest.raises(SystemExit, match="is not downloaded"):
+        cr.main(argv)
+    assert not list(tmp_path.rglob("colab_environment.json"))  # stopped before recording anything
+
+
+def test_no_gpu_is_still_reported_first(monkeypatch):
+    monkeypatch.setattr(cr, "_out", lambda cmd: "")
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: None)
+    with pytest.raises(SystemExit, match="No GPU"):
+        cr.main(["stage", "night1"])
+
+
+def test_the_revision_is_recorded_beside_the_gpu_and_digests(
+    tmp_path, monkeypatch, gpu_and_models, capsys
+):
+    monkeypatch.setattr(cr, "ROOT", tmp_path)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
+    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
+        monkeypatch.setenv(name, "before")
+    monkeypatch.setattr(cr, "run_stage", lambda *a, **k: [("ds101: discover", "ok")])
+    cr.main(["stage", "course", "--course", "ds101", "--steps", "discover"])
+    env = json.loads((tmp_path / "outputs/ds101/colab_environment.json").read_text())[0]
+    assert env["embedding_model"] == {"name": cr.EMBEDDING_MODEL, "revision": "rev1"}
+    assert env["gpu"] and env["models"]["llama3.1:8b"]["digest"] == "d"
+    assert f"{cr.EMBEDDING_MODEL}: rev1" in capsys.readouterr().out
+
+
+def test_the_env_command_reports_a_missing_model_without_stopping(tmp_path, monkeypatch):
+    monkeypatch.setattr(cr, "_out", lambda cmd: "")
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: None)
+    cr.main(["env", "--out-dir", str(tmp_path)])
+    env = json.loads((tmp_path / "colab_environment.json").read_text())[0]
+    assert env["embedding_model"]["revision"] is None
+
+
+def test_the_course_stage_never_asks_extraction_to_fall_back(tmp_path):
+    for step in cr.plan("course", tmp_path, "ds101"):
+        if not callable(step["argv"]):
+            assert not any("tfidf" in part for part in step["argv"])
+
+
+def test_extraction_still_refuses_to_fall_back():
+    """This work adds a check at the start. It does not change extraction's own refusal."""
+    source = (cr.ROOT / "cdlp/extraction/extract.py").read_text()
+    assert 'SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)' in source
+    assert "if not allow_tfidf:" in source
+
+
+def test_step_3_downloads_the_model_after_the_installs_and_prints_its_dimension():
+    cells = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text())["cells"]]
+    step = next(c for c in cells if c.startswith("# Step 3"))
+    last_install = step.rindex("!pip install")
+    download = step.index('"sentence-transformers/all-MiniLM-L6-v2"')
+    assert last_install < download
+    assert "SentenceTransformer(" in step and "get_sentence_embedding_dimension()" in step
+    assert 'print("embedding model ready, dimension:", dimension)' in step
+    assert 'device="cpu"' in step  # the notebook must hold no GPU memory while stages run
+    assert "local_files_only" not in step  # this cell is the one that downloads
+    # Not behind a condition, so it runs in every session.
+    assert not any(
+        line.startswith(("if ", "    "))
+        for line in step[step.index("from sentence_transformers") :].splitlines()
+        if "SentenceTransformer(" in line
+    )
+
+
+def test_the_notebook_and_runner_name_the_same_model():
+    assert cr.EMBEDDING_MODEL in notebook_text()
+    assert cr.EMBEDDING_MODEL in (cr.ROOT / "docs/colab_steps.md").read_text()

@@ -23,6 +23,9 @@ Stages:
   real    ds101 / ml101: the full agent with necessity on a seeded sample of 40 proposed
           edges (report-only), then the same agent with necessity at weight 1 (cache hits).
 
+A stage also stops if the embedding model is not downloaded (notebook step 3), because extraction
+refuses to run without it and would otherwise fail only inside a step.
+
 A step whose output is already there and valid is skipped, and every LLM call is cached, so
 a Colab disconnect loses the call in flight and whatever Drive had not yet saved. Run the same
 stage again to resume. Stages stop if there is no GPU or a model has no digest to record.
@@ -68,6 +71,7 @@ STAGES = ("night1", "night2", "night3", "real", "course")
 DISCOVERY_MODEL = "qwen2.5:7b-instruct"
 VALIDATOR_MODEL = "llama3.1:8b"
 MODELS = (DISCOVERY_MODEL, VALIDATOR_MODEL)
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 ORDER_RULE = "order_rule_v1"
 QUIZ_PROMPT = "quiz_v3"
 COURSE_STEPS = ("extract", "discover", "validate", "quiz", "path")
@@ -779,6 +783,44 @@ def require_models(tags: dict | None = None) -> dict:
     return {m: {"digest": e["digest"], "size_bytes": e.get("size")} for m, e in found.items()}
 
 
+def embedding_model_folder() -> Path:
+    """Where extraction looks (cdlp/extraction/extract.py). It ignores HF_HOME, so this does too:
+    a model downloaded anywhere else would pass here and then be refused inside a step."""
+    name = "models--" + EMBEDDING_MODEL.replace("/", "--")
+    return Path.home() / ".cache" / "huggingface" / "hub" / name
+
+
+def embedding_model_revision() -> str | None:
+    """The downloaded revision, or None. An interrupted download has no usable weights."""
+    folder = embedding_model_folder()
+    try:
+        revision = (folder / "refs" / "main").read_text().strip()
+    except OSError:
+        return None
+    if not revision:
+        return None
+    snapshot = folder / "snapshots" / revision
+    has_weights = any((snapshot / n).exists() for n in ("model.safetensors", "pytorch_model.bin"))
+    return revision if has_weights and (snapshot / "modules.json").exists() else None
+
+
+def require_embedding_model() -> str:
+    """Caught here at the start, not inside a step. Extraction's refusal to fall back stays."""
+    revision = embedding_model_revision()
+    if revision:
+        return revision
+    message = (
+        f"The embedding model {EMBEDDING_MODEL} is not downloaded in "
+        f"{embedding_model_folder()}. Run step 3 of the notebook, which downloads it, then rerun."
+    )
+    if os.getenv("HF_HOME"):
+        message += (
+            f" HF_HOME is set to {os.environ['HF_HOME']}, but extraction only looks in the "
+            "folder above, so unset HF_HOME and download it again."
+        )
+    raise SystemExit(message)
+
+
 def both_models_fit(gpu: str | None, models: dict) -> bool:
     """Both sets of weights plus a margin fit in the GPU's memory. Unknown means no."""
     found = re.search(r"(\d+)\s*MiB", gpu or "")
@@ -819,6 +861,7 @@ def environment(model: str, stage: str | None = None, course: str | None = None)
         "model_digest": model_digest(model),
         "models": models,
         "both_models_fit": both_models_fit(gpu, models),
+        "embedding_model": {"name": EMBEDDING_MODEL, "revision": embedding_model_revision()},
         "repo_commit": _out(["git", "-C", str(ROOT), "rev-parse", "HEAD"]) or None,
         "python": platform.python_version(),
         "platform": platform.platform(),
@@ -905,12 +948,14 @@ def _run_stage_command(args, parser) -> None:
         parser.error(str(exc))
     require_gpu()
     models = require_models()
+    require_embedding_model()
     env = environment(VALIDATOR_MODEL, stage, course)
     out_dir = ROOT / "outputs" / course if course else args.out_dir
     print(f"recorded environment -> {record_environment(env, out_dir)}")
     print(f"GPU: {env['gpu']}")
     for name, info in models.items():
         print(f"{name}: {info['digest']}")
+    print(f"{EMBEDDING_MODEL}: {env['embedding_model']['revision']}")
     print(f"both models fit on the GPU: {env['both_models_fit']}")
     log = stage_log(stage, ROOT, course)
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -980,6 +1025,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "speed":
         require_gpu()
         models = require_models()
+        require_embedding_model()
         fit = both_models_fit(environment(args.model)["gpu"], models)
         speed_stage(args.out_dir, unload=partial(unload_other_models, fit=fit))
     elif args.command == "run":
