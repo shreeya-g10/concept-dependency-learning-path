@@ -14,11 +14,15 @@ Per-process call counts, for the cost columns of the experiments:
     from cdlp.shared.llm import write_stats
     write_stats("outputs/rq1/ds101/full_agent.stats.json")
     # {"llm_calls": 12, "cache_hits": 30, "model": "llama3.1:8b", "prompt_versions": [...]}
+
+With LLM_CALL_LOG set to a file, every call also appends one JSON line with its model, prompt
+version, measured seconds and whether it came from the cache (scripts/colab_run.py reads it).
 """
 
 import hashlib
 import json
 import os
+import tempfile
 import time
 from pathlib import Path
 
@@ -63,11 +67,13 @@ def chat(
         key_parts.append({"num_ctx": num_ctx})
     key = json.dumps(key_parts, sort_keys=True)
     cache_file = CACHE_DIR / f"{hashlib.sha256(key.encode()).hexdigest()}.json"
-    if cache_file.exists():
-        response = json.loads(cache_file.read_text())["response"]
+    response = _read_cached(cache_file)
+    if response is not None:
         _record("cache_hits", model, prompt_version)
+        _log_call(model, prompt_version, 0.0, cached=True)
         return response
 
+    started = time.monotonic()
     if PROVIDER == "ollama":
         body = {
             "model": model,
@@ -97,9 +103,11 @@ def chat(
     else:
         raise ValueError(f"Unknown LLM_PROVIDER {PROVIDER!r}")
     _record("llm_calls", model, prompt_version)
+    _log_call(model, prompt_version, time.monotonic() - started, cached=False)
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_file.write_text(
+    _write_atomic(
+        cache_file,
         json.dumps(
             {
                 "provider": PROVIDER,
@@ -113,9 +121,46 @@ def chat(
                 "created": time.time(),
             },
             indent=2,
-        )
+        ),
     )
     return text
+
+
+def _read_cached(cache_file: Path) -> str | None:
+    """The saved reply, or None. A file cut short by a disconnect counts as not saved."""
+    if not cache_file.exists():
+        return None
+    try:
+        return json.loads(cache_file.read_text())["response"]
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    """A disconnect mid-write leaves the old state, never half a file."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    with os.fdopen(fd, "w") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+def _log_call(model: str, prompt_version: str, seconds: float, *, cached: bool) -> None:
+    """One line per call. Timing must never stop a run, so a failed write is ignored."""
+    path = os.getenv("LLM_CALL_LOG")
+    if not path:
+        return
+    row = {
+        "kind": "call",
+        "model": model,
+        "prompt_version": prompt_version,
+        "seconds": round(seconds, 3),
+        "cached": cached,
+    }
+    try:
+        with open(path, "a") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
 
 
 def _record(counter: str, model: str, prompt_version: str) -> None:
