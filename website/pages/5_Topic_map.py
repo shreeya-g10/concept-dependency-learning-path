@@ -110,6 +110,36 @@ def full_map_button_and_picture() -> None:
             lines.append(" ".join(cur_line))
         return "\n".join(lines)
 
+    target = st.session_state.get("study_target")
+    mastery = st.session_state.get("quiz_mastery", {})
+    from cdlp.learning_path import api
+
+    focused = False
+    if target and target in ready:
+        order = api.prerequisite_order(graph_data, target)
+        path_set = set(order)
+        unmastered = [c for c in order if not api.is_mastered(mastery.get(c, 0.5))]
+        start_node = unmastered[0] if unmastered else target
+
+        mode = st.radio(
+            "Map display",
+            ["My Study Path", "All Topics"],
+            horizontal=True,
+            key="map_view_mode",
+        )
+        focused = mode == "My Study Path"
+    else:
+        path_set = set(linked)
+        start_node = None
+        order = sorted(linked)
+
+    nodes_to_show = order if focused else sorted(linked)
+    edges_to_show = (
+        [e for e in accepted if e["source"] in path_set and e["target"] in path_set]
+        if focused
+        else accepted
+    )
+
     network = Network(
         height="560px",
         width="100%",
@@ -118,26 +148,57 @@ def full_map_button_and_picture() -> None:
         font_color="#1F1B3D",
         cdn_resources="in_line",
     )
-    for concept_id in sorted(linked):
+    for concept_id in nodes_to_show:
         raw_title = name(concept_id)
         display_label = wrap_label(raw_title)
+
+        if focused:
+            is_start = concept_id == start_node
+            is_known = api.is_mastered(mastery.get(concept_id, 0.5))
+            is_target = concept_id == target
+
+            if is_start:
+                display_label = f"👉 {display_label}\n★ START HERE ★"
+                bg_color = "#FEF3C7"
+                border_color = "#D97706"
+                border_w = 3.5
+            elif is_known:
+                display_label = f"✓ {display_label}\n(Known)"
+                bg_color = "#D1FAE5"
+                border_color = "#059669"
+                border_w = 2.0
+            elif is_target:
+                display_label = f"🎯 {display_label}\n(Goal)"
+                bg_color = "#E0E7FF"
+                border_color = "#4338CA"
+                border_w = 2.5
+            else:
+                display_label = f"⏳ {display_label}\n(Next)"
+                bg_color = "#F3F4F6"
+                border_color = "#6B7280"
+                border_w = 1.5
+        else:
+            bg_color = "#F0F4FA"
+            border_color = "#4B3F8F"
+            border_w = 1.5
+
         network.add_node(
             concept_id,
             label=display_label,
             title=raw_title,
             shape="box",
             margin=10,
-            borderWidth=1.5,
-            borderWidthSelected=2.5,
+            borderWidth=border_w,
+            borderWidthSelected=3.0,
             color={
-                "background": "#F0F4FA",
-                "border": "#4B3F8F",
+                "background": bg_color,
+                "border": border_color,
                 "highlight": {"background": "#E0E7FF", "border": "#312E81"},
             },
             font={"size": 13, "color": "#1F1B3D", "face": "system-ui, sans-serif"},
             shadow={"enabled": True, "color": "rgba(0,0,0,0.06)", "size": 5, "x": 1, "y": 2},
         )
-    for edge in accepted:
+    for edge in edges_to_show:
         network.add_edge(
             edge["source"],
             edge["target"],
@@ -146,29 +207,46 @@ def full_map_button_and_picture() -> None:
             dashes=edge.get("strength", "hard") != "hard",
             title=strength_words(edge),
         )
-    network.set_options("""
-    {
-      "edges": {
-        "smooth": { "type": "cubicBezier", "roundness": 0.25 }
-      },
-      "physics": {
-        "barnesHut": {
-          "gravitationalConstant": -6000,
-          "centralGravity": 0.12,
-          "springLength": 190,
-          "springConstant": 0.04,
-          "damping": 0.12,
-          "avoidOverlap": 1.0
-        },
-        "minVelocity": 0.75
-      },
-      "interaction": {
-        "hover": true,
-        "zoomView": true,
-        "navigationButtons": true
-      }
-    }
-    """)
+    if focused:
+        network.set_options("""
+        {
+          "layout": {
+            "hierarchical": {
+              "enabled": true,
+              "direction": "LR",
+              "sortMethod": "directed",
+              "nodeSpacing": 200,
+              "levelSeparation": 180
+            }
+          },
+          "physics": { "enabled": false },
+          "interaction": { "hover": true, "zoomView": true, "dragNodes": true }
+        }
+        """)
+    else:
+        network.set_options("""
+        {
+          "edges": {
+            "smooth": { "type": "cubicBezier", "roundness": 0.25 }
+          },
+          "physics": {
+            "barnesHut": {
+              "gravitationalConstant": -6000,
+              "centralGravity": 0.12,
+              "springLength": 190,
+              "springConstant": 0.04,
+              "damping": 0.12,
+              "avoidOverlap": 1.0
+            },
+            "minVelocity": 0.75
+          },
+          "interaction": {
+            "hover": true,
+            "zoomView": true,
+            "navigationButtons": true
+          }
+        }
+        """)
     components.html(network.generate_html(), height=580, scrolling=False)
     st.caption(S.MAP_KEY)
 

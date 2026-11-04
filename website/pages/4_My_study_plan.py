@@ -85,9 +85,128 @@ def other_topic_button(*, primary: bool) -> None:
         st.switch_page(ui.PAGES["quiz"].path)
 
 
+def render_personalized_graph() -> None:
+    # Build personalized study path starting from where the student needs to begin
+    # (next_up / start topic) through to their target goal topic
+    display_nodes = list(plan_order) if plan_order else [target]
+    full_order = api.prerequisite_order(graph_data, target)
+
+    # If an immediate prerequisite before next_up is known, include it as a foundation checkpoint
+    if next_up and next_up in display_nodes and next_up in full_order:
+        full_idx = full_order.index(next_up)
+        if full_idx > 0:
+            prev_cid = full_order[full_idx - 1]
+            if prev_cid not in display_nodes and api.is_mastered(mastery.get(prev_cid, 0.5)):
+                display_nodes.insert(0, prev_cid)
+
+    path_nodes = set(display_nodes)
+    path_edges = [e for e in accepted if e["source"] in path_nodes and e["target"] in path_nodes]
+
+    try:
+        import streamlit.components.v1 as components
+        from pyvis.network import Network
+    except ImportError:
+        return
+
+    net = Network(
+        height="320px",
+        width="100%",
+        directed=True,
+        bgcolor="#ffffff",
+        font_color="#1F1B3D",
+        cdn_resources="in_line",
+    )
+
+    for c in display_nodes:
+        c_name = name(c)
+        is_known = api.is_mastered(mastery.get(c, 0.5))
+        is_start = (c == next_up) or (next_up is None and c == target)
+        is_target = c == target
+
+        if is_start:
+            label = f"👉 {c_name}\n★ START HERE ★"
+            bg_color = "#FEF3C7"
+            border_color = "#D97706"
+            border_w = 3.5
+            title = f"{c_name}: Your starting point to study"
+        elif is_known:
+            label = f"✓ {c_name}\n(Known)"
+            bg_color = "#D1FAE5"
+            border_color = "#059669"
+            border_w = 2.0
+            title = f"{c_name}: Known from quick check"
+        elif is_target:
+            label = f"🎯 {c_name}\n(Goal Topic)"
+            bg_color = "#E0E7FF"
+            border_color = "#4338CA"
+            border_w = 2.5
+            title = f"{c_name}: Your study goal"
+        else:
+            label = f"⏳ {c_name}\n(Next Step)"
+            bg_color = "#F3F4F6"
+            border_color = "#6B7280"
+            border_w = 1.5
+            title = f"{c_name}: Follows earlier topics"
+
+        net.add_node(
+            c,
+            label=label,
+            title=title,
+            shape="box",
+            margin=10,
+            borderWidth=border_w,
+            borderWidthSelected=4.0,
+            color={
+                "background": bg_color,
+                "border": border_color,
+                "highlight": {"background": bg_color, "border": "#1F1B3D"},
+            },
+            font={"size": 13, "color": "#1F1B3D", "face": "system-ui, sans-serif"},
+            shadow={"enabled": True, "color": "rgba(0,0,0,0.08)", "size": 5, "x": 1, "y": 2},
+        )
+
+    for edge in path_edges:
+        is_active = edge["source"] == next_up or edge["target"] == next_up
+        net.add_edge(
+            edge["source"],
+            edge["target"],
+            arrows={"to": {"enabled": True, "scaleFactor": 0.9}},
+            color="#4338CA" if is_active else "#6B7280",
+            width=2.5 if is_active else 1.8,
+            dashes=edge.get("strength", "hard") != "hard",
+        )
+
+    net.set_options("""
+    {
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "LR",
+          "sortMethod": "directed",
+          "nodeSpacing": 200,
+          "levelSeparation": 180
+        }
+      },
+      "physics": {
+        "enabled": false
+      },
+      "interaction": {
+        "dragNodes": true,
+        "zoomView": true,
+        "hover": true
+      }
+    }
+    """)
+    components.html(net.generate_html(), height=340)
+
+
 if not steps:
     header()
     st.success(S.PLAN_ALL_KNOWN.format(topic=name(target)))
+    with st.container(border=True):
+        st.markdown("### Your Learning Path Map")
+        st.caption(f"All foundational topics for **{name(target)}** are mastered.")
+        render_personalized_graph()
     other_topic_button(primary=True)
     st.stop()
 
@@ -104,6 +223,14 @@ header()
 st.markdown(S.PLAN_FOR.format(topic=name(target)))
 if limit_stopped:
     st.info(S.PLAN_LIMIT_NOTE.format(n=api.MAX_QUESTIONS_PER_TOPIC), icon="ℹ️")
+
+with st.container(border=True):
+    st.markdown("### Your Learning Path Map")
+    if next_up:
+        st.caption(f"Based on your check answers, start studying at **{name(next_up)}**.")
+    else:
+        st.caption(f"You are ready to study **{name(target)}**.")
+    render_personalized_graph()
 
 STATUS = {"done": S.PLAN_STATUS_DONE, "next": S.PLAN_STATUS_NEXT, "later": S.PLAN_STATUS_LATER}
 for number, step in enumerate(steps, start=1):

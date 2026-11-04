@@ -267,9 +267,21 @@ def job_dir(course_id: str, jobs: Path | None = None) -> Path:
 
 
 def _write_state(folder: Path, state: dict) -> None:
-    tmp = folder / "job.json.tmp"
-    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    tmp.replace(folder / "job.json")
+    tmp = folder / f"job.json.{os.getpid()}.tmp"
+    content = json.dumps(state, indent=2)
+    tmp.write_text(content, encoding="utf-8")
+    dest = folder / "job.json"
+    for _ in range(10):
+        try:
+            tmp.replace(dest)
+            return
+        except OSError:
+            time.sleep(0.05)
+    try:
+        dest.write_text(content, encoding="utf-8")
+        tmp.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _read_state(folder: Path) -> dict | None:
@@ -444,7 +456,17 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     if current == "starting" and time.time() - state.get("created_at", 0) > START_TIMEOUT:
         current, error = "failed", "The background runner did not start."
     elif current == "running" and not _alive(state.get("pid")):
-        current, error = "failed", "The background runner stopped before the pipeline finished."
+        for _ in range(10):
+            time.sleep(0.1)
+            latest = _read_state(folder)
+            if latest and latest.get("state") in ("succeeded", "failed"):
+                state = latest
+                current = state.get("state", "failed")
+                if current == "failed":
+                    error = failure_reason(log, state.get("returncode"))
+                break
+        else:
+            current, error = "failed", "The background runner stopped before the pipeline finished."
     elif current == "failed":
         error = failure_reason(log, state.get("returncode"))
     stages = stage_progress(log, current)
@@ -1159,9 +1181,10 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 {
                     "id": f"q_{c['id']}_1",
                     "concept_id": c["id"],
-                    "question": "Which statement best describes the primary role of "
-                    "{c['name']} in this"
-                    "subject?",
+                    "question": (
+                        f"Which statement best describes the primary role of {c['name']} "
+                        "in this subject?"
+                    ),
                     "options": [
                         ans1,
                         "It is a deprecated configuration that has been phased out.",
@@ -1179,12 +1202,13 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 {
                     "id": f"q_{c['id']}_2",
                     "concept_id": c["id"],
-                    "question": "In the learning progression of this course, how "
-                    "does {c['name']} support"
-                    "subsequent topics?",
+                    "question": (
+                        f"In the learning progression of this course, how does {c['name']} "
+                        "support subsequent topics?"
+                    ),
                     "options": [
                         ans2,
-                        "It completely supersedes and eliminates the need for any otherconcepts.",
+                        "It completely supersedes and eliminates the need for any other concepts.",
                         "It only operates in simulated sandbox environments without "
                         "practical utility.",
                         "It resets the system state to default values after every execution.",

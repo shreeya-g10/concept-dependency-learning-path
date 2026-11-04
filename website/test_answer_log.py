@@ -561,6 +561,6 @@ def test_machine_reason_is_not_shown_to_students(outputs):
 
 def test_pages_import_only_the_public_apis():
     for page in (QUIZ, PLAN, TOPIC_MAP):
-        for line in page.read_text().splitlines():
+        for line in page.read_text(encoding="utf-8").splitlines():
             if re.match(r"\s*(from|import) cdlp", line):
                 assert "learning_path import api" in line or "root_cause import api" in line, line

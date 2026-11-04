@@ -99,6 +99,8 @@ def asked_for(target: str) -> int:
 def next_item(target: str) -> dict | None:
     if asked_for(target) >= api.MAX_QUESTIONS_PER_TOPIC:
         return None
+
+    # 1. Diagnostic questions along the prerequisite chain using adaptive binary search
     item = api.next_question(
         graph_data,
         valid_items,
@@ -107,20 +109,23 @@ def next_item(target: str) -> dict | None:
     )
     if item is not None:
         return item
-    if asked_for(target) < min(3, len(valid_items)):
-        asked = set(st.session_state.quiz_asked)
-        order = api.prerequisite_order(graph_data, target)
-        for c in reversed(order):
-            candidate = next(
-                (
-                    q
-                    for q in valid_items
-                    if q.get("concept_id") == c and q.get("id", q.get("item_id")) not in asked
-                ),
-                None,
+
+    # 2. If adaptive uncertainty is resolved, ask remaining questions on target or close topics
+    asked = set(st.session_state.quiz_asked)
+    order = api.prerequisite_order(graph_data, target)
+    diff_rank = {"easy": 1, "medium": 2, "hard": 3}
+    for c in reversed(order):
+        candidates = [
+            q
+            for q in valid_items
+            if q.get("concept_id") == c and q.get("id", q.get("item_id")) not in asked
+        ]
+        if candidates:
+            candidates.sort(
+                key=lambda q: diff_rank.get(str(q.get("difficulty", "medium")).lower(), 2)
             )
-            if candidate is not None:
-                return candidate
+            return candidates[0]
+
     return None
 
 
@@ -137,24 +142,13 @@ def go_on(target: str) -> None:
 
 
 def progress_so_far(target: str) -> float:
-    """How far along, for the bar only: an estimate, so no number is ever shown with it.
-
-    Answered / (answered + topics that could still be asked, within the limit). A wrong answer
-    can make earlier topics uncertain again, so the estimate can drop; the bar keeps its highest
-    value.
-    """
-    mastery = st.session_state.quiz_mastery
-    with_question = {q.get("concept_id") for q in valid_items}
-    left = [
-        step
-        for step in api.personalized_path(graph_data, mastery, target)
-        if step["concept_id"] in with_question
-        and step["concept_id"] not in mastery.get("__observed__", {})
-    ]
+    """Estimated progress through the check questions for this topic."""
+    order = api.prerequisite_order(graph_data, target)
+    available_count = sum(1 for q in valid_items if q.get("concept_id") in set(order))
+    total_to_ask = min(max(3, available_count), api.MAX_QUESTIONS_PER_TOPIC)
     answered = asked_for(target)
-    still_to_ask = min(len(left), api.MAX_QUESTIONS_PER_TOPIC - answered)
-    value = answered / (answered + max(still_to_ask, 1))
-    st.session_state.quiz_progress = max(st.session_state.quiz_progress, value)
+    val = min(1.0, answered / max(total_to_ask, 1))
+    st.session_state.quiz_progress = max(st.session_state.quiz_progress, val)
     return st.session_state.quiz_progress
 
 
