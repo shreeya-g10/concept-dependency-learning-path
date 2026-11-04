@@ -45,17 +45,24 @@ if (
     st.stop()
 
 mastery = st.session_state.quiz_mastery
-more_questions = api.next_question(
-    graph_data,
-    common.load("quiz_items.json"),
-    {**mastery, "__asked__": list(st.session_state.get("quiz_asked", []))},
-    target,
+quiz_data = common.load("quiz_items.json")
+with_asked = {**mastery, "__asked__": list(st.session_state.get("quiz_asked", []))}
+ladder = (
+    api.ladder_summary(graph_data, quiz_data, with_asked, target)
+    if api.uses_ladder(quiz_data)
+    else None
 )
-asked_for_target = st.session_state.get("quiz_topic_counts", {}).get(target, 0)
-limit_stopped = more_questions is not None and asked_for_target >= api.MAX_QUESTIONS_PER_TOPIC
-steps = api.personalized_path(
-    graph_data, api.only_answered(mastery) if limit_stopped else mastery, target
-)
+if ladder:
+    more_questions = api.ladder_next(graph_data, quiz_data, with_asked, target)
+    limit_stopped = ladder["limit_reached"]
+    steps = api.personalized_path(graph_data, mastery, target)  # nothing on it was only inferred
+else:
+    more_questions = api.next_question(graph_data, quiz_data, with_asked, target)
+    asked_for_target = st.session_state.get("quiz_topic_counts", {}).get(target, 0)
+    limit_stopped = more_questions is not None and asked_for_target >= api.MAX_QUESTIONS_PER_TOPIC
+    steps = api.personalized_path(
+        graph_data, api.only_answered(mastery) if limit_stopped else mastery, target
+    )
 plan_order = [step["concept_id"] for step in steps]
 done = st.session_state.setdefault("plan_done", {}).setdefault(course, [])
 next_up = next((c for c in plan_order if c not in done), None)
@@ -105,6 +112,31 @@ st.markdown(S.PLAN_FOR.format(topic=name(target)))
 if limit_stopped:
     st.info(S.PLAN_LIMIT_NOTE.format(n=api.MAX_QUESTIONS_PER_TOPIC), icon="ℹ️")
 
+
+def result_words(row: dict) -> str:
+    return S.PLAN_RESULT_THINK_KNOWN if row["inferred"] else S.PLAN_RESULTS[row["result"]]
+
+
+result_of = {}
+if ladder:
+    result_of = {row["concept_id"]: row for row in ladder["rows"]}
+    first = ladder["first_to_study"]
+    if first:
+        known = [name(c) for c in ladder["known"]]
+        known_words = (
+            ", ".join(known[:-1]) + S.PLAN_AND + known[-1] if len(known) > 1 else "".join(known)
+        )
+        line = S.PLAN_KNOWN_START if known else S.PLAN_JUST_START
+        st.markdown(line.format(known=known_words, topic=name(first)))
+    if ladder["not_checked_after_stop"]:
+        st.info(S.PLAN_LADDER_STOPPED.format(topic=name(ladder["stopped_at"])), icon="ℹ️")
+    for concept_id in ladder["known"]:
+        st.caption(
+            S.PLAN_RESULT_LINE.format(
+                result=result_words(result_of[concept_id]), topic=name(concept_id)
+            )
+        )
+
 STATUS = {"done": S.PLAN_STATUS_DONE, "next": S.PLAN_STATUS_NEXT, "later": S.PLAN_STATUS_LATER}
 for number, step in enumerate(steps, start=1):
     concept_id = step["concept_id"]
@@ -112,6 +144,8 @@ for number, step in enumerate(steps, start=1):
     with st.container(border=True):
         title = S.PLAN_STEP.format(number=number, topic=name(concept_id))
         st.markdown(f"**{title}** · {STATUS[status]}")
+        if concept_id in result_of:
+            st.markdown(result_words(result_of[concept_id]))
         st.write(step["why"])
         st.caption(where_to_read(step))
         if status == "next" and ui.action_button(

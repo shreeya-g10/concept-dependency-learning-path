@@ -9,6 +9,7 @@ Keep the three public function signatures stable:
 
 from __future__ import annotations
 
+from cdlp.learning_path import ladder
 from cdlp.learning_path.graph import (
     MASTERY_THRESHOLD,
     ancestors,
@@ -123,6 +124,69 @@ def update_mastery(
         updated["__asked__"] = mastery["__asked__"]
 
     return updated
+
+
+# ---- level ladder (ladder.py). Additive: the three functions above are unchanged. ---------
+
+
+def uses_ladder(quiz: dict | list) -> bool:
+    """The ladder runs when configured and the course has levels; else the old selection."""
+    return ladder.configured_strategy() in ladder.STRATEGIES and ladder.has_levels(
+        _quiz_items(quiz)
+    )
+
+
+def _ladder_strategy(strategy: str | None) -> str:
+    return strategy or ladder.configured_strategy()
+
+
+def ladder_next(
+    graph: dict, quiz: dict | list, mastery: dict, target: str, strategy: str | None = None
+) -> dict | None:
+    """The next quiz item, or {"self_report": concept_id}, or None when finished."""
+    return ladder.next_step(
+        graph,
+        _quiz_items(quiz),
+        mastery,
+        target,
+        _ladder_strategy(strategy),
+        MAX_QUESTIONS_PER_TOPIC,
+    )
+
+
+def ladder_self_report(mastery: dict, concept_id: str, answer: str) -> dict:
+    """answer: yes, no or not_sure. Sets the starting level only; it never marks a topic known."""
+    return ladder.self_report(mastery, concept_id, answer)
+
+
+def ladder_record(
+    graph: dict,
+    quiz: dict | list,
+    mastery: dict,
+    target: str,
+    item: dict,
+    correct: bool,
+    strategy: str | None = None,
+) -> dict:
+    """The mastery dict after one answer. personalized_path reads its results as usual."""
+    return ladder.record_answer(
+        graph, _quiz_items(quiz), mastery, target, item, correct, _ladder_strategy(strategy)
+    )
+
+
+def ladder_summary(
+    graph: dict, quiz: dict | list, mastery: dict, target: str, strategy: str | None = None
+) -> dict:
+    """Each topic's result in graph order, plus known, first_to_study, limit_reached, stopped_at
+    and not_checked_after_stop."""
+    return ladder.summary(
+        graph,
+        _quiz_items(quiz),
+        mastery,
+        target,
+        _ladder_strategy(strategy),
+        MAX_QUESTIONS_PER_TOPIC,
+    )
 
 
 def only_answered(mastery: dict[str, float]) -> dict[str, float]:

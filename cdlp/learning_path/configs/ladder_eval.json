@@ -1,0 +1,29 @@
+{
+  "num_students": 500,
+  "seed": 42,
+  "target": "avl_tree",
+  "bootstrap_resamples": 1000,
+  "answer_seeds": [42, 43, 44, 45, 46],
+  "answer_model": {
+    "known": {"easy": 0.95, "medium": 0.90, "hard": 0.80},
+    "not_known": {"easy": 0.25, "medium": 0.15, "hard": 0.08}
+  },
+  "self_report": {"yes_if_known": 0.85, "yes_if_not_known": 0.25},
+  "sensitivity": {
+    "flat_levels": {
+      "about": "difficulty changes nothing: every level uses the old answer model (slip 0.10, guess 0.15)",
+      "answer_model": {
+        "known": {"easy": 0.90, "medium": 0.90, "hard": 0.90},
+        "not_known": {"easy": 0.15, "medium": 0.15, "hard": 0.15}
+      }
+    },
+    "unreliable_self_report": {
+      "about": "self-report says little: yes from 60% of students who know a topic and 50% who do not",
+      "self_report": {"yes_if_known": 0.60, "yes_if_not_known": 0.50}
+    },
+    "no_hard_items": {
+      "about": "the checks dropped every hard question, so other levels stand in",
+      "drop_levels": ["hard"]
+    }
+  }
+}

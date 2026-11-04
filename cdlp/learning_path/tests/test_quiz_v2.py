@@ -34,6 +34,12 @@ RIGHT = "Subtree heights differ by at most one"
 RIGHT_2 = "It is a kind of binary search tree"
 
 
+@pytest.fixture(autouse=True)
+def _quiz_v2_is_kept_for_the_record(monkeypatch):
+    """quiz_v3 became the default (test_quiz_v3.py); these tests keep testing v2."""
+    monkeypatch.setattr(quiz, "PROMPT_VERSION", "quiz_v2")
+
+
 def item(question="What is true of an AVL tree?", answer=RIGHT, quote=QUOTE):
     return {
         "question": question,

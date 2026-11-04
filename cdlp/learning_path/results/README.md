@@ -56,6 +56,31 @@ How to read this:
 - This is the example graph, with 5 concepts. Rerun on real course graphs before citing it in the paper. The real ds101 quiz has 2 to 3 items per concept, so the strategy could run there.
 - To reproduce: the code is in commit ae6327cb7 (`python -m cdlp.learning_path.evaluate`), and was removed in the next commit because it was not kept.
 
+## Level ladder (2026-11-04)
+
+`ladder_comparison.json`: `python -m cdlp.learning_path.evaluate --ladder`, config `configs/ladder_eval.json`. 500 simulated students per condition, seed 42, example graph (target `avl_tree`, 5 topics), placeholder quiz items, no LLM. `rq2_rq4_results.json` is not touched.
+
+**Simulated difficulty is not real difficulty.** Every level's answer chance and the self-report chances are chosen in the config, not measured. The file's `assumptions` list states each one. Do not cite these numbers as evidence about real students or real questions.
+
+| Students | Strategy | Questions | Self-report taps | Accuracy | Wrongly known | Gap coverage | Path length |
+|---|---|---|---|---|---|---|---|
+| follow the graph | adaptive (existing quiz, old answer model) | 4.28 | 0 | 0.866 | 0.189 | 0.811 | 2.35 |
+| | adaptive_levelled (ladder items and answer model) | 3.96 | 0 | 0.814 | 0.315 | 0.685 | 1.91 |
+| | ladder_linear | 6.02 | 3.21 | 0.818 | 0.005 | 0.995 | 3.57 |
+| | ladder_middle | 5.36 | 2.95 | 0.859 | 0.032 | 0.968 | 3.28 |
+| ignore the graph | adaptive (existing quiz, old answer model) | 3.64 | 0 | 0.775 | 0.407 | 0.593 | 1.77 |
+| | adaptive_levelled (ladder items and answer model) | 3.32 | 0 | 0.728 | 0.538 | 0.462 | 1.31 |
+| | ladder_linear | 4.21 | 2.38 | 0.656 | 0.002 | 0.998 | 4.22 |
+| | ladder_middle | 5.11 | 2.87 | 0.712 | 0.197 | 0.803 | 3.15 |
+
+How to read this:
+- `adaptive` is the same run as `rq2_rq4_results.json` (a test pins this). `adaptive_levelled` is the fair comparison, because it shares the ladders' items and answer model. It asks easy items first, which is why it calls more gaps known than `adaptive`.
+- The ladders trade length for safety. They almost never call a gap known, but they ask more questions and leave more on the plan. Accuracy does not rise for `ladder_linear` when students follow the graph (+0.004, 95% interval -0.021 to +0.030) and falls when they do not (-0.071, -0.095 to -0.047).
+- `ladder_linear` stops at the first easy wrong answer: 84% and 90% of students here. Topics after it are not checked, so they count as not known, including ones the student knows (0.90 and 1.71 known topics on the plan per student). This is the main cost of stopping by default.
+- `ladder_middle` scores better than `ladder_linear` on accuracy, and asks fewer questions when students follow the graph, but it infers known topics, so it calls more gaps known. When students ignore the graph that inference is often wrong (0.197).
+- In `no_hard_items` (the checks drop every hard question) other levels stand in, and a Yes start can reach Know it on an easier question: 1.54 topics per student for `ladder_linear`. Rule 4 asks for the nearest level, so this is the rule working as written, and it is recorded per topic under `stand_ins`. See `know_it_by_stand_in`.
+- `flat_levels` and `unreliable_self_report` show the same pattern, so it does not rest on the chosen level chances alone. Other answer seeds (42 to 46) move accuracy by at most 0.02.
+
 ## quiz_check replays on the ds101 review drafts (2026-11-03)
 
 `quiz_check_v2_replay_ds101` and `quiz_check_v3_replay_ds101` (`.json` with every reply, `.md` to read) run the 32 real `quiz_v2` drafts of the review run through each version of the checks, with `llama3.1:8b` as the second model (`python -m cdlp.learning_path.replay_quiz_check`).

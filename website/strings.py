@@ -198,6 +198,11 @@ QUIZ_GUESS_TOPIC = "It may help to go back to {topic}."
 QUIZ_LABEL_OFFLINE = "our best guess, the AI helper was off"
 QUIZ_LABEL_BASELINE = "our best guess, the AI helper's answer could not be used"
 QUIZ_OTHER_TOPIC = "Pick another topic"
+QUIZ_STUDIED = "### Have you studied {topic}?"
+QUIZ_STUDIED_NOTE = "This only helps us pick your first question. It does not change your plan."
+QUIZ_STUDIED_YES = "Yes"
+QUIZ_STUDIED_NO = "No"
+QUIZ_STUDIED_NOT_SURE = "Not sure"
 QUIZ_TO_PLAN = "See my study plan"
 
 # ---- step 4: my study plan ------------------------------------------------------------
@@ -220,6 +225,22 @@ PLAN_MARK_DONE = "Mark as done"
 PLAN_LIMIT_NOTE = "We stopped after {n} questions. Topics we did not ask about stay on your plan."
 PLAN_MORE_QUESTIONS = "Answer more questions"
 PLAN_OTHER_TOPIC = "Pick another topic"
+PLAN_KNOWN_START = "You already know {known}, so start with {topic}."
+PLAN_JUST_START = "Start with {topic}."
+PLAN_AND = " and "
+PLAN_RESULT_LINE = "{result}: {topic}"
+PLAN_RESULTS = {
+    "know_it": "✅ You know this",
+    "quick_revision": "🔁 Quick revision",
+    "study_this": "📖 Study this",
+    "start_here": "🏁 Start here",
+    "not_checked": "❓ Not checked yet",
+}
+PLAN_RESULT_THINK_KNOWN = "✅ We think you know this"
+PLAN_LADDER_STOPPED = (
+    "We stopped at {topic}, because later topics build on it. "
+    "The later topics stay on your plan as not checked yet."
+)
 
 # ---- topic map ------------------------------------------------------------------------
 MAP_TITLE = "Topic map"

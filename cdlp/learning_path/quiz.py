@@ -24,6 +24,10 @@ quiz_v2 adds a word-for-word quote, a second model (prompts/quiz_check_v2.txt) a
 retry per topic that ends up with too few items. The checks in quiz_check_v2 were designed
 from real ds101 failures (tests/quiz_dev_examples.json). Those are development examples:
 any accuracy figure for the checks must come from questions not used to design them.
+
+quiz_v3 asks for one easy, one medium and one hard question per topic. Every draft passes the same
+checks: none is loosened to keep hard questions, and generation reports the drop rate per level.
+The model's difficulty is stored as an "ai_suggestion" until a teacher approves it.
 """
 
 from __future__ import annotations
@@ -46,7 +50,10 @@ from cdlp.shared.validate import schema_for
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "quiz_v2"
+PROMPT_VERSION = "quiz_v3"  # quiz_v2 is kept for the record
+LEVELLED_PROMPTS = frozenset({"quiz_v3"})
+LEVELS = ("easy", "medium", "hard")
+N_LEVELLED_QUESTIONS = 3
 CHECK_PROMPT_VERSION = "quiz_check_v2"  # quiz_check_v1 is kept for the record
 # The checks as a whole. quiz_check_v3 is v2's prompt with no-LLM checks added (quiz_check_v3.py).
 CHECK_VERSION = "quiz_check_v3"
@@ -67,7 +74,7 @@ TEMPERATURE = 0.0
 MAX_CHUNKS = 3  # evidence chunks shown per concept
 MAX_CHUNK_CHARS = 1200  # each chunk is cut to this length in the prompt
 MIN_OPTIONS, MAX_OPTIONS = 2, 6
-SCHEMA_VERSION = "1.11"
+SCHEMA_VERSION = "1.13"
 
 # A student never sees the excerpts, so a question must not lean on them.
 LEAKED_WORDING = re.compile(
@@ -464,7 +471,7 @@ def _retry_prompt(topic: dict, template: str, retry_template: str) -> str:
         concept_name=topic["concept"].get("name", topic["concept"]["id"]),
         failures="\n".join(failures) or "(none listed)",
         accepted="\n".join(accepted) or "(none yet)",
-        n_questions=N_QUESTIONS,
+        n_questions=N_LEVELLED_QUESTIONS if topic.get("levelled") else N_QUESTIONS,
     )
 
 
@@ -485,12 +492,43 @@ def _ask_for_drafts(prompt: str, topic: dict, version: str, model: str | None, s
     return raw
 
 
+def _draft_level(raw: Any) -> str:
+    """The level the model gave a draft, or "unlabelled". A label is never a reason to drop."""
+    level = raw.get("difficulty") if isinstance(raw, dict) else None
+    level = level.strip().casefold() if isinstance(level, str) else None
+    return level if level in LEVELS else "unlabelled"
+
+
+def drop_rate_by_level(topics: list[dict]) -> dict[str, dict]:
+    """Drafts, kept items and the share dropped per level, over every attempt."""
+    drafted: Counter = Counter()
+    kept: Counter = Counter()
+    for topic in topics:
+        drafted.update(topic.get("drafted", Counter()))
+        kept.update(item.get("difficulty", "unlabelled") for item in topic["items"])
+    return {
+        level: {
+            "drafted": drafted[level],
+            "kept": kept[level],
+            "dropped": drafted[level] - kept[level],
+            "drop_rate": (
+                round((drafted[level] - kept[level]) / drafted[level], 4)
+                if drafted[level]
+                else None
+            ),
+        }
+        for level in [*LEVELS, "unlabelled"]
+    }
+
+
 def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
     """Run the no-LLM checks and add the drafts that pass to the topic. Returns those drafts."""
     concept, evidence = topic["concept"], topic["evidence"]
     new = []
     for one in raw:
         question = one.get("question") if isinstance(one, dict) else None
+        if topic.get("levelled"):
+            topic.setdefault("drafted", Counter())[_draft_level(one)] += 1
         detail = ""
         v3 = topic.get("v3")
         problem = item_problem(one)
@@ -509,6 +547,9 @@ def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
                 [source["chunk_id"]],
             )
             item["source_quote"] = " ".join(one["source_quote"].split())
+            if topic.get("levelled") and _draft_level(one) in LEVELS:
+                item["difficulty"] = _draft_level(one)
+                item["difficulty_source"] = "ai_suggestion"
             if near_duplicate(item, topic["items"]):
                 problem = "near_duplicate"
         if problem:
@@ -606,6 +647,8 @@ def generate_quiz_items(
             }
             if v3:
                 topic["v3"] = v3
+            if prompt_version in LEVELLED_PROMPTS:
+                topic["levelled"] = True
             topics.append(topic)
             raw = _ask_for_drafts(
                 _v2_prompt(concept, evidence, template), topic, prompt_version, model, skipped
@@ -684,6 +727,21 @@ def generate_quiz_items(
             "skipped": dict(sorted(skipped.items())),  # every attempt, retries included
             "skipped_on_retry": dict(sorted((skipped - skipped_first_try).items())),
             "dropped": [row for topic in topics for row in topic.get("dropped", [])],
+            **(
+                {
+                    "drop_rate_by_level": drop_rate_by_level(topics),
+                    "concepts_missing_level": {
+                        level: sorted(
+                            t["concept"]["id"]
+                            for t in topics
+                            if not any(i.get("difficulty") == level for i in t["items"])
+                        )
+                        for level in LEVELS
+                    },
+                }
+                if prompt_version in LEVELLED_PROMPTS
+                else {}
+            ),
         },
     }
 
