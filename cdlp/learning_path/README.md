@@ -17,6 +17,10 @@ Graph, adaptive diagnosis and personalized path (novelty 2).
 
 Use **ACCEPT edges only**. Ignore REJECT; HUMAN_REVIEW is excluded by default (make it a flag).
 
+## Level ladder
+
+`ladder.py` holds the rules, and `api.py` exposes them (`uses_ladder`, `ladder_next`, `ladder_self_report`, `ladder_record`, `ladder_summary`). State stays in the mastery dict under `__ladder__`. `configs/quick_check.json` picks what the quick check uses (`ladder_linear`, `ladder_middle` or `adaptive`). A course with no labelled quiz item keeps the old selection. Results: `results/README.md`.
+
 ## Tasks, in order
 - [ ] **Day 1:** label your share of gold edges in `data/gold/annotations/annotator_d.csv`
 - [ ] Graph model (NetworkX): build from ACCEPT edges, transitive reduction, queries (ancestors, descendants, depth)

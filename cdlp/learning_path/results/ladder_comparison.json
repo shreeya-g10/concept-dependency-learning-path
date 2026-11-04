@@ -1,0 +1,659 @@
+{
+  "placeholder_items": true,
+  "simulated_students": true,
+  "no_llm": true,
+  "assumptions": [
+    "Simulated difficulty is not real difficulty: the chance of a right answer per level is chosen in configs/ladder_eval.json, not measured from students. The medium row equals the old answer model (slip 0.10, guess 0.15). Nothing here shows that AI-labelled hard questions are harder.",
+    "Self-report is chosen too: yes_if_known and yes_if_not_known in the config, and a student who does not say yes picks No or Not sure at random. Both start at easy.",
+    "A student's knowledge of a topic is two states, known or not known, from true mastery above 0.8. Real knowledge has degrees, so Quick revision and Study this cannot be scored as such: both count as not known.",
+    "Answers are independent given the topic and level, so a right answer on a topic does not make the next one likelier. A real student's answers are linked, so the benefit of asking a second or third question is probably an upper limit.",
+    "Placeholder quiz items: one easy, medium and hard item per topic, with no real text. Real courses will have missing levels; no_hard_items shows the worst case.",
+    "The example graph: 5 topics on the target's path. Rerun on real course graphs before citing.",
+    "Mastery values per result (0.9, 0.7, 0.4, 0.1) only place Know it above the 0.8 threshold. They are a design choice, not calibrated probabilities.",
+    "adaptive_levelled uses the same answer model and items as the ladders, and asks items in file order, so easy first. adaptive is the existing strategy on the existing quiz and answer model.",
+    "A question is one quiz question. Self-report taps are counted apart."
+  ],
+  "config": {
+    "num_students": 500,
+    "seed": 42,
+    "target": "avl_tree",
+    "bootstrap_resamples": 1000,
+    "answer_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ],
+    "answer_model": {
+      "known": {
+        "easy": 0.95,
+        "medium": 0.9,
+        "hard": 0.8
+      },
+      "not_known": {
+        "easy": 0.25,
+        "medium": 0.15,
+        "hard": 0.08
+      }
+    },
+    "self_report": {
+      "yes_if_known": 0.85,
+      "yes_if_not_known": 0.25
+    },
+    "sensitivity": {
+      "flat_levels": {
+        "about": "difficulty changes nothing: every level uses the old answer model (slip 0.10, guess 0.15)",
+        "answer_model": {
+          "known": {
+            "easy": 0.9,
+            "medium": 0.9,
+            "hard": 0.9
+          },
+          "not_known": {
+            "easy": 0.15,
+            "medium": 0.15,
+            "hard": 0.15
+          }
+        }
+      },
+      "unreliable_self_report": {
+        "about": "self-report says little: yes from 60% of students who know a topic and 50% who do not",
+        "self_report": {
+          "yes_if_known": 0.6,
+          "yes_if_not_known": 0.5
+        }
+      },
+      "no_hard_items": {
+        "about": "the checks dropped every hard question, so other levels stand in",
+        "drop_levels": [
+          "hard"
+        ]
+      }
+    }
+  },
+  "target_concept": "avl_tree",
+  "mastery_threshold": 0.8,
+  "scored_concepts": [
+    "recursion",
+    "trees",
+    "binary_tree",
+    "binary_search_tree",
+    "avl_tree"
+  ],
+  "conditions": {
+    "graph_consistent": {
+      "strategies": {
+        "adaptive": {
+          "questions": 4.278,
+          "self_reports": 0.0,
+          "accuracy": 0.8656,
+          "wrongly_known": 0.1891,
+          "gap_coverage": 0.8109,
+          "path_length": 2.354,
+          "known_topics_on_plan": 0.174
+        },
+        "adaptive_levelled": {
+          "questions": 3.962,
+          "self_reports": 0.0,
+          "accuracy": 0.8136,
+          "wrongly_known": 0.3149,
+          "gap_coverage": 0.6851,
+          "path_length": 1.914,
+          "known_topics_on_plan": 0.084
+        },
+        "ladder_linear": {
+          "questions": 6.49,
+          "self_reports": 3.496,
+          "accuracy": 0.8284,
+          "wrongly_known": 0.0055,
+          "gap_coverage": 0.9945,
+          "path_length": 3.508,
+          "known_topics_on_plan": 0.844,
+          "not_checked": 1.58,
+          "stopped_early": 0.708,
+          "skipped_by_a_gap": 1.484,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 5.36,
+          "self_reports": 2.95,
+          "accuracy": 0.8592,
+          "wrongly_known": 0.0318,
+          "gap_coverage": 0.9682,
+          "path_length": 3.278,
+          "known_topics_on_plan": 0.652,
+          "not_checked": 1.488,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      },
+      "against_adaptive_levelled": {
+        "ladder_linear": {
+          "questions": {
+            "mean_difference": 2.528,
+            "interval_95": [
+              2.248,
+              2.818
+            ]
+          },
+          "accuracy": {
+            "mean_difference": 0.0148,
+            "interval_95": [
+              -0.0116,
+              0.0416
+            ]
+          },
+          "wrongly_known": {
+            "mean_difference": -0.3094,
+            "interval_95": [
+              -0.3414,
+              -0.277
+            ]
+          },
+          "path_length": {
+            "mean_difference": 1.594,
+            "interval_95": [
+              1.48,
+              1.708
+            ]
+          }
+        },
+        "ladder_middle": {
+          "questions": {
+            "mean_difference": 1.398,
+            "interval_95": [
+              1.262,
+              1.552
+            ]
+          },
+          "accuracy": {
+            "mean_difference": 0.0456,
+            "interval_95": [
+              0.0216,
+              0.0724
+            ]
+          },
+          "wrongly_known": {
+            "mean_difference": -0.2831,
+            "interval_95": [
+              -0.3145,
+              -0.25
+            ]
+          },
+          "path_length": {
+            "mean_difference": 1.364,
+            "interval_95": [
+              1.234,
+              1.488
+            ]
+          }
+        }
+      }
+    },
+    "graph_independent": {
+      "strategies": {
+        "adaptive": {
+          "questions": 3.642,
+          "self_reports": 0.0,
+          "accuracy": 0.7752,
+          "wrongly_known": 0.4068,
+          "gap_coverage": 0.5932,
+          "path_length": 1.77,
+          "known_topics_on_plan": 0.188
+        },
+        "adaptive_levelled": {
+          "questions": 3.318,
+          "self_reports": 0.0,
+          "accuracy": 0.7276,
+          "wrongly_known": 0.5381,
+          "gap_coverage": 0.4619,
+          "path_length": 1.308,
+          "known_topics_on_plan": 0.076
+        },
+        "ladder_linear": {
+          "questions": 5.846,
+          "self_reports": 3.282,
+          "accuracy": 0.7256,
+          "wrongly_known": 0.0023,
+          "gap_coverage": 0.9977,
+          "path_length": 3.878,
+          "known_topics_on_plan": 1.366,
+          "not_checked": 1.788,
+          "stopped_early": 0.762,
+          "skipped_by_a_gap": 1.708,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 5.112,
+          "self_reports": 2.866,
+          "accuracy": 0.7124,
+          "wrongly_known": 0.1973,
+          "gap_coverage": 0.8027,
+          "path_length": 3.152,
+          "known_topics_on_plan": 1.036,
+          "not_checked": 1.304,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      },
+      "against_adaptive_levelled": {
+        "ladder_linear": {
+          "questions": {
+            "mean_difference": 2.528,
+            "interval_95": [
+              2.26,
+              2.78
+            ]
+          },
+          "accuracy": {
+            "mean_difference": -0.002,
+            "interval_95": [
+              -0.0264,
+              0.0216
+            ]
+          },
+          "wrongly_known": {
+            "mean_difference": -0.5357,
+            "interval_95": [
+              -0.5696,
+              -0.4964
+            ]
+          },
+          "path_length": {
+            "mean_difference": 2.57,
+            "interval_95": [
+              2.446,
+              2.688
+            ]
+          }
+        },
+        "ladder_middle": {
+          "questions": {
+            "mean_difference": 1.794,
+            "interval_95": [
+              1.662,
+              1.92
+            ]
+          },
+          "accuracy": {
+            "mean_difference": -0.0152,
+            "interval_95": [
+              -0.0368,
+              0.0052
+            ]
+          },
+          "wrongly_known": {
+            "mean_difference": -0.3407,
+            "interval_95": [
+              -0.377,
+              -0.3053
+            ]
+          },
+          "path_length": {
+            "mean_difference": 1.844,
+            "interval_95": [
+              1.696,
+              1.99
+            ]
+          }
+        }
+      }
+    }
+  },
+  "accuracy_by_answer_seed": {
+    "graph_consistent": {
+      "ladder_linear": {
+        "42": 0.8284,
+        "43": 0.8364,
+        "44": 0.8296,
+        "45": 0.8424,
+        "46": 0.8404
+      },
+      "ladder_middle": {
+        "42": 0.8592,
+        "43": 0.8528,
+        "44": 0.856,
+        "45": 0.8632,
+        "46": 0.862
+      }
+    },
+    "graph_independent": {
+      "ladder_linear": {
+        "42": 0.7256,
+        "43": 0.7192,
+        "44": 0.7168,
+        "45": 0.7304,
+        "46": 0.7272
+      },
+      "ladder_middle": {
+        "42": 0.7124,
+        "43": 0.7024,
+        "44": 0.6908,
+        "45": 0.704,
+        "46": 0.698
+      }
+    }
+  },
+  "sensitivity": {
+    "flat_levels": {
+      "about": "difficulty changes nothing: every level uses the old answer model (slip 0.10, guess 0.15)",
+      "graph_consistent": {
+        "adaptive": {
+          "questions": 4.278,
+          "self_reports": 0.0,
+          "accuracy": 0.8656,
+          "wrongly_known": 0.1891,
+          "gap_coverage": 0.8109,
+          "path_length": 2.354,
+          "known_topics_on_plan": 0.174
+        },
+        "adaptive_levelled": {
+          "questions": 4.224,
+          "self_reports": 0.0,
+          "accuracy": 0.8584,
+          "wrongly_known": 0.2043,
+          "gap_coverage": 0.7957,
+          "path_length": 2.322,
+          "known_topics_on_plan": 0.176
+        },
+        "ladder_linear": {
+          "questions": 6.134,
+          "self_reports": 3.358,
+          "accuracy": 0.8676,
+          "wrongly_known": 0.0071,
+          "gap_coverage": 0.9929,
+          "path_length": 3.312,
+          "known_topics_on_plan": 0.648,
+          "not_checked": 1.706,
+          "stopped_early": 0.748,
+          "skipped_by_a_gap": 1.624,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 5.15,
+          "self_reports": 2.928,
+          "accuracy": 0.898,
+          "wrongly_known": 0.0401,
+          "gap_coverage": 0.9599,
+          "path_length": 3.052,
+          "known_topics_on_plan": 0.442,
+          "not_checked": 1.384,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      },
+      "graph_independent": {
+        "adaptive": {
+          "questions": 3.642,
+          "self_reports": 0.0,
+          "accuracy": 0.7752,
+          "wrongly_known": 0.4068,
+          "gap_coverage": 0.5932,
+          "path_length": 1.77,
+          "known_topics_on_plan": 0.188
+        },
+        "adaptive_levelled": {
+          "questions": 3.568,
+          "self_reports": 0.0,
+          "accuracy": 0.77,
+          "wrongly_known": 0.4307,
+          "gap_coverage": 0.5693,
+          "path_length": 1.648,
+          "known_topics_on_plan": 0.14
+        },
+        "ladder_linear": {
+          "questions": 5.374,
+          "self_reports": 3.1,
+          "accuracy": 0.7324,
+          "wrongly_known": 0.005,
+          "gap_coverage": 0.995,
+          "path_length": 3.828,
+          "known_topics_on_plan": 1.324,
+          "not_checked": 1.942,
+          "stopped_early": 0.824,
+          "skipped_by_a_gap": 1.896,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 4.938,
+          "self_reports": 2.834,
+          "accuracy": 0.7332,
+          "wrongly_known": 0.2337,
+          "gap_coverage": 0.7663,
+          "path_length": 2.884,
+          "known_topics_on_plan": 0.85,
+          "not_checked": 1.184,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      }
+    },
+    "unreliable_self_report": {
+      "about": "self-report says little: yes from 60% of students who know a topic and 50% who do not",
+      "graph_consistent": {
+        "adaptive": {
+          "questions": 4.278,
+          "self_reports": 0.0,
+          "accuracy": 0.8656,
+          "wrongly_known": 0.1891,
+          "gap_coverage": 0.8109,
+          "path_length": 2.354,
+          "known_topics_on_plan": 0.174
+        },
+        "adaptive_levelled": {
+          "questions": 3.962,
+          "self_reports": 0.0,
+          "accuracy": 0.8136,
+          "wrongly_known": 0.3149,
+          "gap_coverage": 0.6851,
+          "path_length": 1.914,
+          "known_topics_on_plan": 0.084
+        },
+        "ladder_linear": {
+          "questions": 6.924,
+          "self_reports": 3.414,
+          "accuracy": 0.8208,
+          "wrongly_known": 0.0051,
+          "gap_coverage": 0.9949,
+          "path_length": 3.55,
+          "known_topics_on_plan": 0.884,
+          "not_checked": 1.692,
+          "stopped_early": 0.698,
+          "skipped_by_a_gap": 1.466,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 5.944,
+          "self_reports": 2.95,
+          "accuracy": 0.8596,
+          "wrongly_known": 0.0332,
+          "gap_coverage": 0.9668,
+          "path_length": 3.272,
+          "known_topics_on_plan": 0.648,
+          "not_checked": 1.472,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      },
+      "graph_independent": {
+        "adaptive": {
+          "questions": 3.642,
+          "self_reports": 0.0,
+          "accuracy": 0.7752,
+          "wrongly_known": 0.4068,
+          "gap_coverage": 0.5932,
+          "path_length": 1.77,
+          "known_topics_on_plan": 0.188
+        },
+        "adaptive_levelled": {
+          "questions": 3.318,
+          "self_reports": 0.0,
+          "accuracy": 0.7276,
+          "wrongly_known": 0.5381,
+          "gap_coverage": 0.4619,
+          "path_length": 1.308,
+          "known_topics_on_plan": 0.076
+        },
+        "ladder_linear": {
+          "questions": 6.316,
+          "self_reports": 3.256,
+          "accuracy": 0.7072,
+          "wrongly_known": 0.009,
+          "gap_coverage": 0.991,
+          "path_length": 3.95,
+          "known_topics_on_plan": 1.448,
+          "not_checked": 1.858,
+          "stopped_early": 0.74,
+          "skipped_by_a_gap": 1.682,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        },
+        "ladder_middle": {
+          "questions": 5.688,
+          "self_reports": 2.866,
+          "accuracy": 0.71,
+          "wrongly_known": 0.2028,
+          "gap_coverage": 0.7972,
+          "path_length": 3.144,
+          "known_topics_on_plan": 1.038,
+          "not_checked": 1.292,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 0.0
+        }
+      }
+    },
+    "no_hard_items": {
+      "about": "the checks dropped every hard question, so other levels stand in",
+      "graph_consistent": {
+        "adaptive": {
+          "questions": 4.278,
+          "self_reports": 0.0,
+          "accuracy": 0.8656,
+          "wrongly_known": 0.1891,
+          "gap_coverage": 0.8109,
+          "path_length": 2.354,
+          "known_topics_on_plan": 0.174
+        },
+        "adaptive_levelled": {
+          "questions": 3.962,
+          "self_reports": 0.0,
+          "accuracy": 0.8136,
+          "wrongly_known": 0.3149,
+          "gap_coverage": 0.6851,
+          "path_length": 1.914,
+          "known_topics_on_plan": 0.084
+        },
+        "ladder_linear": {
+          "questions": 4.602,
+          "self_reports": 3.544,
+          "accuracy": 0.5356,
+          "wrongly_known": 0.0,
+          "gap_coverage": 1.0,
+          "path_length": 5.0,
+          "known_topics_on_plan": 2.322,
+          "not_checked": 1.456,
+          "stopped_early": 0.69,
+          "skipped_by_a_gap": 1.456,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 2.058
+        },
+        "ladder_middle": {
+          "questions": 3.876,
+          "self_reports": 3.0,
+          "accuracy": 0.5356,
+          "wrongly_known": 0.0,
+          "gap_coverage": 1.0,
+          "path_length": 5.0,
+          "known_topics_on_plan": 2.322,
+          "not_checked": 2.0,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 1.754
+        }
+      },
+      "graph_independent": {
+        "adaptive": {
+          "questions": 3.642,
+          "self_reports": 0.0,
+          "accuracy": 0.7752,
+          "wrongly_known": 0.4068,
+          "gap_coverage": 0.5932,
+          "path_length": 1.77,
+          "known_topics_on_plan": 0.188
+        },
+        "adaptive_levelled": {
+          "questions": 3.318,
+          "self_reports": 0.0,
+          "accuracy": 0.7276,
+          "wrongly_known": 0.5381,
+          "gap_coverage": 0.4619,
+          "path_length": 1.308,
+          "known_topics_on_plan": 0.076
+        },
+        "ladder_linear": {
+          "questions": 4.39,
+          "self_reports": 3.292,
+          "accuracy": 0.5036,
+          "wrongly_known": 0.0,
+          "gap_coverage": 1.0,
+          "path_length": 5.0,
+          "known_topics_on_plan": 2.482,
+          "not_checked": 1.708,
+          "stopped_early": 0.75,
+          "skipped_by_a_gap": 1.708,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 1.54
+        },
+        "ladder_middle": {
+          "questions": 3.89,
+          "self_reports": 3.0,
+          "accuracy": 0.5036,
+          "wrongly_known": 0.0,
+          "gap_coverage": 1.0,
+          "path_length": 5.0,
+          "known_topics_on_plan": 2.482,
+          "not_checked": 2.0,
+          "stopped_early": 0.0,
+          "skipped_by_a_gap": 0.0,
+          "stand_ins": 0.0,
+          "stand_ins_for_hard": 0.0,
+          "no_hard_question": 1.426
+        }
+      }
+    }
+  }
+}

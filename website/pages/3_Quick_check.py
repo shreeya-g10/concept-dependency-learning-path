@@ -97,6 +97,9 @@ def asked_for(target: str) -> int:
 
 
 def next_item(target: str) -> dict | None:
+    if api.uses_ladder(valid_items):  # an item, or {"self_report": concept}, or None when finished
+        mastery = {**st.session_state.quiz_mastery, "__asked__": list(st.session_state.quiz_asked)}
+        return api.ladder_next(graph_data, valid_items, mastery, target)
     if asked_for(target) >= api.MAX_QUESTIONS_PER_TOPIC:
         return None
     item = api.next_question(
@@ -213,8 +216,10 @@ def record_answer(target: str, question: dict, choice: str) -> None:
     except Exception:  # never block the quiz on logging
         st.session_state.quiz_not_saved = True
 
-    st.session_state.quiz_mastery = api.update_mastery(
-        graph_data, mastery_before, concept_id, is_correct
+    st.session_state.quiz_mastery = (
+        api.ladder_record(graph_data, valid_items, mastery_before, target, question, is_correct)
+        if api.uses_ladder(valid_items)
+        else api.update_mastery(graph_data, mastery_before, concept_id, is_correct)
     )
     st.session_state.quiz_asked.append(q_id)
     counts = st.session_state.setdefault("quiz_topic_counts", {})
@@ -306,6 +311,29 @@ def feedback_screen(target: str) -> None:
         go_on(target)
 
 
+def self_report_screen(concept_id: str) -> None:
+    """Sets the topic's first question only: it never marks the topic as known."""
+    ui.page_header(S.QUIZ_TITLE, source_file="quiz_items.json")
+    ui.scroll_to_top(f"studied {concept_id}")
+    show_not_saved()
+    if st.session_state.quiz_just_right:
+        st.success(S.QUIZ_RIGHT_NOTE)
+        st.session_state.quiz_just_right = False
+    st.markdown(S.QUIZ_STUDIED.format(topic=names.get(concept_id, concept_id)))
+    st.caption(S.QUIZ_STUDIED_NOTE)
+    choices = (
+        ("yes", S.QUIZ_STUDIED_YES),
+        ("no", S.QUIZ_STUDIED_NO),
+        ("not_sure", S.QUIZ_STUDIED_NOT_SURE),
+    )
+    for answer, label in choices:
+        if ui.action_button(label, key=f"studied_{concept_id}_{answer}", primary=False):
+            st.session_state.quiz_mastery = api.ladder_self_report(
+                st.session_state.quiz_mastery, concept_id, answer
+            )
+            st.rerun()
+
+
 def question_screen(target: str, question: dict) -> None:
     ui.page_header(S.QUIZ_TITLE, source_file="quiz_items.json")
     ui.scroll_to_top(f"question {question.get('id', question.get('item_id'))}")
@@ -366,4 +394,7 @@ else:
     current = next_item(active_target)
     if current is None:
         finish()
-    question_screen(active_target, current)
+    if "self_report" in current:
+        self_report_screen(current["self_report"])
+    else:
+        question_screen(active_target, current)

@@ -63,6 +63,21 @@
               "general_practice"
             ],
             "description": "optional (1.12): general_practice = a fixed question written by hand, not made from this course's notes and not from the AI check. Absent on questions from the quiz generator."
+          },
+          "difficulty": {
+            "enum": [
+              "easy",
+              "medium",
+              "hard"
+            ],
+            "description": "optional (1.13): the question's level. Absent means unlabelled, treated as easy or any level. A course with no labelled item keeps the old question selection."
+          },
+          "difficulty_source": {
+            "enum": [
+              "ai_suggestion",
+              "teacher"
+            ],
+            "description": "optional (1.13): who set difficulty. ai_suggestion is only a suggestion until a teacher approves it."
           }
         }
       }
@@ -189,6 +204,47 @@
               }
             }
           }
+        },
+        "drop_rate_by_level": {
+          "type": "object",
+          "description": "optional (1.13): drafts, kept items and the share dropped per level, over every attempt",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "drafted": {
+                "type": "integer"
+              },
+              "kept": {
+                "type": "integer"
+              },
+              "dropped": {
+                "type": "integer"
+              },
+              "drop_rate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "concepts_missing_level": {
+          "type": "object",
+          "description": "optional (1.13): per level, the concepts left with no item at that level",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "retried_only_for_missing_level": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "optional (1.13): concept ids whose one retry happened only because a level was missing. They had enough items for the older rule, so each is an extra retry."
         }
       }
     }

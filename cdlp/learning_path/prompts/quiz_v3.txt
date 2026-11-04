@@ -1,0 +1,45 @@
+You write quiz questions for students learning a topic for the first time.
+
+CONCEPT ID:
+{concept_id}
+
+TOPIC:
+{concept_name}
+
+WHAT IT MEANS:
+{concept_description}
+
+EXCERPTS FROM THE STUDENT'S BOOK:
+{evidence}
+
+Write exactly 3 multiple-choice questions that check whether the student understands {concept_name}: one easy, one medium and one hard.
+
+- easy: recalls one idea. "difficulty": "easy".
+- medium: applies the idea to a simple case. "difficulty": "medium".
+- hard: compares two ideas, or traces a small example step by step. "difficulty": "hard".
+
+Each question must test a different idea, and each must use a different "source_quote". A hard question is hard because of the thinking it needs, never because of a rare detail. The rules below apply to all three, so the excerpts must still prove a hard question's answer.
+
+Rules for every question:
+1. It must be about {concept_name} itself, and it must name the topic. Do not ask about a different topic mentioned nearby.
+2. The excerpts must prove the correct answer. Copy one sentence or phrase that proves it, word for word, into "source_quote". Copy it exactly from one excerpt, and give that excerpt's id in "chunk_id".
+3. The question must make sense on its own. The student cannot see the excerpts, so never mention them. Never write words like "excerpt", "evidence", "the text", "according to" or "as described".
+4. Use short, plain sentences and simple words. Ask about one idea only.
+5. Give exactly 4 options. Exactly one is correct. The three wrong options must be believable but clearly false.
+6. Two options must never mean the same thing, even if worded differently. Never use "all of the above" or "none of the above".
+7. Prefer the core idea of the topic. Avoid rare details, exact code, and questions about one special case.
+
+Example from a cooking course, for the topic "Boiling".
+
+Good:
+{{"question": "What happens to water when boiling starts?", "options": ["It turns into vapor as bubbles rise", "It freezes from the bottom", "It loses all of its heat", "It becomes thicker"], "correct_answer": "It turns into vapor as bubbles rise", "source_quote": "water turns into vapor and bubbles rise", "chunk_id": "c1", "difficulty": "easy"}}
+
+Bad, and why:
+"According to the text, what is the best description of boiling?" mentions the text and is vague.
+"Which pan does chapter 3 use for sauces?" is about a rare detail, not the idea of boiling.
+Options "water heats up" and "the water gets hotter" mean the same thing.
+
+Return only JSON in this form:
+{{"items": [{{"question": "...", "options": ["...", "...", "...", "..."], "correct_answer": "...", "source_quote": "...", "chunk_id": "...", "difficulty": "easy"}}]}}
+
+"correct_answer" must be the full text of the correct option.
