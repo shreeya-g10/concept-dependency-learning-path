@@ -160,3 +160,55 @@ def test_num_ctx_is_sent_and_keyed_only_when_set(sent, monkeypatch, tmp_path, fr
         sort_keys=True,
     )
     assert (tmp_path / f"{hashlib.sha256(old_key.encode()).hexdigest()}.json").exists()
+
+
+def test_a_cache_file_cut_short_counts_as_not_saved(sent, monkeypatch, tmp_path):
+    """A disconnect mid-write must not crash the resume: the call is simply asked again."""
+    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
+    llm.chat("hello", model="m")
+    saved = next(tmp_path.glob("*.json"))
+    saved.write_text('{"provider": "ollama", "resp')
+    assert llm.chat("hello", model="m")
+    assert json.loads(saved.read_text())["response"]
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_a_failed_write_leaves_no_half_file(monkeypatch, tmp_path):
+    target = tmp_path / "x.json"
+    target.write_text("old")
+
+    def broken(fd, mode):
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(llm.os, "fdopen", broken)
+    with pytest.raises(OSError):
+        llm._write_atomic(target, "new")
+    assert target.read_text() == "old"
+
+
+def test_call_log_records_seconds_and_cache_hits(sent, monkeypatch, tmp_path):
+    log = tmp_path / "calls.jsonl"
+    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setenv("LLM_CALL_LOG", str(log))
+    llm.chat("hello", model="m", prompt_version="p1")
+    llm.chat("hello", model="m", prompt_version="p1")
+    first, second = [json.loads(line) for line in log.read_text().splitlines()]
+    assert (first["model"], first["prompt_version"], first["cached"]) == ("m", "p1", False)
+    assert first["seconds"] >= 0 and second["cached"] and second["seconds"] == 0
+
+
+def test_no_call_log_without_the_setting(sent, monkeypatch, tmp_path):
+    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
+    monkeypatch.delenv("LLM_CALL_LOG", raising=False)
+    llm.chat("hello", model="m")
+    assert [p.suffix for p in tmp_path.iterdir()] == [".json"]
+
+
+def test_the_cache_key_is_unchanged_so_old_replies_still_count(sent, monkeypatch, tmp_path):
+    import hashlib
+
+    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path)
+    llm.chat("hello", model="m")
+    messages = [{"role": "user", "content": "hello"}]
+    key = json.dumps([llm.PROVIDER, "m", 0.0, llm.DEFAULT_SEED, False, messages], sort_keys=True)
+    assert (tmp_path / f"{hashlib.sha256(key.encode()).hexdigest()}.json").exists()
