@@ -1,0 +1,10 @@
+{
+  "seed": 42,
+  "n_candidate": 110,
+  "n_not_candidate": 40,
+  "pairs_available": 3560,
+  "candidates_total": 1380,
+  "concepts_sha256": "81eee4cae0ad11a5ef90edd8735559feb2fd55aa790fc0d82fcd7953ff156c29",
+  "chunks_sha256": "915893d9fb1b0c407ab85d6250cf6fcf24981ac57edeb7f8b7eac3876796ebb4",
+  "read_validator_or_discovery_output": false
+}
