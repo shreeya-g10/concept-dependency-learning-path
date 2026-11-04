@@ -1,13 +1,16 @@
 # Run plan: every prompt, in order
 
-Written 2026-11-04. Run one prompt at a time. Merge each PR with **Create a merge commit**, then start the next prompt. No prompt runs an AI model on the laptop: real runs happen in Colab.
+Written 2026-11-04. Run one prompt at a time. Merge each PR with **Create a merge commit**, then start the next prompt.
+
+All our work now goes to the branch `integration/real-pipeline`, not `main`. Vaidehi keeps working on her `vaidehi` branch. Nobody edits her branch, and we bring her work in by merging it. Show the demo and build the paper from `integration/real-pipeline`. No prompt runs an AI model on the laptop: real runs happen in Colab.
 
 All times are estimates. Claude times come from similar earlier prompts. Colab times are not measured: C1 measures them.
 
 | Step | What | Where | Estimated time |
 |---|---|---|---|
-| P1 | Commit the paper and scripts | Claude | 5 min |
-| P2 | Remove Fast Demo Mode's made-up results | Claude | 15–25 min |
+| P1 | Commit the paper and scripts (done: merge #78) | Claude | done |
+| P0 | Create our branch and bring in Vaidehi's work | Claude | 5–10 min |
+| P2 | Keep Fast Demo Mode, but label it honestly | Claude | 15–25 min |
 | P3 | Finish the old-site features (T6) | Claude | 20–30 min |
 | P4 | Quiz check v4, upload time estimate | Claude | 15–20 min |
 | P5 | Teacher approval of questions | Claude | 25–40 min |
@@ -23,36 +26,53 @@ All times are estimates. Claude times come from similar earlier prompts. Colab t
 | P9 | Score RQ1, RQ3, RQ2 and RQ4 | Claude and Colab | 30–60 min |
 | P10 | Final paper (T5) | Claude | 20–30 min |
 
-Shortest route to a working demo: P2, P6, C1, C2.
+Shortest route to a working demo: P0, P2, P6, C1, C2.
 
-## P1: commit the paper and scripts
+## Rule for every prompt below
+
+Before starting, run git fetch and compare origin/vaidehi with origin/integration/real-pipeline. If she has new commits, tell me and wait: I'll decide whether to merge them first. If a change touches website/jobs.py, website/pages/3_Quick_check.py or website/pages/5_Topic_map.py, change as little as possible there.
+
+## P1: commit the paper and scripts (done)
 
 ```text
-Run git status in the main folder. Create branch docs/paper-and-demo from origin/main. Commit only docs/paper/ieee/, docs/demo_material/, docs/run_plan.md and scripts/run_cpu_embed.py. Don't commit anything else. Run ruff on the changed Python files and the full test suite with LLM_BASE_URL=http://127.0.0.1:9 under set -o pipefail. Before the tests, check ollama ps: if a model is loaded, stop and ask me. Push, open the PR into main and report CI. No real LLM runs.
+Run git status in the main folder. Create branch docs/paper-and-demo from origin/main. Commit only docs/paper/ieee/, docs/demo_material/, docs/run_plan.md and scripts/run_cpu_embed.py. Don't commit anything else. Run ruff on the changed Python files and the full test suite with LLM_BASE_URL=http://127.0.0.1:9 under set -o pipefail. Before the tests, check ollama ps: if a model is loaded, stop and ask me. Push, open the PR into integration/real-pipeline and report CI. No real LLM runs.
 ```
 
-## P2: remove Fast Demo Mode's made-up results
+## P0: create our branch and bring in Vaidehi's work
 
 ```text
-Work from the latest origin/main in a new worktree ../cdlp-t7 on branch website/honest-quick-preview, and copy CLAUDE.local.md and .env into it. No real LLM runs. Open the PR into main.
+Run git fetch and git status in the main folder. If there are uncommitted changes other than docs/run_plan.md, stop and ask me. Check that PR #78 is merged into main; if not, stop and ask me.
 
-PR #77's Fast Demo Mode writes invented results: hard-coded ACCEPT, confidence 0.95, all checks "strong", necessity_gap 0.70, links made by chaining headings, and a fake stage log and "all contract files valid". Fix it as follows:
+Create branch integration/real-pipeline from origin/main, then run git merge origin/vaidehi. Never push to the vaidehi branch or to main, and never force-push. If the merge conflicts, keep both sides' intent and show me each conflict you resolved. Commit docs/run_plan.md on this branch.
 
-1. Remove the invented validated_graph, relationships, learning_path, student_state and quiz output, and the fake progress and contract-check lines. Remove the fallback that copies files from outputs/ into a new course.
-2. Replace it with an honest Quick Preview, off by default: it reads the files and lists headings as "possible topics" with their page, and writes no contract files. It must say plainly: "Preview only. No AI was used. To get links, checks and a quiz, tap Read my notes." It must not appear as a finished course in the subject list.
-3. Make the real pipeline the only way to build a course, and make the normal button start it with the real arguments. Remove the demo_subset default of 2, the TypeError fallbacks and the dead if False branch in ui.py.
-4. CDLP_MAX_CHUNKS in parse.py: if a run truncates chunks, log it clearly and record it in the outputs, or remove the option. Tell me which you chose.
-5. Fix the Start page wording so it doesn't promise "Fast Demo Mode".
-6. Keep the Windows fixes, UTF-8 reading, sys.path fix, sample subject card, breadcrumbs and Continue button. Show teacher pages in the menu by default, and keep the toggle only if there's a clear reason.
-7. Add tests: Quick Preview writes no contract files; nothing in website/ writes a decision or check result except through the real pipeline; a preview doesn't create a course. Also search the repo for any other hard-coded decision, confidence or check value outside tests and shared examples, and report what you find.
+Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with LLM_BASE_URL=http://127.0.0.1:9 and an empty LLM_CACHE_DIR, chained with && under set -o pipefail. If anything fails, do not push: show me the failure, even if you think it isn't from this merge. Otherwise push the branch and report which of Vaidehi's commits it contains. No real LLM runs.
+```
 
-Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with the LLM unreachable. Report CI and list what you removed, then stop.
+## P2: keep Fast Demo Mode, but label it honestly
+
+```text
+Work from the latest origin/integration/real-pipeline in a new worktree ../cdlp-t7 on branch website/honest-fast-mode, and copy CLAUDE.local.md and .env into it. No real LLM runs. Open the PR into integration/real-pipeline. Never push to the vaidehi branch or to main.
+
+Fast Demo Mode is Vaidehi's work, so keep it, including her question lists and her map and quiz improvements. Change as few lines as possible in website/jobs.py, 3_Quick_check.py and 5_Topic_map.py, because she is still working on them. The problem is only that it writes results no AI produced: ACCEPT, confidence 0.95, all checks "strong", necessity_gap 0.70, a fake stage log and "all contract files valid". Fix that as follows:
+
+1. Untick it by default, and rename it Quick Preview. It must say plainly: "Preview only. No AI was used. Links follow the order of headings, and questions are not from your AI check."
+2. It must not write ACCEPT, a confidence, check grades or a necessity gap. Mark its output as a preview with an additive contract field or a separate file. Teacher pages must show "Not checked by the AI" for a preview course, never a grade. Use a contract-valid approach, with a schema bump and CHANGELOG entry if needed.
+3. Remove the invented stage lines and "all contract files valid" from its log. Show only what it really did.
+4. A preview course must be clearly labelled everywhere it appears, and must be excluded from results, the About page counts and anything the paper uses.
+5. Remove the fallback that copies files from outputs/ into a new course, because it could show another course's data.
+6. Her preview questions: keep them, but fix the bugs I found: {c['name']} prints literally because the f prefix is missing, and some joined strings lose a space ("otherconcepts", "assignmentoperator"). Label them "General practice question, not from your notes". The hand-written lists are about C programming, so show them only when a topic really matches.
+7. CDLP_MAX_CHUNKS in parse.py: if a run truncates chunks, log it clearly and record it in the outputs.
+8. Keep her Windows fixes, UTF-8 reading, sys.path fix, breadcrumbs, sample card, map styling and extra questions. The real pipeline stays the normal path behind Read my notes.
+9. Fix website/test_answer_log.py::test_the_real_offline_fallback_reads_in_plain_words so it uses its own empty LLM_CACHE_DIR. Don't delete or change the real .cache/llm.
+10. Add tests: a preview writes no decision, confidence or check grade; a preview never counts as a validated course; nothing in website/ writes a decision except through the real pipeline. Search the repo for any other hard-coded decision, confidence or check value outside tests and shared examples, and report what you find.
+
+Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with the LLM unreachable. If any test fails, do not commit or push: stop and show me, even if you think it isn't from your change. Report CI and list every line of hers you changed and why, then stop.
 ```
 
 ## P3: finish the old-site features (T6)
 
 ```text
-Your uncommitted work is in ../cdlp-t6 on branch website/bring-back-features. Don't redo finished work. Merge the latest origin/main into the branch (never force-push), resolve conflicts, and keep P2's removal of Fast Demo Mode. Open the PR into main.
+Your uncommitted work is in ../cdlp-t6 on branch website/bring-back-features. Don't redo finished work. Merge the latest origin/integration/real-pipeline into the branch (never force-push), resolve conflicts, and keep P2's honest labels and all of Vaidehi's map styling and quiz changes. Show me each conflict you resolved. Never push to the vaidehi branch or to main. Open the PR into integration/real-pipeline.
 
 The 8 items are:
 1. Study plan: result summary, worded gently.
@@ -72,7 +92,7 @@ Check the pages in the browser at phone and laptop width, using a port other tha
 ## P4: quiz check v4 and upload time estimate
 
 ```text
-Work from the latest origin/main in worktree ../cdlp-t4 on a new branch learning_path/quiz-check-v4. No real LLM runs. Open the PR into main.
+Work from the latest origin/integration/real-pipeline in worktree ../cdlp-t4 on a new branch learning_path/quiz-check-v4. No real LLM runs. Open the PR into integration/real-pipeline.
 
 1. Create quiz_check_v4 and keep v3 for the record. The subject check uses only canonical concept names and all-caps acronym aliases, with no hand-written list of generic aliases. Record in the report that this fix was prompted by the replay drafts. Make no other check or threshold changes.
 2. Fix replay_quiz_check.py so --limit 0 makes no calls.
@@ -85,7 +105,7 @@ Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and t
 ## P5: teacher approval of questions
 
 ```text
-Work from the latest origin/main in a new worktree ../cdlp-t5 on branch website/quiz-approval. No real LLM runs. Open the PR into main.
+Work from the latest origin/integration/real-pipeline in a new worktree ../cdlp-t5 on branch website/quiz-approval. No real LLM runs. Open the PR into integration/real-pipeline.
 
 1. Add an optional approved field to the quiz contract (additive, with a schema_version bump and a CHANGELOG entry).
 2. Add a teacher screen on the AI checks page to approve, reject or edit a question. An edit keeps the original text and records that it was edited. A rejected question is never deleted.
@@ -98,7 +118,7 @@ Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and t
 ## P6: Colab notebook for full builds
 
 ```text
-Work from the latest origin/main in a new worktree ../cdlp-t8 on branch validation/colab-full-build, and copy CLAUDE.local.md and .env into it. No real LLM runs on this laptop. Open the PR into main.
+Work from the latest origin/integration/real-pipeline in a new worktree ../cdlp-t8 on branch validation/colab-full-build, and copy CLAUDE.local.md and .env into it. No real LLM runs on this laptop. Open the PR into integration/real-pipeline.
 
 Extend notebooks/colab_validator.ipynb and scripts/colab_run.py so everything can run inside Colab, with no tunnel:
 - stage speed: 10 short and 5 long calls for each model, printing seconds per call
@@ -159,7 +179,7 @@ Colab runs for ds101, ml101 and the benchmarks are finished, and the outputs are
 4. Rerun RQ2 and RQ4 on the real graphs, which needs no LLM.
 5. Run scripts/make_results.py.
 
-Report each number with its source file, and any table cell still empty. Never tune on test data. Open the PR into main, report CI, then stop.
+Report each number with its source file, and any table cell still empty. Never tune on test data. Open the PR into integration/real-pipeline, report CI, then stop.
 ```
 
 ## P10: final paper (T5)
