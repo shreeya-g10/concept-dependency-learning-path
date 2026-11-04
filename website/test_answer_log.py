@@ -23,6 +23,7 @@ import common  # noqa: E402
 import strings as S  # noqa: E402
 
 from cdlp.root_cause import api as root_cause_api  # noqa: E402
+from cdlp.shared import llm  # noqa: E402
 from cdlp.shared.validate import check_file  # noqa: E402
 
 
@@ -122,9 +123,16 @@ def test_quick_check_labels_an_unusable_ai_reply(outputs, monkeypatch):
     assert "[fallback:" not in shown
 
 
-def test_the_real_offline_fallback_reads_in_plain_words(outputs, monkeypatch):
-    """Not faked: the LLM is unreachable (as in CI), and its text has raw ids and research words."""
+def test_the_real_offline_fallback_reads_in_plain_words(outputs, monkeypatch, tmp_path):
+    """Not faked: the LLM is unreachable (as in CI), and its text has raw ids and research words.
+
+    The cache and the address are read when llm.py is imported, so setting the environment here
+    is not enough. Its own empty cache: a saved reply on this machine would hide the fallback.
+    """
     monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "empty_llm_cache"))
+    monkeypatch.setattr(llm, "BASE_URL", "http://127.0.0.1:9")
+    monkeypatch.setattr(llm, "CACHE_DIR", tmp_path / "empty_llm_cache")
     at = answer_wrong(start_quick_check())
     assert not at.exception
     shown = " ".join(c.value for c in at.caption)

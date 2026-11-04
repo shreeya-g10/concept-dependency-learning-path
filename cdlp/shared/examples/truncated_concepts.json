@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.12",
+  "course_id": "ds101",
+  "concepts": [
+    {
+      "id": "recursion",
+      "name": "Recursion",
+      "aliases": [],
+      "description": "A function defined in terms of itself.",
+      "sources": [
+        {
+          "doc": "ds_lec5.pdf",
+          "page": 3,
+          "chunk_id": "ch_l5_p03"
+        }
+      ]
+    }
+  ],
+  "chunks_truncated": {
+    "kept": 2,
+    "total": 40,
+    "limit_from": "CDLP_MAX_CHUNKS"
+  }
+}

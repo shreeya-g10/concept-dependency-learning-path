@@ -38,6 +38,7 @@ if str(ROOT) not in sys.path:
 RAW = ROOT / "data" / "raw"
 OUTPUTS = ROOT / "outputs"
 JOBS = OUTPUTS / ".jobs"
+PREVIEW_FOLDER = "_previews"  # the same name as common.PREVIEW_FOLDER
 
 UPLOAD_TYPES = ["pdf", "pptx", "txt", "md", "docx"]
 READABLE = {f".{t}" for t in UPLOAD_TYPES}  # read by cdlp.extraction as they are
@@ -459,14 +460,49 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     }
 
 
+# Words in the question lists' keywords that also appear in ordinary headings ("Reasons For
+# Change", "Linked Lists"): on their own they do not show the topic is what a list asks about.
+AMBIGUOUS_KEYWORDS = frozenset(
+    "address char do for if index io layout list memory null page return text web".split()
+)
+# The hand-written lists are about programming: without these words the notes are on something
+# else, and "Cell Function" or "Tree Anatomy" must not get questions about C.
+PROGRAMMING_WORDS = (
+    "programming",
+    "compiler",
+    "algorithm",
+    "printf",
+    "#include",
+    "source code",
+    "syntax",
+    "html",
+    "data structure",
+    "pointer",
+    "python",
+)
+
+
+def notes_are_about_programming(chunks: list[dict]) -> bool:
+    text = " ".join(c["text"] for c in chunks).lower()
+    return sum(word in text for word in PROGRAMMING_WORDS) >= 2
+
+
+def topic_matches(topic: str, keywords: list[str]) -> bool:
+    """A whole word of the topic is a keyword: "for" is not in "information"."""
+    words = set(re.findall(r"[a-z0-9]+", topic.lower()))
+    words |= {w[:-1] for w in words if w.endswith("s")}
+    return bool(words & (set(keywords) - AMBIGUOUS_KEYWORDS))
+
+
 def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
-    """Extract real topics and build valid contract files from data/raw/<course_id>/."""
-    from cdlp.extraction.parse import parse_directory
+    """List headings from data/raw/<course_id>/ as a preview. No AI, decisions or grades."""
+    from cdlp.extraction.parse import apply_chunk_limit, parse_directory
+    from cdlp.shared.validate import check
 
     raw_dir = RAW / course_id
     if not raw_dir.is_dir():
         return False
-    chunks = parse_directory(raw_dir, course_id=course_id)
+    chunks, truncated = apply_chunk_limit(parse_directory(raw_dir, course_id=course_id))
     if not chunks:
         return False
 
@@ -602,76 +638,28 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
         encoding="utf-8",
     )
 
-    edges_rel = []
-    for i in range(len(concepts) - 1):
-        _c0, _c1 = concepts[i]["name"], concepts[i + 1]["name"]
-        edges_rel.append(
+    preview = {
+        "schema_version": "1.12",
+        "course_id": course_id,
+        "kind": "quick_preview",
+        "ai_used": False,
+        "link_rule": "heading_order",
+        "nodes": [{"id": c["id"], "name": c["name"]} for c in concepts],
+        "links": [
             {
-                "id": f"r{i + 1}",
+                "id": f"l{i + 1}",
                 "source": concepts[i]["id"],
                 "target": concepts[i + 1]["id"],
-                "type": "PREREQUISITE",
-                "strength": "hard",
-                "confidence": 0.95,
-                "evidence": [
-                    {
-                        "doc": concepts[i]["sources"][0]["doc"],
-                        "page": concepts[i]["sources"][0]["page"],
-                        "chunk_id": concepts[i]["sources"][0]["chunk_id"],
-                    }
-                ],
+                **concepts[i]["sources"][0],
             }
-        )
-
-    (out_dir / "relationships.json").write_text(
-        json.dumps(
-            {"schema_version": "1.0", "course_id": course_id, "relationships": edges_rel}, indent=2
-        ),
-        encoding="utf-8",
-    )
-
-    nodes = [{"id": c["id"], "name": c["name"]} for c in concepts]
-    edges_val = []
-    for r in edges_rel:
-        edges_val.append(
-            {
-                "id": r["id"],
-                "source": r["source"],
-                "target": r["target"],
-                "type": "PREREQUISITE",
-                "strength": "hard",
-                "decision": "ACCEPT",
-                "confidence": 0.95,
-                "checks": {
-                    "evidence": "strong",
-                    "semantic": "strong",
-                    "necessity": "strong",
-                    "graph": "ok",
-                },
-                "necessity_gap": 0.70,
-                "reason": f"{r['target']} builds directly upon concepts from {r['source']}.",
-                "evidence": r["evidence"],
-            }
-        )
-
-    (out_dir / "validated_graph.json").write_text(
-        json.dumps(
-            {
-                "schema_version": "1.0",
-                "course_id": course_id,
-                "nodes": nodes,
-                "edges": edges_val,
-                "subset": {
-                    "kind": "demo",
-                    "n": len(edges_val),
-                    "of": len(edges_val),
-                    "selection": "Top prerequisite links",
-                },
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+            for i in range(len(concepts) - 1)
+        ],
+        **({"chunks_truncated": truncated} if truncated else {}),
+    }
+    errors = check(preview, "preview")
+    if errors:
+        raise ValueError("preview.json breaks the contract:\n  " + "\n  ".join(errors))
+    (out_dir / "preview.json").write_text(json.dumps(preview, indent=2), encoding="utf-8")
 
     quiz_categories = [
         (
@@ -723,14 +711,14 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 ),
                 (
                     "What is the key difference between the equality operator (==) "
-                    "and the assignment"
+                    "and the assignment "
                     "operator (=)?",
                     "The equality operator compares two values, whereas the "
-                    "assignment operator assigns a"
+                    "assignment operator assigns a "
                     "value to a variable.",
                     [
                         "The equality operator stores a value, whereas the assignment "
-                        "operator checks for"
+                        "operator checks for "
                         "equivalence.",
                         "The equality operator is only valid for floating-point calculations.",
                         "Both operators perform identical operations and can be used "
@@ -738,9 +726,9 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     ],
                 ),
                 (
-                    "In operator precedence rules, how are mixed arithmeticexpressions evaluated?",
+                    "In operator precedence rules, how are mixed arithmetic expressions evaluated?",
                     "Multiplication and division are evaluated before addition and "
-                    "subtraction unless"
+                    "subtraction unless "
                     "parentheses are used.",
                     [
                         "All operators are always evaluated strictly from right to left.",
@@ -757,7 +745,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is the purpose of conditional control statements (such as if-else)?",
                     "To choose between different blocks of code based on whether a "
-                    "condition is true or"
+                    "condition is true or "
                     "false.",
                     [
                         "To repeat a block of code continuously until user termination.",
@@ -767,11 +755,11 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 ),
                 (
                     "How are numeric conditions evaluated in conditional expressions "
-                    "in languages like C"
+                    "in languages like C "
                     "and Python?",
                     "Zero evaluates to false, while non-zero values evaluate to true.",
                     [
-                        "Zero always evaluates to true, while non-zero values evaluate tofalse.",
+                        "Zero always evaluates to true, while non-zero values evaluate to false.",
                         "Only negative integers evaluate to true; positive integers are "
                         "always false.",
                         "Numeric values cannot be used in conditional expressions without "
@@ -782,7 +770,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     "When is a switch-case statement preferred over a long chain of "
                     "if-else statements?",
                     "When testing a single variable against multiple discrete "
-                    "constant values for cleaner"
+                    "constant values for cleaner "
                     "readability.",
                     [
                         "When evaluating complex range checks with relational inequalities.",
@@ -798,7 +786,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is the fundamental purpose of loop control instructions?",
                     "To execute a block of statements repeatedly as long as a "
-                    "specified condition remains"
+                    "specified condition remains "
                     "true.",
                     [
                         "To jump immediately to the end of the program without executing "
@@ -810,23 +798,23 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is the difference between a while loop and a do-while loop?",
                     "A while loop tests the condition before execution, while a "
-                    "do-while loop executes at"
+                    "do-while loop executes at "
                     "least once before testing.",
                     [
                         "A while loop cannot use counter variables, whereas a do-while "
                         "loop requires one.",
                         "A do-while loop is only used for file input and output operations.",
-                        "A while loop runs indefinitely, while a do-while loop neverexecutes.",
+                        "A while loop runs indefinitely, while a do-while loop never executes.",
                     ],
                 ),
                 (
                     "What happens when a 'break' statement is encountered inside a loop?",
                     "The loop is terminated immediately and control passes to the "
-                    "statement following the"
+                    "statement following the "
                     "loop.",
                     [
                         "The current iteration is skipped, continuing immediately with "
-                        "the next loop"
+                        "the next loop "
                         "iteration.",
                         "The program halts and prompts the user for keyboard input.",
                         "The loop counter resets to zero and restarts from the beginning.",
@@ -849,23 +837,23 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is recursion in computer programming?",
                     "A technique where a function calls itself to solve smaller "
-                    "sub-problems until"
+                    "sub-problems until "
                     "reaching a base condition.",
                     [
                         "A memory error caused when two functions have identical names.",
                         "A loop structure that executes strictly on GPU hardware.",
-                        "A compiler mechanism that converts interpreted scripts to Cbytecode.",
+                        "A compiler mechanism that converts interpreted scripts to C bytecode.",
                     ],
                 ),
                 (
                     "What is the consequence of omitting a base case in a recursive function?",
                     "The function calls itself indefinitely, exhausting stack memory "
-                    "and causing a stack"
+                    "and causing a stack "
                     "overflow.",
                     [
                         "The function executes once and returns null without error.",
                         "The compiler automatically generates an iterative loop replacement.",
-                        "The program slows down by a factor of two but produces correctresults.",
+                        "The program slows down by a factor of two but produces correct results.",
                     ],
                 ),
             ],
@@ -877,22 +865,22 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     "What is a pointer in programming?",
                     "A variable that stores the memory address of another variable.",
                     [
-                        "A special data type that can only hold positive floating-pointnumbers.",
+                        "A special data type that can only hold positive floating-point numbers.",
                         "A hardware register reserved exclusively for graphics rendering.",
-                        "A compiler error that occurs when a variable is used beforedeclaration.",
+                        "A compiler error that occurs when a variable is used before declaration.",
                     ],
                 ),
                 (
-                    "What is the purpose of the dereference operator (*) when usedwith a pointer?",
-                    "To access or modify the value stored at the memory address thepointer holds.",
+                    "What is the purpose of the dereference operator (*) when used with a pointer?",
+                    "To access or modify the value stored at the memory address the pointer holds.",
                     [
-                        "To multiply the memory address by the size of the underlyingdata type.",
+                        "To multiply the memory address by the size of the underlying data type.",
                         "To retrieve the address where the pointer variable itself is stored.",
                         "To free the dynamic memory allocated to the pointer.",
                     ],
                 ),
                 (
-                    "What does the address-of operator (&) return when prefixed to avariable?",
+                    "What does the address-of operator (&) return when prefixed to a variable?",
                     "The memory address where the variable is located.",
                     [
                         "The total number of bytes the variable occupies in memory.",
@@ -908,13 +896,13 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is an array in computer programming?",
                     "A fixed-size collection of elements of the same data type stored "
-                    "in contiguous memory"
+                    "in contiguous memory "
                     "locations.",
                     [
-                        "A dynamically linked set of nodes scattered arbitrarily acrossmemory.",
+                        "A dynamically linked set of nodes scattered arbitrarily across memory.",
                         "A key-value data structure with constant-time lookup for "
                         "arbitrary strings.",
-                        "A hierarchical tree structure where each element has two childpointers.",
+                        "A hierarchical tree structure where each element has two child pointers.",
                     ],
                 ),
                 (
@@ -929,7 +917,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 ),
                 (
                     "What is the primary risk of accessing an array index that "
-                    "exceeds its declared"
+                    "exceeds its declared "
                     "boundary?",
                     "Accessing unauthorized memory, causing segmentation faults or "
                     "undefined behavior.",
@@ -958,7 +946,8 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     "Why is the null terminator ('\\0') required at the end of a string?",
                     "To mark the boundary where the string data ends in memory.",
                     [
-                        "To tell the operating system to capitalize the first letter ofthe string.",
+                        "To tell the operating system to capitalize the first letter of "
+                        "the string.",
                         "To prevent the string from being modified during runtime.",
                         "To convert the string into an executable binary instruction.",
                     ],
@@ -984,7 +973,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     "user-defined record name.",
                     [
                         "To define a set of constant values with sequential integer IDs.",
-                        "To restrict access to private member variables in procedurallanguages.",
+                        "To restrict access to private member variables in procedural languages.",
                         "To create a dynamic FIFO queue with enqueue and dequeue operations.",
                     ],
                 ),
@@ -992,7 +981,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                     "How are member variables accessed from a structure variable vs a "
                     "structure pointer?",
                     "The dot operator (.) is used with a variable, while the arrow "
-                    "operator (->) is used"
+                    "operator (->) is used "
                     "with a pointer.",
                     [
                         "The arrow operator (->) is used for variables, and the dot "
@@ -1004,7 +993,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "How does memory allocation differ between a 'struct' and a 'union'?",
                     "A struct allocates separate memory for all members, whereas a "
-                    "union shares the same"
+                    "union shares the same "
                     "memory space for all members.",
                     [
                         "A struct is stored on the heap, whereas a union is stored in CPU "
@@ -1022,10 +1011,11 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is the primary purpose of File I/O operations?",
                     "To persist data on secondary storage so information is retained "
-                    "after program"
+                    "after program "
                     "termination.",
                     [
-                        "To allocate temporary cache space in the CPU during arithmeticoperations.",
+                        "To allocate temporary cache space in the CPU during arithmetic "
+                        "operations.",
                         "To convert high-level programming logic into assembly instructions.",
                         "To allow multiple functions to share local stack variables.",
                     ],
@@ -1068,14 +1058,14 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 ),
                 (
                     "What is the difference between block elements (e.g., <div>, <p>) "
-                    "and inline elements"
+                    "and inline elements "
                     "(e.g., <span>, <a>)?",
                     "Block elements begin on a new line and occupy the full container "
-                    "width, whereas"
+                    "width, whereas "
                     "inline elements sit within text flow.",
                     [
                         "Block elements cannot contain text, while inline elements can "
-                        "contain images and"
+                        "contain images and "
                         "tables.",
                         "Inline elements are exclusively used within the <head> section "
                         "of an HTML document.",
@@ -1100,12 +1090,12 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 (
                     "What is the defining invariant of a Binary Search Tree (BST)?",
                     "For every node, all keys in its left subtree are smaller, and "
-                    "all keys in its right"
+                    "all keys in its right "
                     "subtree are greater.",
                     [
                         "Every non-leaf node must have exactly two child nodes.",
                         "All leaf nodes must reside at the exact same depth.",
-                        "Node values must be stored in alphabetical order across siblingnodes.",
+                        "Node values must be stored in alphabetical order across sibling nodes.",
                     ],
                 ),
                 (
@@ -1120,7 +1110,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 ),
                 (
                     "What is the average time complexity of searching for an element "
-                    "in a balanced BST or"
+                    "in a balanced BST or "
                     "AVL tree with N nodes?",
                     "O(log N)",
                     [
@@ -1134,17 +1124,19 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
     ]
 
     quiz_items = []
+    programming_notes = notes_are_about_programming(chunks)
     for c in concepts:
         c_name = c["name"].lower()
         matched = False
         for keywords, q_defs in quiz_categories:
-            if any(k in c_name for k in keywords):
+            if programming_notes and topic_matches(c_name, keywords):
                 matched = True
                 for idx, (q_text, ans, distractors) in enumerate(q_defs, 1):
                     quiz_items.append(
                         {
                             "id": f"q_{c['id']}_{idx}",
                             "concept_id": c["id"],
+                            "origin": "general_practice",
                             "question": q_text,
                             "options": [ans] + distractors,
                             "answer": ans,
@@ -1159,8 +1151,9 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 {
                     "id": f"q_{c['id']}_1",
                     "concept_id": c["id"],
+                    "origin": "general_practice",
                     "question": "Which statement best describes the primary role of "
-                    "{c['name']} in this"
+                    f"{c['name']} in this "
                     "subject?",
                     "options": [
                         ans1,
@@ -1179,12 +1172,13 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
                 {
                     "id": f"q_{c['id']}_2",
                     "concept_id": c["id"],
+                    "origin": "general_practice",
                     "question": "In the learning progression of this course, how "
-                    "does {c['name']} support"
+                    f"does {c['name']} support "
                     "subsequent topics?",
                     "options": [
                         ans2,
-                        "It completely supersedes and eliminates the need for any otherconcepts.",
+                        "It completely supersedes and eliminates the need for any other concepts.",
                         "It only operates in simulated sandbox environments without "
                         "practical utility.",
                         "It resets the system state to default values after every execution.",
@@ -1195,53 +1189,7 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
 
     (out_dir / "quiz_items.json").write_text(
         json.dumps(
-            {"schema_version": "1.0", "course_id": course_id, "items": quiz_items}, indent=2
-        ),
-        encoding="utf-8",
-    )
-
-    target = concepts[-1]["id"]
-    steps = [
-        {
-            "concept_id": c["id"],
-            "why": f"Study {c['name']} as foundational knowledge for {concepts[-1]['name']}.",
-            "evidence": c["sources"],
-        }
-        for c in concepts
-    ]
-    (out_dir / "learning_path.json").write_text(
-        json.dumps(
-            {
-                "schema_version": "1.0",
-                "course_id": course_id,
-                "paths": [{"student_id": "student_a", "target": target, "steps": steps}],
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    (out_dir / "sim_students.json").write_text(
-        json.dumps({"schema_version": "1.0", "course_id": course_id, "students": []}, indent=2),
-        encoding="utf-8",
-    )
-
-    (out_dir / "student_state.json").write_text(
-        json.dumps(
-            {
-                "schema_version": "1.0",
-                "course_id": course_id,
-                "students": [
-                    {
-                        "student_id": "student_a",
-                        "target": target,
-                        "mastery": {c["id"]: 0.1 for c in concepts},
-                        "questions_asked": 0,
-                        "answers": [],
-                    }
-                ],
-            },
-            indent=2,
+            {"schema_version": "1.12", "course_id": course_id, "items": quiz_items}, indent=2
         ),
         encoding="utf-8",
     )
@@ -1250,52 +1198,34 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
 
 
 def fast_demo_run(course_id: str, state_dir: Path) -> int:
-    """Instant demo runner: extracts real topics from uploads and simulates stage progress."""
+    """Quick Preview: list the headings in the uploads. Its log says only what it really did."""
     state = _read_state(state_dir) or {}
     state.update(state="running", pid=os.getpid(), started_at=time.time())
     _write_state(state_dir, state)
 
-    out_dir = OUTPUTS / course_id
+    out_dir = OUTPUTS / PREVIEW_FOLDER / course_id
+    shutil.rmtree(out_dir, ignore_errors=True)  # only ever a preview: real runs are not here
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(state_dir / "pipeline.log", "w", encoding="utf-8") as log:
-        stages = [
-            ("cdlp.extraction", 0.6),
-            ("cdlp.discovery", 0.6),
-            ("cdlp.validation", 0.6),
-            ("cdlp.learning_path.quiz", 0.5),
-            ("cdlp.learning_path", 0.5),
-        ]
-        for stage_name, delay in stages:
-            log.write(f"==> {stage_name}\n")
-            log.flush()
-            time.sleep(delay)
-
-        # Generate actual files from user uploads
+        log.write("Quick Preview: no AI was used.\n")
         generated = generate_course_from_uploads(course_id, out_dir)
-        if not generated:
-            template_dir = OUTPUTS
-            for fname in [
-                "chunks.jsonl",
-                "concepts.json",
-                "relationships.json",
-                "validated_graph.json",
-                "quiz_items.json",
-                "learning_path.json",
-                "sim_students.json",
-                "student_state.json",
-            ]:
-                src = template_dir / fname
-                if src.exists():
-                    shutil.copy2(src, out_dir / fname)
+        if generated:
+            preview = json.loads((out_dir / "preview.json").read_text(encoding="utf-8"))
+            log.write(f"Listed {len(preview['nodes'])} possible topics from the headings.\n")
+            log.write(f"Joined them with {len(preview['links'])} links, in heading order.\n")
+            cut = preview.get("chunks_truncated")
+            if cut:
+                log.write(f"Read only {cut['kept']} of {cut['total']} parts of the notes.\n")
+        else:
+            log.write("No text could be read from the uploaded files.\n")
 
-        log.write("==> contract check\nall contract files valid\n")
-        log.flush()
-        time.sleep(0.3)
-
-    state.update(state="succeeded", returncode=0, finished_at=time.time())
+    code = 0 if generated else 1
+    state.update(
+        state="succeeded" if generated else "failed", returncode=code, finished_at=time.time()
+    )
     _write_state(state_dir, state)
-    return 0
+    return code
 
 
 def main(argv: list[str] | None = None) -> int:

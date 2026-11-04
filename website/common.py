@@ -38,6 +38,10 @@ COURSE_NAMES = {
 # A folder in outputs/ is a course only when a finished run left these files in it.
 COURSE_FILES = ("concepts.json", "validated_graph.json")
 
+# A Quick Preview (no AI) stays in its own folder, so it can never pass as a finished run, mix
+# with one, or reach results. The leading "_" keeps it out of list_courses().
+PREVIEW_FOLDER = "_previews"
+
 
 def list_courses(outputs: Path | None = None) -> list[str]:
     """Course ids with a finished run in outputs/ (hidden and partial folders are left out).
@@ -63,13 +67,67 @@ def list_courses(outputs: Path | None = None) -> list[str]:
 def course_options() -> list[str]:
     """The course picker's choices: list_courses() plus a course whose first run just started."""
     courses = list_courses()
+    courses += [c for c in list_previews() if c not in courses]
     active = st.session_state.get("course_id")
     return courses + [active] if active and active not in courses else courses
+
+
+def preview_dir(course_id: str) -> Path:
+    return OUTPUTS / PREVIEW_FOLDER / course_id
+
+
+def has_real_run(course_id: str) -> bool:
+    return all((OUTPUTS / course_id / name).is_file() for name in COURSE_FILES)
+
+
+def is_preview(course_id: str | None = None) -> bool:
+    """The course is only a Quick Preview. A finished real run always wins over one."""
+    course = course_id or get_active_course()
+    return (preview_dir(course) / "preview.json").is_file() and not has_real_run(course)
+
+
+def list_previews() -> list[str]:
+    folder = OUTPUTS / PREVIEW_FOLDER
+    found = sorted(p.name for p in folder.iterdir() if p.is_dir()) if folder.is_dir() else []
+    return [c for c in found if is_preview(c)]
+
+
+def preview_graph(course_id: str) -> dict:
+    """preview.json in the shape the student pages walk. Lives in memory only, never written.
+
+    cdlp/learning_path/graph.py keeps only edges marked ACCEPT, so this is the one place a
+    preview link gets that word, to draw the map and the quiz. Nothing here was accepted by
+    anyone: the teacher pages stop before reading it (ui.page_header), and it never reaches a
+    file. "soft" makes a link read "helps to learn first", not "must learn first".
+    """
+    path = preview_dir(course_id) / "preview.json"
+    preview = _read_contract(str(path), path.stat().st_mtime_ns)
+    return {
+        "course_id": course_id,
+        "nodes": preview["nodes"],
+        "edges": [
+            {
+                "id": link["id"],
+                "source": link["source"],
+                "target": link["target"],
+                "strength": "soft",
+                "decision": "ACCEPT",
+                "evidence": [{k: link[k] for k in ("doc", "page", "chunk_id") if k in link}],
+            }
+            for link in preview["links"]
+        ],
+    }
 
 
 def course_label(course_id: str) -> str:
     """The name students see. Never shows a raw id for a built-in course."""
     return COURSE_NAMES.get(course_id) or course_id.replace("_", " ").strip().capitalize()
+
+
+def course_title(course_id: str) -> str:
+    """course_label() plus the preview mark: what a student sees wherever a subject is named."""
+    label = course_label(course_id)
+    return S.PREVIEW_LABEL.format(course=label) if is_preview(course_id) else label
 
 
 def course_id_from_name(name: str) -> str:
@@ -89,6 +147,8 @@ def get_active_course() -> str:
 def resolve_path(name: str, course_id: str | None = None) -> Path:
     """Resolve file path checking outputs/<course>/, outputs/, then examples/."""
     course = course_id or get_active_course()
+    if is_preview(course):  # never another course's files or the examples
+        return preview_dir(course) / name
     course_path = OUTPUTS / course / name
     if course_path.exists():
         return course_path
@@ -109,12 +169,17 @@ def _read_contract(path: str, modified: int) -> dict | list:
 
 def load(name: str, course_id: str | None = None) -> dict | list:
     """Load a contract file by name, e.g. load('validated_graph.json')."""
+    course = course_id or get_active_course()
+    if name == "validated_graph.json" and is_preview(course):
+        return preview_graph(course)
     path = resolve_path(name, course_id=course_id)
     return _read_contract(str(path), path.stat().st_mtime_ns)
 
 
 def using_examples(name: str, course_id: str | None = None) -> bool:
     course = course_id or get_active_course()
+    if is_preview(course):
+        return False
     return not ((OUTPUTS / course / name).exists() or (OUTPUTS / name).exists())
 
 
@@ -180,6 +245,9 @@ def session_id() -> str:
 
 
 def answers_path(course_id: str) -> Path:
+    """Preview answers stay with the preview: pipeline.py and the study read the normal path."""
+    if is_preview(course_id):
+        return preview_dir(course_id) / "student_answers.json"
     return OUTPUTS / course_id / "student_answers.json"
 
 

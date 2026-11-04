@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.12",
+  "course_id": "demo_notes",
+  "kind": "quick_preview",
+  "ai_used": false,
+  "link_rule": "heading_order",
+  "nodes": [
+    {
+      "id": "variables",
+      "name": "Variables"
+    },
+    {
+      "id": "loops",
+      "name": "Loops"
+    }
+  ],
+  "links": [
+    {
+      "id": "l1",
+      "source": "variables",
+      "target": "loops",
+      "doc": "notes.pdf",
+      "page": 1,
+      "chunk_id": "notes_p1_c1"
+    }
+  ]
+}

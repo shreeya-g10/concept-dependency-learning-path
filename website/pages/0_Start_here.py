@@ -15,7 +15,7 @@ st.session_state["course_id"] = st.selectbox(
     S.HOME_PICK_SUBJECT,
     courses,
     index=courses.index(active) if active in courses else 0,
-    format_func=common.course_label,
+    format_func=common.course_title,
     key="home_course_picker",
 )
 ui.sample_notice("validated_graph.json")
@@ -38,7 +38,8 @@ with col1:
 with col2:
     with ui.info_card(
         "Upload Custom Notes (PDF / PPTX)",
-        "Add your class notes. Fast Demo Mode processes files in seconds with zero laptop strain.",
+        "Add your class notes. The AI reads and checks them, which can take a while. "
+        "Quick Preview lists the headings in seconds, without AI.",
         icon="📄",
     ):
         if ui.action_button("Upload Your Notes", icon="📤", key="upload_start_card", primary=False):

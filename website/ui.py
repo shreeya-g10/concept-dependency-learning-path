@@ -171,8 +171,12 @@ def page_header(
     if intro:
         st.write(intro)
     if show_course:
-        course = common.course_label(common.get_active_course())
+        course = common.course_title(common.get_active_course())
         st.caption(S.COURSE_LINE.format(course=course))
+    if teacher and common.is_preview():  # no decisions or grades exist: never show any
+        st.warning(S.PREVIEW_NOTICE, icon="ℹ️")
+        st.info(S.PREVIEW_TEACHER, icon="ℹ️")
+        st.stop()
     if source_file:
         sample_notice(source_file)
         demo_notice(teacher=teacher)
@@ -254,7 +258,13 @@ def empty_state(
 
 
 def demo_notice(course_id: str | None = None, *, teacher: bool = False) -> None:
-    """Says so when the course's graph covers only a demo subset. Must never be removed."""
+    """Says so when the course's graph covers only a demo subset. Must never be removed.
+
+    Also says so when the course is only a Quick Preview.
+    """
+    if common.is_preview(course_id):
+        st.warning(S.PREVIEW_NOTICE, icon="ℹ️")
+        return
     note = common.demo_subset_note(course_id) if teacher else common.demo_subset_short(course_id)
     if note and teacher:
         st.warning(note, icon="ℹ️")

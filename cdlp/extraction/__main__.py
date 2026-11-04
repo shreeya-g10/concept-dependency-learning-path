@@ -12,7 +12,7 @@ from pathlib import Path
 
 from cdlp.extraction.concept_filter import DEFAULT_CONFIG, filter_concepts, load_config
 from cdlp.extraction.extract import ExtractionError, extract_concepts_from_chunks
-from cdlp.extraction.parse import is_course_file, parse_directory
+from cdlp.extraction.parse import apply_chunk_limit, is_course_file, parse_directory
 from cdlp.shared.io import EXAMPLES, read_json, read_jsonl, write_json, write_jsonl
 
 
@@ -87,6 +87,7 @@ def main() -> None:
         fail(f"parsing {input_dir} failed: {exc!r}")
     if not chunks:
         fail(f"{input_dir} has course files but no text was extracted (is PyMuPDF installed?)")
+    chunks, truncated = apply_chunk_limit(chunks)
     write_jsonl(out_dir / "chunks.jsonl", chunks)
 
     # 2. Concept Extraction, Canonicalization, and Filtering
@@ -103,6 +104,8 @@ def main() -> None:
         fail(f"concept extraction failed: {exc!r}")
     if not concepts_data.get("concepts"):
         fail("concept extraction found no concepts")
+    if truncated:
+        concepts_data.update(schema_version="1.12", chunks_truncated=truncated)
 
     # 3. Evidence filter. The unfiltered list and the reasons are kept next to the result.
     if not args.no_concept_filter:

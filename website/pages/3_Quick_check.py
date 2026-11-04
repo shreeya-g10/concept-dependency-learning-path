@@ -233,6 +233,8 @@ def record_answer(target: str, question: dict, choice: str) -> None:
 
     feedback = {"answer": str(correct_answer), "why": None}
     st.session_state.quiz_feedback = feedback
+    if common.is_preview(course):  # a preview says no AI was used, so none is asked here
+        return
     with st.spinner(S.QUIZ_THINKING):
         try:
             from cdlp.root_cause import api as root_cause_api
@@ -317,6 +319,8 @@ def question_screen(target: str, question: dict) -> None:
     st.markdown(S.QUIZ_QUESTION.format(number=answered + 1))
     st.progress(progress_so_far(target))
     st.caption(S.QUIZ_ABOUT.format(topic=names.get(concept_id, concept_id)))
+    if question.get("origin") == "general_practice":
+        st.caption(S.QUIZ_GENERAL)
     st.markdown(f"### {question.get('question', '')}")
 
     raw_options = question.get("options", question.get("choices", []))
