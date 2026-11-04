@@ -11,6 +11,7 @@ All times are estimates. Claude times come from similar earlier prompts. Colab t
 | P1 | Commit the paper and scripts (done: merge #78) | Claude | done |
 | P0 | Create our branch and bring in Vaidehi's work | Claude | 5–10 min |
 | P2 | Keep Fast Demo Mode, but label it honestly | Claude | 15–25 min |
+| P4b | Quiz with easy, medium and hard questions | Claude | 40–60 min |
 | P3 | Finish the old-site features (T6) | Claude | 20–30 min |
 | P4 | Quiz check v4, upload time estimate | Claude | 15–20 min |
 | P5 | Teacher approval of questions | Claude | 25–40 min |
@@ -26,7 +27,7 @@ All times are estimates. Claude times come from similar earlier prompts. Colab t
 | P9 | Score RQ1, RQ3, RQ2 and RQ4 | Claude and Colab | 30–60 min |
 | P10 | Final paper (T5) | Claude | 20–30 min |
 
-Shortest route to a working demo: P0, P2, P6, C1, C2.
+Shortest route to a working demo: P0, P2, P4b, P6, C1, C2. P4b runs before P3 because the quiz logic is the priority, and P3's study plan must use P4b's results.
 
 ## Rule for every prompt below
 
@@ -72,7 +73,7 @@ Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and t
 ## P3: finish the old-site features (T6)
 
 ```text
-Your uncommitted work is in ../cdlp-t6 on branch website/bring-back-features. Don't redo finished work. Merge the latest origin/integration/real-pipeline into the branch (never force-push), resolve conflicts, and keep P2's honest labels and all of Vaidehi's map styling and quiz changes. Show me each conflict you resolved. Never push to the vaidehi branch or to main. Open the PR into integration/real-pipeline.
+Your uncommitted work is in ../cdlp-t6 on branch website/bring-back-features. Don't redo finished work. Merge the latest origin/integration/real-pipeline into the branch (never force-push), resolve conflicts, make "What we think you know" use P4b's results (Know it, Quick revision, Study this, Start here, Not checked) rather than the three groups below, and keep P2's honest labels and all of Vaidehi's map styling and quiz changes. Show me each conflict you resolved. Never push to the vaidehi branch or to main. Open the PR into integration/real-pipeline.
 
 The 8 items are:
 1. Study plan: result summary, worded gently.
@@ -102,6 +103,34 @@ Work from the latest origin/integration/real-pipeline in worktree ../cdlp-t4 on 
 Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with the LLM unreachable. Report CI, then stop.
 ```
 
+## P4b: quiz with easy, medium and hard questions
+
+```text
+Work from the latest origin/integration/real-pipeline in a new worktree ../cdlp-t9 on branch learning_path/level-ladder, and copy CLAUDE.local.md and .env into it. No real LLM runs. Open the PR into integration/real-pipeline. Never push to the vaidehi branch or to main. First run git fetch: if origin/vaidehi has commits not yet in this branch, tell me and wait.
+
+Add a level ladder to the quick check. For a target, topics come from its prerequisites in graph order.
+
+Rules for each topic:
+1. Before a topic's first question, ask "Have you studied <topic>?" Yes starts at medium. No or Not sure starts at easy. This answer only sets the starting level: it never marks a topic as known.
+2. Easy right goes to medium. Medium right goes to hard. Medium wrong from a Yes start goes to easy. Hard right means Know it, and the quiz moves to the next topic.
+3. Results: hard right = Know it. Medium right but hard wrong = Quick revision. Easy right but medium wrong = Study this. Easy wrong = Start here, and the quiz stops, because later topics depend on this one. Stop by default, and leave later topics on the plan as not checked.
+4. Never ask the same question twice. If a topic has no question at a level, use the nearest level and record that it happened. Keep the existing limit of 10 questions per target, and treat unasked topics as not checked.
+5. The study plan shows each topic's result in plain words, and starts at the first topic that isn't Know it. For example: "You already know Binary Tree, so start with Binary Search Tree."
+
+Contract and generation:
+6. Add an optional difficulty field (easy, medium, hard) to quiz items: additive, with a schema bump and CHANGELOG entry. Old quiz files must keep working, with unlabelled items treated as easy-or-any and the old selection used when a course has no levels.
+7. Add prompt quiz_v3 asking for one easy, one medium and one hard question per topic: easy recalls an idea, medium applies it, hard compares or traces a small example. Keep quiz_v2 for the record. Every item still goes through the current checks. Don't loosen any check to keep hard questions, and report the drop rate by level in the generation block. The AI's difficulty label is only a suggestion until a teacher approves it.
+
+Code rules:
+8. Keep the signatures in cdlp/learning_path/api.py stable. Keep ladder state in the mastery dict, alongside __asked__. Pages import only api.py. Change 3_Quick_check.py as little as possible, because Vaidehi is working on it.
+
+Evaluation, in cdlp/learning_path/evaluate.py, with no LLM:
+9. Add these strategies beside the existing ones: ladder_linear (first topic first, as above) and ladder_middle (start at the middle of the chain; Know it on a topic also infers its ancestors). Simulate level-dependent answers, with self-report that can be wrong, in both student conditions. State every assumption, because simulated difficulty is not real difficulty. Report questions asked, accuracy, wrongly-known rate, gap coverage and path length next to the current adaptive strategy. Write them to a new results file, and don't overwrite rq2_rq4_results.json. Use placeholder items if needed and say so clearly.
+10. Show the quick check using ladder_linear for now, with the strategy in one config value.
+
+Check it in the browser at phone width on a port other than 8501 and 8502. Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with the LLM unreachable and an empty LLM_CACHE_DIR. If any test fails, do not commit or push: stop and show me. Report CI and the comparison table, then stop.
+```
+
 ## P5: teacher approval of questions
 
 ```text
@@ -109,7 +138,7 @@ Work from the latest origin/integration/real-pipeline in a new worktree ../cdlp-
 
 1. Add an optional approved field to the quiz contract (additive, with a schema_version bump and a CHANGELOG entry).
 2. Add a teacher screen on the AI checks page to approve, reject or edit a question. An edit keeps the original text and records that it was edited. A rejected question is never deleted.
-3. Students see approved questions first. An uploaded course with no teacher review still works, but says clearly that its questions are AI-written and not yet checked.
+3. Teachers can also change a question's difficulty. Students see approved questions first. An uploaded course with no teacher review still works, but says clearly that its questions are AI-written and not yet checked.
 4. Check it in the browser at phone width, using a port other than 8501 and 8502.
 
 Check ollama ps first, and if a model is loaded, stop and ask me. Run ruff and the full test suite with the LLM unreachable. Report CI, then stop.
