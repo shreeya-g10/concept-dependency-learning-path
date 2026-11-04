@@ -54,7 +54,7 @@ def render_job(course_id: str) -> None:
                 st.markdown(S.ADD_STEP_DONE.format(step=S.STAGE_LABELS[row["stage"]].rstrip("…")))
         st.caption(S.ADD_RUNNING)
     elif state == "succeeded":
-        st.success(S.ADD_DONE)
+        st.success(S.PREVIEW_DONE if common.is_preview(course_id) else S.ADD_DONE)
         st.session_state["course_id"] = course_id
         ui.action_button(S.ADD_NEXT, page="topics", icon="➡️")
     else:
@@ -147,41 +147,41 @@ for file_name in readable:
             st.session_state["removed_file"] = file_name
             st.rerun()
 has_text = True
+real_run = common.has_real_run(course_id)  # a preview must not sit beside a checked subject
 fast_mode = st.checkbox(
     S.ADD_FAST_MODE,
-    value=st.session_state.get("fast_mode", True),
+    value=False,
     help=S.ADD_FAST_MODE_HELP,
     key="fast_mode_toggle",
+    disabled=real_run,
 )
-st.session_state["fast_mode"] = fast_mode
-demo_subset = getattr(jobs, "DEFAULT_DEMO_SUBSET", 5) if fast_mode else None
+fast_mode = fast_mode and not real_run
+if real_run:
+    st.caption(S.PREVIEW_NOT_NEEDED)
+elif fast_mode:  # unticked, the AI does read the notes: this line would be untrue
+    st.caption(S.PREVIEW_NOTICE)
 try:
-    try:
-        estimate = jobs.estimate(folder, demo_subset=demo_subset)
-    except TypeError:
-        estimate = jobs.estimate(folder)
+    estimate = jobs.estimate(folder)
     has_text = estimate["words"] > 0
     if has_text:
-        st.markdown(S.ADD_TIME.format(span=time_span(*estimate["total_minutes"])))
+        span = S.ADD_FAST_SECONDS if fast_mode else time_span(*estimate["total_minutes"])
+        st.markdown(S.ADD_TIME.format(span=span))
     else:
         ui.friendly_error(S.ADD_NO_TEXT, S.ADD_NO_TEXT_NEXT)
 except Exception:
     st.caption(S.ADD_TIME_FAILED)
-if (common.OUTPUTS / course_id).is_dir():
+if (common.OUTPUTS / course_id).is_dir() and not fast_mode:
     st.warning(S.ADD_REPLACES, icon="ℹ️")
 done = status["state"] == "succeeded"
 if ui.action_button(
     S.ADD_BUILD_AGAIN if done else S.ADD_BUILD,
     icon="📖",
     key="build",
-    primary=llm_ok and not done,  # one main button: the sample course or "Next" comes first
-    disabled=not llm_ok or not has_text,
+    primary=(llm_ok or fast_mode) and not done,  # one main button: the sample or "Next" first
+    disabled=(not llm_ok and not fast_mode) or not has_text,  # a preview needs no AI
 ):
     try:
-        try:
-            jobs.start_job(course_id, demo_subset=demo_subset, fast_demo=fast_mode)
-        except TypeError:
-            jobs.start_job(course_id)
+        jobs.start_job(course_id, fast_demo=fast_mode)
         st.session_state["course_id"] = course_id
         st.rerun()
     except (RuntimeError, ValueError, OSError) as exc:

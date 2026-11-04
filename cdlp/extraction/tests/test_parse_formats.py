@@ -124,3 +124,53 @@ def test_unknown_types_give_no_chunks(tmp_path):
     path = tmp_path / "x.csv"
     path.write_text("a,b")
     assert parse_file(Path(path)) == []
+
+
+def test_chunk_limit_warns_and_reports_the_cut(monkeypatch, capsys):
+    from cdlp.extraction.parse import apply_chunk_limit
+
+    chunks = [{"chunk_id": str(n)} for n in range(5)]
+    monkeypatch.delenv("CDLP_MAX_CHUNKS", raising=False)
+    assert apply_chunk_limit(chunks) == (chunks, None)
+    monkeypatch.setenv("CDLP_MAX_CHUNKS", "9")
+    assert apply_chunk_limit(chunks) == (chunks, None)
+    assert capsys.readouterr().err == ""
+
+    monkeypatch.setenv("CDLP_MAX_CHUNKS", "2")
+    kept, cut = apply_chunk_limit(chunks)
+    assert kept == chunks[:2]
+    assert cut == {"kept": 2, "total": 5, "limit_from": "CDLP_MAX_CHUNKS"}
+    assert "kept 2 of 5 chunks" in capsys.readouterr().err
+
+
+def test_a_cut_run_is_recorded_in_concepts_json(tmp_path, monkeypatch):
+    import json
+    import sys
+
+    from cdlp.extraction import __main__ as cli
+    from cdlp.shared.validate import check_file
+
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "notes.md").write_text(
+        "# One\n\nFirst part.\n\n# Two\n\nSecond part.\n\n# Three\n\nEnd.\n"
+    )
+    out = tmp_path / "out"
+    monkeypatch.setenv("CDLP_MAX_CHUNKS", "1")
+    monkeypatch.setattr(
+        cli,
+        "extract_concepts_from_chunks",
+        lambda chunks, **k: {
+            "schema_version": "1.7",
+            "course_id": "c1",
+            "concepts": [{"id": "one", "name": "One", "sources": [{"doc": "notes.md", "page": 1}]}],
+        },
+    )
+    argv = ["x", "--input", str(raw), "--out-dir", str(out), "--course-id", "c1"]
+    monkeypatch.setattr(sys, "argv", [*argv, "--no-concept-filter"])
+    cli.main()
+    concepts = json.loads((out / "concepts.json").read_text())
+    assert concepts["chunks_truncated"]["kept"] == 1 and concepts["chunks_truncated"]["total"] > 1
+    assert concepts["schema_version"] == "1.12"
+    assert check_file(out / "concepts.json") == []
+    assert len((out / "chunks.jsonl").read_text().splitlines()) == 1

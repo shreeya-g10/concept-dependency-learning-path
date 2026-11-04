@@ -98,6 +98,26 @@
         "type": "integer",
         "minimum": 0
       }
+    },
+    "chunks_truncated": {
+      "type": "object",
+      "required": [
+        "kept",
+        "total",
+        "limit_from"
+      ],
+      "description": "added in 1.12: present only when CDLP_MAX_CHUNKS cut the run short, so concepts came from only part of the notes.",
+      "properties": {
+        "kept": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "limit_from": {
+          "type": "string"
+        }
+      }
     }
   }
 }

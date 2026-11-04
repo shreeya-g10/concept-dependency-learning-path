@@ -57,6 +57,12 @@
           "second_model": {
             "type": "object",
             "description": "optional (1.11): the second model's reply, for the record. A pass proves little on its own: same_subject and about_topic were true on every replayed draft."
+          },
+          "origin": {
+            "enum": [
+              "general_practice"
+            ],
+            "description": "optional (1.12): general_practice = a fixed question written by hand, not made from this course's notes and not from the AI check. Absent on questions from the quiz generator."
           }
         }
       }

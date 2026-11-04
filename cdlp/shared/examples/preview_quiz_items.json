@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.12",
+  "course_id": "demo_notes",
+  "items": [
+    {
+      "id": "q_loops_1",
+      "concept_id": "loops",
+      "origin": "general_practice",
+      "question": "What is the fundamental purpose of loop control instructions?",
+      "options": [
+        "To execute a block of statements repeatedly.",
+        "To declare data types."
+      ],
+      "answer": "To execute a block of statements repeatedly."
+    }
+  ]
+}

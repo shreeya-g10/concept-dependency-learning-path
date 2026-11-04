@@ -86,12 +86,24 @@ ADD_TIME = (
     "This may take about **{span}**. This is only a rough guess. "
     "You can leave this page while we work."
 )
-ADD_FAST_MODE = "⚡ Fast Demo Mode (takes ~3 to 5 seconds, recommended)"
-ADD_FAST_SECONDS = "3 to 5 seconds"
+ADD_FAST_MODE = "Quick Preview (a few seconds, no AI)"
+ADD_FAST_SECONDS = "a few seconds"
 ADD_FAST_MODE_HELP = (
-    "Finds key topics and checks which order to study them. "
-    "Recommended for quick class presentations and protects laptop memory."
+    "Lists the headings in your files as possible topics. Nothing is checked. "
+    "Leave this off to read your notes with the AI."
 )
+PREVIEW_NOTICE = (
+    "Preview only. No AI was used. Links follow the order of headings, "
+    "and questions are not from your AI check."
+)
+PREVIEW_DONE = "✅ Your preview is ready. It is not a checked subject."
+PREVIEW_NOT_NEEDED = "These notes were already read with the AI, so a preview is not needed."
+PREVIEW_LABEL = "{course} (preview, no AI)"
+PREVIEW_TEACHER = (
+    "Not checked by the AI. This subject is only a preview, so there is nothing to review here. "
+    "To get checked links, tap Read my notes with Quick Preview turned off."
+)
+QUIZ_GENERAL = "General practice question, not from your notes"
 ADD_MINUTES = "{low} to {high} minutes"
 ADD_HOURS = "{low} to {high} hours"
 ADD_TIME_FAILED = "We could not guess how long this will take. You can still start."

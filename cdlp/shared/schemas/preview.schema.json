@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "preview.json",
+  "description": "added in 1.12: a Quick Preview, made without AI. It holds no decision, confidence, check grade or necessity gap, and additionalProperties stops them being added. Never a validated course and never a result.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "course_id",
+    "kind",
+    "ai_used",
+    "link_rule",
+    "nodes",
+    "links"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "kind": {
+      "const": "quick_preview"
+    },
+    "ai_used": {
+      "const": false
+    },
+    "link_rule": {
+      "const": "heading_order",
+      "description": "each link joins a heading to the next one in the files; it is not a prerequisite claim"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "doc",
+          "page"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "doc": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunk_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "chunks_truncated": {
+      "$ref": "#/$defs/chunks_truncated"
+    }
+  },
+  "$defs": {
+    "chunks_truncated": {
+      "type": "object",
+      "required": [
+        "kept",
+        "total",
+        "limit_from"
+      ],
+      "properties": {
+        "kept": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "limit_from": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
