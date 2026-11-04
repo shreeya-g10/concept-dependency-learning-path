@@ -933,7 +933,7 @@ REFERENCES = [
     "M. Zhang, J. Wang, K. Xiao, S. Wang, Y. Zhang, H. Chen, and Z. Li, “Learning concept "
     "prerequisite relation via global knowledge relation optimization,” in <i>Proc. AAAI</i>, "
     "vol. 39, no. 2, 2025, pp. 1638–1646.",
-    "M. C. Aytekin and Y. Sayın, “ACE: AI-assisted construction of educational knowledge "
+    "M. C. Aytekin and Y. Saygın, “ACE: AI-assisted construction of educational knowledge "
     "graphs with prerequisite relations,” <i>J. Educ. Data Mining</i>, vol. 16, no. 2, pp. "
     "85–114, 2024.",
     "A. AlRabah, P. Kargupta, J. Han, and A. Alawini, “Instructor-aligned knowledge graphs for "
@@ -947,7 +947,7 @@ REFERENCES = [
     "procedural knowledge,” <i>User Model. User-Adapt. Interact.</i>, vol. 4, no. 4, pp. "
     "253–278, 1994.",
     "C. Piech et al., “Deep knowledge tracing,” in <i>Adv. Neural Inf. Process. Syst.</i>, "
-    "vol. 28, 2015.",
+    "vol. 28, 2015, pp. 505–513.",
     "P. Lewis et al., “Retrieval-augmented generation for knowledge-intensive NLP tasks,” "
     "in <i>Adv. Neural Inf. Process. Syst.</i>, vol. 33, 2020, pp. 9459–9474.",
     "X. Wang et al., “Self-consistency improves chain of thought reasoning in language "
@@ -958,11 +958,12 @@ REFERENCES = [
     "BERT-networks,” in <i>Proc. EMNLP-IJCNLP</i>, 2019, pp. 3982–3992.",
     "P. Morin, <i>Open Data Structures (in pseudocode)</i>, Edition 0.1Gβ. [Online]. Available: "
     "https://opendatastructures.org/",
-    "OpenDSA Project, “OpenDSA modules,” GitHub repository, commit f900a7a.",
+    "OpenDSA Project, “OpenDSA modules,” GitHub repository, commit f900a7a. [Online]. Available: "
+    "https://github.com/OpenDSA/OpenDSA",
     "A. Zhang, Z. C. Lipton, M. Li, and A. J. Smola, <i>Dive into Deep Learning</i>, release 1.0.3. "
     "[Online]. Available: https://d2l.ai/",
     "M. Çetinkaya-Rundel and J. Hardin, <i>Introduction to Modern Statistics</i>, 2nd ed., "
-    "OpenIntro.",
+    "OpenIntro, 2024. [Online]. Available: https://openintrostat.github.io/ims/",
     "J. Cohen, “A coefficient of agreement for nominal scales,” <i>Educ. Psychol. Meas.</i>, "
     "vol. 20, no. 1, pp. 37–46, 1960.",
 ]
