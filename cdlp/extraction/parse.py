@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -450,16 +451,31 @@ def parse_directory(input_dir: Path, course_id: str = "ds101") -> list[dict[str,
         chunks = parse_file(file_path, course_id=course_id)
         all_chunks.extend(chunks)
 
-    max_chunks = int(os.environ.get("CDLP_MAX_CHUNKS", "0") or "0")
-    if max_chunks > 0 and len(all_chunks) > max_chunks:
-        return all_chunks[:max_chunks]
     return all_chunks
+
+
+def apply_chunk_limit(chunks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict | None]:
+    """Apply CDLP_MAX_CHUNKS. Returns (chunks to use, what was cut, or None if nothing was).
+
+    A cut run reads only part of the notes, so it warns and callers record the second value
+    in their outputs (chunks_truncated): the cut can never pass unnoticed.
+    """
+    limit = int(os.environ.get("CDLP_MAX_CHUNKS", "0") or "0")
+    if limit <= 0 or len(chunks) <= limit:
+        return chunks, None
+    print(
+        f"WARNING: CDLP_MAX_CHUNKS={limit}: kept {limit} of {len(chunks)} chunks. "
+        "This run read only part of the notes.",
+        file=sys.stderr,
+        flush=True,
+    )
+    return chunks[:limit], {"kept": limit, "total": len(chunks), "limit_from": "CDLP_MAX_CHUNKS"}
 
 
 def parse_and_save(
     input_dir: Path, out_file: Path, course_id: str = "ds101"
 ) -> list[dict[str, Any]]:
     """Parse all files and write chunks.jsonl."""
-    chunks = parse_directory(input_dir, course_id=course_id)
+    chunks, _ = apply_chunk_limit(parse_directory(input_dir, course_id=course_id))
     write_jsonl(out_file, chunks)
     return chunks

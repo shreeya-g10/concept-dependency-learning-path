@@ -1,0 +1,250 @@
+{
+  "schema_version": "1.13",
+  "course_id": "ds101",
+  "items": [
+    {
+      "id": "q_recursion_easy",
+      "concept_id": "recursion",
+      "question": "What does a recursive function do?",
+      "options": [
+        "It calls itself",
+        "It runs only once",
+        "It deletes its input",
+        "It never returns"
+      ],
+      "answer": "It calls itself",
+      "difficulty": "easy",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_recursion_medium",
+      "concept_id": "recursion",
+      "question": "A recursive function has no base case. What happens when it runs?",
+      "options": [
+        "It keeps calling itself until the stack runs out",
+        "It returns zero",
+        "It stops after one call",
+        "It turns into a loop by itself"
+      ],
+      "answer": "It keeps calling itself until the stack runs out",
+      "difficulty": "medium",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_recursion_hard",
+      "concept_id": "recursion",
+      "question": "factorial(3) calls factorial(2), then factorial(1). Which call returns first?",
+      "options": [
+        "factorial(1)",
+        "factorial(3)",
+        "factorial(2)",
+        "They all return at once"
+      ],
+      "answer": "factorial(1)",
+      "difficulty": "hard",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_trees_easy",
+      "concept_id": "trees",
+      "question": "What is the top node of a tree called?",
+      "options": [
+        "The root",
+        "The leaf",
+        "The branch",
+        "The edge"
+      ],
+      "answer": "The root",
+      "difficulty": "easy",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_trees_medium",
+      "concept_id": "trees",
+      "question": "A node in a tree has no children. What is it called?",
+      "options": [
+        "A leaf",
+        "A root",
+        "A parent",
+        "A level"
+      ],
+      "answer": "A leaf",
+      "difficulty": "medium",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_trees_hard",
+      "concept_id": "trees",
+      "question": "How is a tree different from a general graph?",
+      "options": [
+        "A tree has no cycles and one path between two nodes",
+        "A tree must have cycles",
+        "A tree has no nodes",
+        "A graph cannot have edges"
+      ],
+      "answer": "A tree has no cycles and one path between two nodes",
+      "difficulty": "hard",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_tree_easy",
+      "concept_id": "binary_tree",
+      "question": "How many children can a node in a binary tree have at most?",
+      "options": [
+        "Two",
+        "One",
+        "Three",
+        "Any number"
+      ],
+      "answer": "Two",
+      "difficulty": "easy",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_tree_medium",
+      "concept_id": "binary_tree",
+      "question": "A binary tree node has a left child only. Is this allowed?",
+      "options": [
+        "Yes, a node may have zero, one or two children",
+        "No, it must have two",
+        "No, the left child must go",
+        "Only at the root"
+      ],
+      "answer": "Yes, a node may have zero, one or two children",
+      "difficulty": "medium",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_tree_hard",
+      "concept_id": "binary_tree",
+      "question": "A binary tree of height 2 is full. How many nodes does it have?",
+      "options": [
+        "Seven",
+        "Three",
+        "Four",
+        "Eight"
+      ],
+      "answer": "Seven",
+      "difficulty": "hard",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_search_tree_easy",
+      "concept_id": "binary_search_tree",
+      "question": "In a binary search tree, where are keys smaller than a node?",
+      "options": [
+        "In its left subtree",
+        "In its right subtree",
+        "At the root only",
+        "Anywhere in the tree"
+      ],
+      "answer": "In its left subtree",
+      "difficulty": "easy",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_search_tree_medium",
+      "concept_id": "binary_search_tree",
+      "question": "You search a binary search tree for 4 and the node holds 7. Where do you go next?",
+      "options": [
+        "To the left child",
+        "To the right child",
+        "Back to the root",
+        "You stop"
+      ],
+      "answer": "To the left child",
+      "difficulty": "medium",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_binary_search_tree_hard",
+      "concept_id": "binary_search_tree",
+      "question": "You insert 5, 3 and 8 into an empty binary search tree, then 4. What is the parent of 4?",
+      "options": [
+        "3",
+        "5",
+        "8",
+        "It has no parent"
+      ],
+      "answer": "3",
+      "difficulty": "hard",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_avl_tree_easy",
+      "concept_id": "avl_tree",
+      "question": "What does an AVL tree keep balanced?",
+      "options": [
+        "The heights of each node's two subtrees",
+        "The values of all keys",
+        "The number of leaves",
+        "The size of each key"
+      ],
+      "answer": "The heights of each node's two subtrees",
+      "difficulty": "easy",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_avl_tree_medium",
+      "concept_id": "avl_tree",
+      "question": "A node's subtrees in an AVL tree have heights 3 and 1. What must happen?",
+      "options": [
+        "The tree must rotate to restore balance",
+        "Nothing, this is allowed",
+        "The node is deleted",
+        "The tree is emptied"
+      ],
+      "answer": "The tree must rotate to restore balance",
+      "difficulty": "medium",
+      "difficulty_source": "ai_suggestion"
+    },
+    {
+      "id": "q_avl_tree_hard",
+      "concept_id": "avl_tree",
+      "question": "How does an AVL tree compare to a plain binary search tree when keys arrive in sorted order?",
+      "options": [
+        "An AVL tree stays short, while the plain tree becomes a long chain",
+        "Both become long chains",
+        "Both stay short",
+        "The AVL tree becomes a long chain"
+      ],
+      "answer": "An AVL tree stays short, while the plain tree becomes a long chain",
+      "difficulty": "hard",
+      "difficulty_source": "ai_suggestion"
+    }
+  ],
+  "generation": {
+    "prompt_version": "quiz_v3",
+    "drop_rate_by_level": {
+      "easy": {
+        "drafted": 5,
+        "kept": 5,
+        "dropped": 0,
+        "drop_rate": 0.0
+      },
+      "medium": {
+        "drafted": 5,
+        "kept": 5,
+        "dropped": 0,
+        "drop_rate": 0.0
+      },
+      "hard": {
+        "drafted": 5,
+        "kept": 5,
+        "dropped": 0,
+        "drop_rate": 0.0
+      },
+      "unlabelled": {
+        "drafted": 0,
+        "kept": 0,
+        "dropped": 0,
+        "drop_rate": null
+      }
+    },
+    "concepts_missing_level": {
+      "easy": [],
+      "medium": [],
+      "hard": []
+    }
+  }
+}

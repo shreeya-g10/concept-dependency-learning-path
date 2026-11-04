@@ -36,6 +36,8 @@ FILE_SCHEMAS = {
     "relationships_baseline.json": "relationships",
     # added in 1.6: teacher decisions on HUMAN_REVIEW edges (website page 3)
     "review_decisions.json": "review_decisions",
+    # added in 1.12: a Quick Preview made without AI (website); never a validated course
+    "preview.json": "preview",
 }
 
 

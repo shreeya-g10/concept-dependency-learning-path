@@ -1,0 +1,13 @@
+{base_prompt}
+
+SECOND ATTEMPT
+
+Your first questions on {concept_name} left these levels with no good question: {missing_levels}.
+
+Why the drafts failed:
+{failures}
+
+These were accepted. Do not ask them again, and do not ask the same thing in other words:
+{accepted}
+
+Write {n_questions} new questions, one for each missing level: {missing_levels}. Give each one its "difficulty". Use a different "source_quote" from every accepted question. Follow every rule above and avoid the problems listed. If the excerpts cannot prove a question at a level, do not make one up. Return only JSON in the form shown above.

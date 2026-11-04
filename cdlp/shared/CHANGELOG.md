@@ -8,6 +8,19 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.13
+
+- `quiz_items.json` items may carry an optional `difficulty` (`easy`, `medium`, `hard`) and `difficulty_source` (`ai_suggestion`, `teacher`). An AI label is only a suggestion until a teacher approves it. An item with no `difficulty` is treated as easy or any level, and a course with no labelled item keeps the old question selection.
+- `generation` may carry optional `drop_rate_by_level`, `concepts_missing_level` and `retried_only_for_missing_level`, written by prompt `quiz_v3`, which is now the default. Under `quiz_v3` the one retry per topic also fires when a level is missing, using `quiz_retry_v2`. Quiz generation writes `schema_version` 1.13. Example: `examples/ladder_quiz_items.json` (mock, hand-written questions and made-up counts).
+- No field renamed, removed, retyped or made required; older files stay valid.
+
+## 1.12
+
+- New contract file `preview.json`: a Quick Preview made by the website without AI. It lists headings as possible topics and joins them in heading order. It has no decision, confidence, check grade or necessity gap, and `additionalProperties: false` stops them being added. It lives in `outputs/_previews/<course>/`, is never a validated course, and must not be used for any result. Example: `examples/preview.json`.
+- `quiz_items.json` items may carry an optional `origin` (`general_practice`): a fixed question written by hand, not from the course's notes or the AI check. Example: `examples/preview_quiz_items.json`.
+- `concepts.json` may carry an optional `chunks_truncated` (`kept`, `total`, `limit_from`), written when `CDLP_MAX_CHUNKS` cut the run short. `preview.json` may carry the same field. A cut run writes `schema_version` 1.12; other extraction runs stay at 1.7. Example: `examples/truncated_concepts.json`.
+- No field renamed, removed, retyped or made required; older files stay valid.
+
 ## 1.11
 
 - `relationships.json` may carry an optional top-level `pair_answers` (both raw answers per asked pair, `asks[0]` being the hash order) and an optional `discovery.both_orders` (counts per pair and the rule version), and edges may carry an optional `order_agreement` (`stable`, `unstable` or `reversed`). Written by course runs, which now ask every candidate pair in both orders under `cdlp/discovery/configs/order_rule_v1.json`. In such a file `discovery.answers` counts the hash-order asks only. `--pairs` benchmark runs and `--one-order` do not write them. Both edges of a reversed pair go to the validator, whose contradiction label sends both to HUMAN_REVIEW.

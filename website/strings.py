@@ -86,12 +86,24 @@ ADD_TIME = (
     "This may take about **{span}**. This is only a rough guess. "
     "You can leave this page while we work."
 )
-ADD_FAST_MODE = "⚡ Fast Demo Mode (takes ~3 to 5 seconds, recommended)"
-ADD_FAST_SECONDS = "3 to 5 seconds"
+ADD_FAST_MODE = "Quick Preview (a few seconds, no AI)"
+ADD_FAST_SECONDS = "a few seconds"
 ADD_FAST_MODE_HELP = (
-    "Finds key topics and checks which order to study them. "
-    "Recommended for quick class presentations and protects laptop memory."
+    "Lists the headings in your files as possible topics. Nothing is checked. "
+    "Leave this off to read your notes with the AI."
 )
+PREVIEW_NOTICE = (
+    "Preview only. No AI was used. Links follow the order of headings, "
+    "and questions are not from your AI check."
+)
+PREVIEW_DONE = "✅ Your preview is ready. It is not a checked subject."
+PREVIEW_NOT_NEEDED = "These notes were already read with the AI, so a preview is not needed."
+PREVIEW_LABEL = "{course} (preview, no AI)"
+PREVIEW_TEACHER = (
+    "Not checked by the AI. This subject is only a preview, so there is nothing to review here. "
+    "To get checked links, tap Read my notes with Quick Preview turned off."
+)
+QUIZ_GENERAL = "General practice question, not from your notes"
 ADD_MINUTES = "{low} to {high} minutes"
 ADD_HOURS = "{low} to {high} hours"
 ADD_TIME_FAILED = "We could not guess how long this will take. You can still start."
@@ -186,6 +198,11 @@ QUIZ_GUESS_TOPIC = "It may help to go back to {topic}."
 QUIZ_LABEL_OFFLINE = "our best guess, the AI helper was off"
 QUIZ_LABEL_BASELINE = "our best guess, the AI helper's answer could not be used"
 QUIZ_OTHER_TOPIC = "Pick another topic"
+QUIZ_STUDIED = "### Have you studied {topic}?"
+QUIZ_STUDIED_NOTE = "This only helps us pick your first question. It does not change your plan."
+QUIZ_STUDIED_YES = "Yes"
+QUIZ_STUDIED_NO = "No"
+QUIZ_STUDIED_NOT_SURE = "Not sure"
 QUIZ_TO_PLAN = "See my study plan"
 
 # ---- step 4: my study plan ------------------------------------------------------------
@@ -208,6 +225,29 @@ PLAN_MARK_DONE = "Mark as done"
 PLAN_LIMIT_NOTE = "We stopped after {n} questions. Topics we did not ask about stay on your plan."
 PLAN_MORE_QUESTIONS = "Answer more questions"
 PLAN_OTHER_TOPIC = "Pick another topic"
+PLAN_KNOWN_START = "You already know {known}, so start with {topic}."
+PLAN_JUST_START = "Start with {topic}."
+PLAN_AND = " and "
+PLAN_RESULT_LINE = "{result}: {topic}"
+PLAN_RESULTS = {
+    "know_it": "✅ You know this",
+    "quick_revision": "🔁 Quick revision",
+    "study_this": "📖 Study this",
+    "start_here": "🏁 Start from the basics",
+    "not_checked": "❓ Not checked yet",
+}
+PLAN_RESULT_THINK_KNOWN = "✅ We think you know this"
+PLAN_LADDER_STOPPED = (
+    "We stopped at {topic}, because later topics build on it. "
+    "The later topics stay on your plan as not checked yet."
+)
+PLAN_LADDER_SKIPPED = (
+    "We did not ask about the topics that need {topic} first. "
+    "They stay on your plan as not checked yet."
+)
+PLAN_LADDER_STILL_ASKED = (
+    "We still asked about {topics}, because {topic} helps with it but is not needed first."
+)
 
 # ---- topic map ------------------------------------------------------------------------
 MAP_TITLE = "Topic map"
