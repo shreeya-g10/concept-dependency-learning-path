@@ -5,8 +5,10 @@ outputs/ points to tmp_path.
 """
 
 import json
+import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -572,3 +574,88 @@ def test_pages_import_only_the_public_apis():
         for line in page.read_text().splitlines():
             if re.match(r"\s*(from|import) cdlp", line):
                 assert "learning_path import api" in line or "root_cause import api" in line, line
+
+
+# --- answers are shown shuffled ------------------------------------------------------------
+
+
+def shown_answer_keys(at: AppTest) -> list[str]:
+    return [b.key for b in at.button if b.key and b.key.startswith("answer_")]
+
+
+def expected_keys(item: dict) -> list[str]:
+    pairs = common.stable_order(list(enumerate(item["options"])), item["id"])
+    return [f"answer_{item['id']}_{index}" for index, _ in pairs]
+
+
+def test_shuffle_is_stable_and_keeps_every_item():
+    items = list(range(6))
+    first = common.stable_order(items, "q_loops_1")
+    assert first == common.stable_order(items, "q_loops_1")
+    assert sorted(first) == items and items == list(range(6))  # the list passed in is untouched
+
+
+def test_shuffle_is_the_same_in_a_new_process():
+    """A restarted server must show the same order, whatever PYTHONHASHSEED it gets."""
+    code = (
+        "import random; r = random.Random('q_loops_1'); x = list(range(6)); r.shuffle(x); print(x)"
+    )
+    orders = {
+        subprocess.run(
+            [sys.executable, "-c", code],
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        for seed in ("1", "2")
+    }
+    assert orders == {str(common.stable_order(list(range(6)), "q_loops_1"))}
+
+
+def test_the_right_answer_is_not_always_first():
+    places = {
+        common.stable_order(["right", "b", "c", "d"], f"q_{n}").index("right") for n in range(40)
+    }
+    assert places == {0, 1, 2, 3}
+
+
+def test_answers_show_shuffled_and_keep_their_order_on_a_rerun(outputs):
+    at = start_quick_check()
+    item = current_item(at)
+    first = shown_answer_keys(at)
+    assert first == expected_keys(item)
+    assert shown_answer_keys(at.run()) == first
+    assert sorted(first) == sorted(f"answer_{item['id']}_{i}" for i in range(len(item["options"])))
+
+
+def test_shuffling_changes_no_question_or_option_text(outputs):
+    at = start_quick_check()
+    item = current_item(at)  # found by its exact text
+    labels = {b.label.replace("\\", "") for b in at.button if b.key in shown_answer_keys(at)}
+    assert labels == {o.replace("\\", "") for o in item["options"]}
+
+
+def test_answers_are_checked_by_text_not_by_place(outputs):
+    """The right answer is still marked right wherever it lands, and a wrong one wrong."""
+    for correct in (True, False):
+        answers = outputs / "ds101" / "student_answers.json"
+        answers.unlink(missing_ok=True)
+        at = start_quick_check()
+        item = current_item(at)
+        tap_answer(at, correct=correct)
+        row = json.loads(answers.read_text())["answers"][0]
+        assert row["correct"] is correct
+        assert (row["answer"] == item["answer"]) is correct
+
+
+def test_a_right_answer_shown_away_from_its_original_place_is_right(outputs, monkeypatch):
+    """Force the case: the right answer (first in the file) is drawn last."""
+    monkeypatch.setattr(common, "stable_order", lambda items, seed: list(reversed(items)))
+    at = start_quick_check()
+    item = current_item(at)
+    right = item["options"].index(item["answer"])
+    assert shown_answer_keys(at)[len(item["options"]) - 1 - right].endswith(f"_{right}")
+    at.button(key=f"answer_{item['id']}_{right}").click().run()
+    row = json.loads((outputs / "ds101" / "student_answers.json").read_text())["answers"][0]
+    assert row["correct"] is True and row["answer"] == item["answer"]

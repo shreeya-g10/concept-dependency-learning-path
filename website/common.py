@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import secrets
 import sys
@@ -196,6 +197,16 @@ def get_chunks_map(course_id: str | None = None) -> dict[str, dict[str, Any]]:
     except Exception:
         pass
     return {}
+
+
+def stable_order(items: list, seed: str) -> list:
+    """items in a shuffled order that is the same on every rerun for the same seed.
+
+    A str seed does not depend on PYTHONHASHSEED, so the order also survives a server restart.
+    """
+    shuffled = list(items)
+    random.Random(str(seed)).shuffle(shuffled)
+    return shuffled
 
 
 def citation(doc: str, page: int | str) -> str:

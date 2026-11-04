@@ -338,7 +338,8 @@ def question_screen(target: str, question: dict) -> None:
         ui.friendly_error(S.QUIZ_NO_OPTIONS, S.QUIZ_NO_OPTIONS_NEXT)
 
     q_id = question.get("id", question.get("item_id", answered))
-    for index, option in enumerate(options):
+    # Shown shuffled, seeded by the question: the answer is checked by its text, not its place.
+    for index, option in common.stable_order(list(enumerate(options)), q_id):
         # A button label is Markdown: without this, "a * b * c" would lose its stars. Backticks
         # stay, so `w` shows as code, just as it does in the question above the buttons.
         label = re.sub(r"([\\*_~$\[\]:])", r"\\\1", option)

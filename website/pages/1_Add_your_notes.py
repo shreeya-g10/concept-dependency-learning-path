@@ -158,7 +158,7 @@ fast_mode = st.checkbox(
 fast_mode = fast_mode and not real_run
 if real_run:
     st.caption(S.PREVIEW_NOT_NEEDED)
-else:
+elif fast_mode:  # unticked, the AI does read the notes: this line would be untrue
     st.caption(S.PREVIEW_NOTICE)
 try:
     estimate = jobs.estimate(folder)

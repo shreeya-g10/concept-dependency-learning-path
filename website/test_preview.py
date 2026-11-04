@@ -1,11 +1,9 @@
 """Quick Preview: no AI, no invented results, clearly labelled, and never a validated course."""
 
 import ast
-import io
 import json
 import re
 import sys
-import tokenize
 from pathlib import Path
 
 import pytest
@@ -257,18 +255,9 @@ def test_no_words_are_joined_in_the_question_lists():
         siblingnodes""".split()
     for word in joined:
         assert word not in source
-    start = source[: source.index("    quiz_categories = [")].count("\n") + 1
-    end = source[: source.index("def fast_demo_run")].count("\n") + 1
-    previous = None
-    for token in tokenize.generate_tokens(io.StringIO(source).readline):
-        if token.type in (tokenize.NL, tokenize.COMMENT):
-            continue
-        both = previous and previous.type == tokenize.STRING and token.type == tokenize.STRING
-        if both and start <= previous.start[0] < end:
-            left, right = ast.literal_eval(previous.string), token.string
-            right = re.sub(r"^f?[\"']", "", right)
-            assert left.endswith(" ") or right.startswith(" "), previous.string
-        previous = token
+    # Read as text, not tokens: Python 3.11 and 3.12 tokenize f-strings differently.
+    block = source[source.index("    quiz_categories = [") : source.index("def fast_demo_run")]
+    assert not re.findall(r'[^ ]"\n\s+f?"[^ ]', block)
 
 
 def test_c_questions_appear_only_when_the_topic_really_matches():
@@ -391,7 +380,17 @@ def test_quick_preview_is_off_by_default_and_named_honestly():
     assert box.value is False
     assert box.label == S.ADD_FAST_MODE and "Quick Preview" in box.label
     assert "recommended" not in box.label.lower() and "Fast Demo" not in box.label
+
+
+def test_the_notice_shows_only_when_the_box_is_ticked():
+    """Unticked, the AI does read the notes, so "No AI was used" would be untrue."""
+    with_upload()
+    at = add_page()
+    assert S.PREVIEW_NOTICE not in shown(at)
+    at.checkbox(key="fast_mode_toggle").check().run()
     assert S.PREVIEW_NOTICE in shown(at)
+    at.checkbox(key="fast_mode_toggle").uncheck().run()
+    assert S.PREVIEW_NOTICE not in shown(at)
 
 
 def test_the_normal_button_starts_the_real_pipeline(monkeypatch):
