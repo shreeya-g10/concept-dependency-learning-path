@@ -14,6 +14,7 @@ from cdlp.discovery import candidates, llm_discovery
 from cdlp.shared.validate import check_file
 
 EX = "cdlp/shared/examples"
+ORDER_RULE_V1_SHA256 = "8c80b498a98a9349c5b39a89b3be08512bdab3945d606c7f36f07038b6f834d3"
 X = {"id": "binary_tree", "name": "Binary Tree", "description": "A tree with at most two children."}
 Y = {"id": "avl_tree", "name": "AVL Tree", "description": "A height-balanced search tree."}
 EVIDENCE = [
@@ -84,8 +85,20 @@ def test_neither_in_both_is_no_link():
 
 def test_the_rule_is_written_in_a_versioned_config():
     rule = llm_discovery.load_order_rule()
-    assert rule["version"] == "order_rule_v1"
+    assert rule["version"] == "order_rule_v2"
     assert len(rule["rule"]) == 4
+
+
+def test_order_rule_v1_is_kept_for_the_record():
+    path = Path(llm_discovery.__file__).parent / "configs" / "order_rule_v1.json"
+    rule = llm_discovery.load_order_rule(path)
+    assert rule["version"] == "order_rule_v1" and rule["fixed_on"] == "2026-11-03"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == ORDER_RULE_V1_SHA256
+
+
+def test_discover_v3_1_stays_the_default_and_unchanged():
+    assert llm_discovery.PROMPT_VERSION == "discover_v3_1"
+    assert llm_discovery.DIRECTIONAL_PROMPT_VERSION == "discover_v2"
 
 
 def run_cli(tmp_path, monkeypatch, answer_for, *extra):
@@ -119,7 +132,7 @@ def test_course_runs_ask_both_orders_by_default_and_store_both_answers(tmp_path,
     out, asked = run_cli(tmp_path, monkeypatch, lower_id_first)
     assert {(b, a) for a, b in asked} == set(asked)  # every pair, swapped
     both = out["discovery"]["both_orders"]
-    assert both["rule_version"] == "order_rule_v1"
+    assert both["rule_version"] == "order_rule_v2"
     assert both["stable"] == both["pairs"] == len(out["relationships"]) == len(asked) // 2
     assert {e["order_agreement"] for e in out["relationships"]} == {"stable"}
     assert all(len(row["asks"]) == 2 for row in out["pair_answers"])

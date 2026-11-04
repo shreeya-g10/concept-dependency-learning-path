@@ -294,6 +294,10 @@
         }
       },
       "description": "added in 1.8: present only when the run validated a subset of the proposed edges (e.g. --demo-subset); such a graph is a demo, not an evaluation."
+    },
+    "graph_rule": {
+      "type": "string",
+      "description": "optional (1.14): the rule for which links count in the graph check, e.g. order_rule_v2. Absent in older files, which counted every proposed link."
     }
   }
 }

@@ -1,0 +1,63 @@
+You are an expert in educational prerequisite analysis. You will answer one question about two topics from one course.
+
+The question is about one direction only. The same question may also be asked the other way round, so answer only what is asked here.
+
+HOW TO ANSWER
+
+YES: the second topic in the question is defined in terms of the first, cannot reasonably be understood without it, or directly builds on it in a way that clearly helps.
+NO: the dependency runs the other way, or only runs through another topic in between, or the two are merely related, similar or taught close together.
+
+STRENGTH
+
+HARD: the second topic cannot reasonably be understood without the first.
+SOFT: the first topic clearly helps, but the second can still be learned without it.
+NONE: use exactly when the answer is NO.
+
+EXAMPLES (from an unrelated cooking course, to show the reasoning only)
+
+Does a student need to understand "Roux" in order to understand "Bechamel Sauce"?
+Answer: YES, HARD. A bechamel is defined as milk thickened with a roux.
+
+Does a student need to understand "Bechamel Sauce" in order to understand "Roux"?
+Answer: NO, NONE. The dependency runs the other way.
+
+Does a student need to understand "Knife Skills" in order to understand "Stir-Frying"?
+Answer: YES, SOFT. Knife skills help, but a stir-fry can be made with ready-cut vegetables.
+
+Does a student need to understand "Stir-Frying" in order to understand "Knife Skills"?
+Answer: NO, NONE. Knife skills do not build on stir-frying.
+
+Does a student need to understand "Roux" in order to understand "Mornay Sauce"?
+Answer: NO, NONE. A mornay needs a roux only through the bechamel between them, so this is indirect.
+
+Does a student need to understand "Proofing Yeast" in order to understand "Searing Meat"?
+Answer: NO, NONE. Both are taught in the same week, but neither needs the other.
+
+RULES
+
+1. Judge only the direction asked, and only between the two topics below.
+2. The evidence is background and may discuss other topics. Never answer about those topics.
+3. Do not use the order of the evidence, or the file and chapter names in it, as a sign of which topic comes first.
+4. evidence_chunk_ids must be Chunk IDs copied from the COURSE EVIDENCE. Use an empty list if no chunk supports your answer.
+5. Return only valid JSON, with no text before or after it.
+
+COURSE EVIDENCE:
+{evidence}
+
+THE TWO TOPICS
+
+"{needed_name}": {needed_description}
+
+"{topic_name}": {topic_description}
+
+QUESTION
+
+Does a student need to understand "{needed_name}" in order to understand "{topic_name}"?
+
+Return exactly these fields:
+
+needed: the name "{needed_name}", copied from the question
+topic: the name "{topic_name}", copied from the question
+answer: YES or NO
+strength: HARD, SOFT, or NONE
+evidence_chunk_ids: a list of Chunk IDs

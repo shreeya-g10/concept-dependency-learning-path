@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.14",
+  "course_id": "ds101",
+  "discovery": {
+    "prompt_version": "discover_v4",
+    "pair_order_rule": "one_call_per_direction_v1",
+    "answers": {
+      "YES": 1,
+      "NO": 1,
+      "invalid": 0,
+      "off_topic": 0,
+      "hard": 1,
+      "soft": 0
+    },
+    "directions": {
+      "rule_version": "direction_rule_v1",
+      "pairs": 1,
+      "one_way": 1,
+      "both_yes": 0,
+      "none": 0
+    }
+  },
+  "relationships": [
+    {
+      "id": "r1",
+      "source": "trees",
+      "target": "binary_tree",
+      "type": "PREREQUISITE",
+      "strength": "hard",
+      "confidence": 0.5,
+      "evidence": [
+        {
+          "chunk_id": "ch_l6_p11",
+          "doc": "ds_lec6.pdf",
+          "page": 11,
+          "quote": "A binary tree is a tree in which"
+        }
+      ],
+      "method": "llm_discover_v4",
+      "direction_agreement": "one_way"
+    }
+  ],
+  "direction_answers": [
+    {
+      "direction_agreement": "one_way",
+      "asks": [
+        {
+          "needed": "binary_tree",
+          "topic": "trees",
+          "answer": "NO",
+          "raw_answer": "NO",
+          "valid": true,
+          "on_topic": true,
+          "strength": "none",
+          "evidence_chunk_ids": []
+        },
+        {
+          "needed": "trees",
+          "topic": "binary_tree",
+          "answer": "YES",
+          "raw_answer": "YES",
+          "valid": true,
+          "on_topic": true,
+          "strength": "hard",
+          "evidence_chunk_ids": [
+            "ch_l6_p11"
+          ]
+        }
+      ]
+    }
+  ]
+}

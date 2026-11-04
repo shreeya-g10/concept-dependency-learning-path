@@ -19,8 +19,13 @@ With --pairs the default stays discover_v2, so benchmark runs do not change. Pas
 --prompt-version with --pairs asks one call per pair, whatever --pairs-direction says.
 
 Course runs ask every pair in BOTH orders (A and B swapped) and apply the fixed rule in
-configs/order_rule_v1.json: two calls per pair. Both raw answers are kept in "pair_answers", so
+configs/order_rule_v2.json: two calls per pair. Both raw answers are kept in "pair_answers", so
 one-order results can be computed from the same run. --one-order asks only the hash order.
+
+--prompt-version discover_v4 asks one YES/NO question per direction, with no A or B labels: also
+two calls per pair. Answers map to links under configs/direction_rule_v1.json, and both raw
+answers per direction are kept in "direction_answers". YES both ways proposes both links, which
+the validator sends to review. It is not the default, and --pairs and --one-order refuse it.
 
 --baseline also writes relationships_baseline.json: one LLM call with the full
 concept list and no candidate filter (the RQ1 baseline), in the same format.
@@ -41,12 +46,17 @@ from pathlib import Path
 from cdlp.discovery.baseline import BASELINE_PROMPT_VERSION, discover_baseline
 from cdlp.discovery.candidates import Candidate, candidate_stats, generate_candidates
 from cdlp.discovery.llm_discovery import (
+    DIRECTION_PAIR_RULE,
+    DIRECTION_PROMPT_VERSIONS,
     DIRECTIONAL_PROMPT_VERSION,
     NEUTRAL_PROMPT_VERSIONS,
     PAIR_ORDER_RULES,
     PROMPT_VERSION,
     build_contract_relationships,
+    direction_answers,
+    direction_summary,
     discover_candidates,
+    load_direction_rule,
     load_order_rule,
     neutral_summary,
     pair_answers,
@@ -56,7 +66,8 @@ from cdlp.shared import llm
 from cdlp.shared.io import read_json, read_jsonl, write_json
 
 # 1.2 adds the optional bidirectional / reverse_* fields (cdlp/shared/CHANGELOG.md)
-RELATIONSHIPS_SCHEMA_VERSION = "1.11"  # 1.10: discovery, pair_order; 1.11: both orders
+# 1.10: discovery, pair_order; 1.11: both orders; 1.14: one call per direction
+RELATIONSHIPS_SCHEMA_VERSION = "1.14"
 BASELINE_SCHEMA_VERSION = "1.3"  # relationships_baseline.json is new in 1.3
 
 
@@ -117,6 +128,11 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--chunks is required unless --pairs is given")
     if not args.prompt_version:
         args.prompt_version = DIRECTIONAL_PROMPT_VERSION if args.pairs else PROMPT_VERSION
+    per_direction = args.prompt_version in DIRECTION_PROMPT_VERSIONS
+    if per_direction and args.pairs:
+        parser.error(f"{args.prompt_version} is not part of the benchmark protocol (--pairs)")
+    if per_direction and args.one_order:
+        parser.error(f"{args.prompt_version} needs both directions, so --one-order can't apply")
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     concepts_data = read_json(args.concepts)
@@ -144,7 +160,10 @@ def main(argv: list[str] | None = None) -> None:
     stats = candidate_stats(candidates, len(concepts))
     neutral = args.prompt_version in NEUTRAL_PROMPT_VERSIONS
     both_orders = neutral and not args.pairs and not args.one_order
-    if neutral:
+    if per_direction:
+        n_pairs = len({frozenset((c.source, c.target)) for c in candidates})
+        asked = f"(a YES/NO question per direction) -> {2 * n_pairs} LLM calls"
+    elif neutral:
         n_pairs = len({frozenset((c.source, c.target)) for c in candidates})
         if both_orders:
             asked = f"(a neutral question each, in both orders) -> {2 * n_pairs} LLM calls"
@@ -172,7 +191,24 @@ def main(argv: list[str] | None = None) -> None:
             relationships, concepts, chunks, args.prompt_version
         ),
     }
-    if both_orders:
+    if per_direction:
+        answers = direction_answers(relationships)
+        summary = direction_summary(answers)
+        counts = Counter(row["direction_agreement"] for row in answers)
+        output["discovery"] = {
+            "prompt_version": args.prompt_version,
+            "pair_order_rule": DIRECTION_PAIR_RULE,
+            "answers": summary,
+            "directions": {
+                "rule_version": load_direction_rule()["version"],
+                "pairs": len(answers),
+                **{k: counts[k] for k in ("one_way", "both_yes", "none")},
+            },
+        }
+        output["direction_answers"] = answers
+        print(f"{args.prompt_version} answers: {summary}", file=sys.stderr)
+        print(f"direction rule: {output['discovery']['directions']}", file=sys.stderr)
+    elif both_orders:
         answers = pair_answers(relationships)
         summary = neutral_summary(single_order_relationships(answers))  # the hash-order asks
         print(f"{args.prompt_version} hash-order answers: {summary}", file=sys.stderr)

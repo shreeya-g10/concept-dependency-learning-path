@@ -19,7 +19,8 @@ PROMPT_VERSION = "discover_v3_1"  # course runs: discover_v3 with a hash-chosen 
 # RQ1 results stay comparable. discover_v1 is kept for the record; it leaked gold pairs.
 DIRECTIONAL_PROMPT_VERSION = "discover_v2"
 TEMPERATURE = 0.0
-ORDER_RULE_PATH = Path(__file__).parent / "configs" / "order_rule_v1.json"
+ORDER_RULE_PATH = Path(__file__).parent / "configs" / "order_rule_v2.json"
+DIRECTION_RULE_PATH = Path(__file__).parent / "configs" / "direction_rule_v1.json"
 
 # Versions that ask one neutral question per unordered pair (A before B, B before A or
 # neither), so the direction comes from the model and not from the course file order.
@@ -27,6 +28,10 @@ NEUTRAL_PROMPT_VERSIONS = {"discover_v3", "discover_v3_1"}
 # How A and B are chosen. discover_v3's text says A is the lower ID, so it keeps that order.
 PAIR_ORDER_RULES = {"discover_v3": "lower_id_first", "discover_v3_1": "sha256_of_pair_v1"}
 NEUTRAL_ANSWERS = {"A_BEFORE_B", "B_BEFORE_A", "NEITHER"}
+# Versions that ask one YES/NO question per direction, with no A or B labels. Never the default
+# until that is decided, and refused with --pairs, so benchmark prompts cannot change by accident.
+DIRECTION_PROMPT_VERSIONS = {"discover_v4"}
+DIRECTION_PAIR_RULE = "one_call_per_direction_v1"
 # Ollama's default context is 4096 tokens; a longer prompt loses its START, which held the
 # question in discover_v2 (200 of the 237 ds101 calls). These caps keep a neutral prompt
 # near 8,000 characters (about 2,300 tokens at the 3.56 characters per token of that run).
@@ -248,6 +253,10 @@ def discover_pair_neutral(
     return _ask_neutral(a, b, evidence, prompt_version)
 
 
+def load_direction_rule(path: Path | str = DIRECTION_RULE_PATH) -> dict:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def load_order_rule(path: Path | str = ORDER_RULE_PATH) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
@@ -282,6 +291,121 @@ def discover_pair_both_orders(
     if not links:
         return [{**first, "order_agreement": agreement, "pair_asks": asks}]
     return [{**link, "order_agreement": agreement, "pair_asks": asks} for link in links]
+
+
+def format_direction_prompt(
+    needed: dict, topic: dict, evidence: list[dict], prompt_version: str
+) -> str:
+    """Does a student need `needed` to understand `topic`? Only the names and order change."""
+    return load_prompt(prompt_version).format(
+        needed_name=needed["name"],
+        needed_description=needed.get("description", ""),
+        topic_name=topic["name"],
+        topic_description=topic.get("description", ""),
+        evidence="\n".join(f"Chunk ID: {i['chunk_id']}\n{i['text']}" for i in evidence),
+    )
+
+
+def _normalise_direction_result(result, needed: dict, topic: dict, allowed_chunks: set) -> dict:
+    """One record per direction. Anything but a clean YES or NO counts as NO, marked invalid."""
+    if not isinstance(result, dict):
+        result = {}
+    raw_answer = result.get("answer")
+    answer = str(raw_answer if raw_answer is not None else "").strip().upper()
+    strength = str(result.get("strength", "NONE")).strip().lower()
+    on_topic = _names_concept(result.get("needed"), needed) and _names_concept(
+        result.get("topic"), topic
+    )
+    yes = on_topic and answer == "YES" and strength in {"hard", "soft"}
+    chunk_ids = result.get("evidence_chunk_ids")
+    return {
+        "source": needed["id"],  # always ours, never the LLM's
+        "target": topic["id"],
+        "relationship": "DIRECT" if yes else "NONE",
+        "strength": strength if yes else "none",
+        "confidence": DEFAULT_CONFIDENCE,  # not asked: see configs/direction_rule_v1.json
+        "evidence_chunk_ids": [
+            c for c in (chunk_ids if isinstance(chunk_ids, list) else []) if c in allowed_chunks
+        ],
+        "answer": "YES" if yes else "NO",
+        "raw_answer": "" if raw_answer is None else str(raw_answer),
+        "valid": yes or (on_topic and answer == "NO"),
+        "on_topic": on_topic,
+    }
+
+
+def _ask_direction(needed: dict, topic: dict, evidence: list[dict], prompt_version: str) -> dict:
+    prompt = format_direction_prompt(needed, topic, evidence, prompt_version)
+    try:
+        result = chat_json(prompt, prompt_version=prompt_version, temperature=TEMPERATURE)
+    except ValueError:  # the model returned text that is not JSON
+        result = {}
+    return _normalise_direction_result(result, needed, topic, {i["chunk_id"] for i in evidence})
+
+
+def apply_direction_rule(first: dict, second: dict) -> tuple[str, list[dict]]:
+    """(direction_agreement, the links to propose). Rule: configs/direction_rule_v1.json."""
+    links = [r for r in (first, second) if r["answer"] == "YES"]
+    return {0: "none", 1: "one_way", 2: "both_yes"}[len(links)], links
+
+
+def discover_pair_directions(x: dict, y: dict, chunk_map: dict, prompt_version: str) -> list[dict]:
+    """One record per proposed link (or one NONE record), each carrying both raw answers."""
+    low, high = sorted((x, y), key=lambda concept: concept["id"])
+    evidence = select_neutral_evidence(low, high, chunk_map)
+    asks = [
+        _ask_direction(low, high, evidence, prompt_version),
+        _ask_direction(high, low, evidence, prompt_version),
+    ]
+    agreement, links = apply_direction_rule(*asks)
+    extra = {"direction_agreement": agreement, "direction_asks": asks}
+    return [{**link, **extra} for link in links] or [{**asks[0], **extra}]
+
+
+def direction_answers(relationships: list[dict]) -> list[dict]:
+    """Both raw answers per pair and direction, from a one-call-per-direction run."""
+    rows = {}
+    for r in relationships:
+        if "direction_asks" in r:
+            first = r["direction_asks"][0]
+            rows.setdefault(
+                (first["source"], first["target"]),
+                {
+                    "direction_agreement": r["direction_agreement"],
+                    "asks": [
+                        {
+                            "needed": ask["source"],
+                            "topic": ask["target"],
+                            **{
+                                k: ask[k]
+                                for k in (
+                                    "answer",
+                                    "raw_answer",
+                                    "valid",
+                                    "on_topic",
+                                    "strength",
+                                    "evidence_chunk_ids",
+                                )
+                            },
+                        }
+                        for ask in r["direction_asks"]
+                    ],
+                },
+            )
+    return list(rows.values())
+
+
+def direction_summary(answers: list[dict]) -> dict:
+    """Printed and saved, so a bad run or a model that favours YES shows up early."""
+    asks = [ask for row in answers for ask in row["asks"]]
+    return {
+        "YES": sum(a["answer"] == "YES" for a in asks),
+        "NO": sum(a["answer"] == "NO" for a in asks),
+        "invalid": sum(not a["valid"] for a in asks),
+        "off_topic": sum(not a["on_topic"] for a in asks),
+        "hard": sum(a["strength"] == "hard" for a in asks),
+        "soft": sum(a["strength"] == "soft" for a in asks),
+    }
 
 
 def pair_answers(relationships: list[dict]) -> list[dict]:
@@ -376,7 +500,13 @@ def discover_candidates(
     chunk_map = {chunk["chunk_id"]: chunk for chunk in chunks}
 
     relationships = []
-    if prompt_version in NEUTRAL_PROMPT_VERSIONS:
+    if prompt_version in DIRECTION_PROMPT_VERSIONS:
+        for pair in dict.fromkeys(frozenset((c.source, c.target)) for c in candidates):
+            x, y = sorted(pair)
+            relationships += discover_pair_directions(
+                concept_map[x], concept_map[y], chunk_map, prompt_version
+            )
+    elif prompt_version in NEUTRAL_PROMPT_VERSIONS:
         # one question per unordered pair; the candidate's direction and reasons are not used
         for pair in dict.fromkeys(frozenset((c.source, c.target)) for c in candidates):
             x, y = sorted(pair)
@@ -460,5 +590,7 @@ def build_contract_relationships(
             }
         if relationship.get("order_agreement"):
             edge["order_agreement"] = relationship["order_agreement"]
+        if relationship.get("direction_agreement"):
+            edge["direction_agreement"] = relationship["direction_agreement"]
         contract.append(edge)
     return contract

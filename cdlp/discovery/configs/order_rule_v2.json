@@ -1,0 +1,30 @@
+{
+  "version": "order_rule_v2",
+  "replaces": "order_rule_v1 for new runs. order_rule_v1.json stays unchanged, for the record.",
+  "fixed_on": "2026-11-04",
+  "applies_to": "'rule' applies to course runs (no --pairs) with a neutral prompt; --pairs benchmark runs never use it. 'graph_check' applies to every validator run, benchmarks included.",
+  "rule": {
+    "same direction in both orders": "proposed link, order_agreement = stable",
+    "link in one order, NEITHER in the other": "proposed link, order_agreement = unstable",
+    "direction reverses": "both directions proposed to the validator, order_agreement = reversed; never pick one automatically. Both stay in HUMAN_REVIEW.",
+    "NEITHER in both": "no link"
+  },
+  "link_fields": "Unchanged from order_rule_v1.",
+  "graph_check": {
+    "implemented_in": "cdlp/validation/graph_checks.py",
+    "left_out_of_other_links_cycle_and_redundancy_checks": [
+      "both links of a pair proposed in both directions, however it was found",
+      "a link flagged bidirectional by discovery",
+      "a link rejected on its scores alone"
+    ],
+    "still_counted": "Links that scores alone would accept or send to review.",
+    "kept": "Every link stays in validated_graph.json with its decision. A link that is left out still gets a label, read against the counted links, but it cannot affect another link.",
+    "dag": "Only an ok link can be accepted, and ok links never form a cycle. Teacher accepts that would close a cycle are still refused (cdlp/validation/apply_review.py)."
+  },
+  "reasoning": "A reversed pair cannot have both links true, so counting both as structure makes the cycle check report the model's disagreement rather than a cycle in the course. A link the checks have already rejected is not a claim the graph should act on, so it should not block or remove other links.",
+  "chosen_after": "Chosen after seeing validation results for the demo course avl_demo under order_rule_v1, and with its deck text and target chain known. Not chosen on gold labels. No avl_demo number may be reported. Disclose this wherever the rule is described.",
+  "comparison_arms": {
+    "reversed_pair_validator_pick": "Pre-declared arm, not the default. For a reversed pair, accept a direction only if it would be accepted on its scores alone and the other would not; the losing direction is rejected. Otherwise both go to review. A winner on a cycle sends both to review. A winner cannot put other links on a cycle, and it does count for redundancy. No code computes this arm yet."
+  },
+  "dropped_option": "An evidence gate for links found in one order only was considered and dropped: it relies on the evidence grade to confirm a direction."
+}

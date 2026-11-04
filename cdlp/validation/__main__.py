@@ -15,6 +15,9 @@ Each --skip-* flag drops one check (the RQ1 ablations). A skipped check is writt
 "skipped" (contract 1.5), listed under "skipped_checks", named in each reason, and
 never blocks ACCEPT. A check with weight 0 in the config is report-only: it runs and is
 recorded on every edge, but takes no part in the score, the vetoes or the decision.
+Reversed links and links rejected on score don't count in other links' graph check, in every
+run (cdlp/discovery/configs/order_rule_v2.json). --skip-graph is an ablation that turns the check
+off, so only its accepted links may contain a cycle.
 Necessity is report-only by default (weight 0; --necessity-weight overrides it).
 --demo-subset N validates only the N proposed edges with the highest discovery confidence
 (ties by id), for a quick demo; the output says so in its top-level "subset" field, and
@@ -52,7 +55,8 @@ from cdlp.validation import (
 CHECKS = ("evidence", "semantic", "necessity", "graph")
 LLM_CHECKS = ("evidence", "semantic", "necessity")
 DEFAULT_CONFIG = Path(__file__).parent / "configs" / "default.json"
-SCHEMA_VERSION = "1.8"  # 1.5: 'skipped'; 1.8: optional top-level 'subset' (demo runs)
+SCHEMA_VERSION = "1.14"  # 1.5: 'skipped'; 1.8: 'subset' (demo runs); 1.14: 'graph_rule'
+GRAPH_RULE = "order_rule_v2"  # which links count in the graph check: see graph_checks.py
 SKIPPED = "skipped"
 STRUCTURAL_REJECT = {graph_checks.SELF_LOOP: "self-loop", graph_checks.DUPLICATE: "duplicate"}
 
@@ -190,11 +194,6 @@ def validate(
     if necessity_weight is not None:
         cfg["weights"] = {**cfg["weights"], "necessity": necessity_weight}
     rels = relationships["relationships"]
-    labels = (
-        graph_checks.graph_labels_by_id(rels)
-        if "graph" not in skip
-        else {r["id"]: graph_checks.OK for r in rels}
-    )
 
     def by_id(result: dict | None) -> dict:
         return {r["relationship_id"]: r for r in (result or {}).get("results", [])}
@@ -221,22 +220,40 @@ def validate(
         else None
     )
 
-    edges = []
-    for r in rels:
+    def grades_of(r: dict) -> dict[str, str | None]:
         ev, se, ne = evidence.get(r["id"]), semantic.get(r["id"]), necessity.get(r["id"])
         if sampled is not None and r["id"] not in sampled:
             ne = None  # outside the necessity sample, whatever the check returned
-        grades = {
+        return {
             "evidence": ev["evidence"] if ev else None,
             "semantic": se["semantic"] if se else None,
             "necessity": ne["necessity"] if ne and ne.get("status") == "ok" else None,
         }
+
+    # A link rejected on its scores must not block or remove another link (order_rule_v2), so
+    # the labels come after the grades.
+    rejected_on_score = {
+        r["id"] for r in rels if decide(graph_checks.OK, grades_of(r), cfg)[0] == "REJECT"
+    }
+    labels = (
+        graph_checks.graph_labels_by_id(rels, rejected_on_score)
+        if "graph" not in skip
+        else {r["id"]: graph_checks.OK for r in rels}
+    )
+    counted = [r for r in rels if r["id"] not in rejected_on_score and not r.get("bidirectional")]
+
+    edges = []
+    for r in rels:
+        ev, se, ne = evidence.get(r["id"]), semantic.get(r["id"]), necessity.get(r["id"])
+        if sampled is not None and r["id"] not in sampled:
+            ne = None
+        grades = grades_of(r)
         decision, confidence, reason = decide(
             labels[r["id"]],
             grades,
             cfg,
             bidirectional=bool(r.get("bidirectional")),
-            implied_path=implied_by(r, rels, labels)
+            implied_path=implied_by(r, counted, labels)
             if labels[r["id"]] == graph_checks.REDUNDANT
             else None,
         )
@@ -281,6 +298,7 @@ def validate(
         "nodes": [{"id": c["id"], "name": c["name"]} for c in concepts["concepts"]],
         "edges": edges,
         "skipped_checks": [c for c in CHECKS if c in skip],
+        "graph_rule": GRAPH_RULE,
     }
     if sampled is not None:
         result["_necessity_sample"] = {

@@ -16,7 +16,7 @@ Colab's free tier gives at most 12 hours per session and no guaranteed GPU. Outp
 
 The `course` stage always:
 
-- Asks each pair in both orders under `order_rule_v1`, and stops if `relationships.json` is not such a run.
+- Asks each pair in both orders under `order_rule_v2`, and stops if `relationships.json` is not such a run. A saved `order_rule_v1` discovery file is accepted too, because the two ask and map answers the same way; they differ only in the validator's graph check.
 - Writes questions with `quiz_v3`, and stops if `quiz_items.json` came from another prompt.
 - Runs necessity on 40 edges for ds101 and ml101. Any other course skips necessity.
 - Reports `drop_rate_by_level` and `concepts_missing_level`.
@@ -67,7 +67,7 @@ In Drive, open `cdlp` → **New** → **New folder** → name it `raw`. Inside i
 
    This needs the pull request merged into `integration/real-pipeline`. Colab's GitHub tab opens `main` by default, which does not have this notebook.
 2. **Runtime** → **Change runtime type** → **T4 GPU** → **Save**.
-3. In the first cell set `STAGE`, and for a course also `COURSE` and `STEPS`. Leave `COMMIT` as it is.
+3. In the first cell set `STAGE`, and for a course also `COURSE` and `STEPS`. Leave `COMMIT` as it is. Leave `DISCOVERY_PROMPT` and `RUN_NAME` as they are unless you follow "Running discover_v4 in its own folder" below.
 
 ## 3. Run (in Colab)
 
@@ -108,6 +108,35 @@ If the message also says `HF_HOME` is set, the model was saved somewhere extract
 3. Set `STEPS = "validate,quiz,path"`, run step 0, and run step 6 again.
 
 A step that needs an earlier step's file stops and says which file is missing. To redo a finished step, delete its file on Drive. Saved replies are still reused.
+
+### Running discover_v4 in its own folder
+
+`discover_v4` asks one YES/NO question per direction, with no A or B labels. `discover_v3_1` stays the default. This runs it on the demo deck without touching the first run, which stays in `outputs/avl_demo/`. It's demo material, so its numbers must never appear as results.
+
+**You need first:** `My Drive/cdlp/outputs/avl_demo/` with `concepts.json` and `chunks.jsonl`. The run starts from a copy of them, so it asks about the same concepts. If they're missing, the stage stops and says so.
+
+1. In the first cell, set exactly:
+   ```python
+   STAGE = "course"
+   COURSE = "avl_demo"
+   STEPS = "discover,validate,quiz,path"
+   DISCOVERY_PROMPT = "discover_v4"
+   RUN_NAME = "discover_v4"
+   ```
+   Leave `COMMIT` as it is.
+2. Click each cell's ▶ in order, from step 0 to step 6.
+3. Step 8 writes `course_avl_demo_discover_v4_<date>.zip`, and prints where to put it. It unzips to `outputs/avl_demo_discover_v4/`, which the website lists as a separate course.
+4. **Afterwards, set `DISCOVERY_PROMPT = "discover_v3_1"` and `RUN_NAME = ""` again** before any other run.
+
+What happens:
+
+- **Output folder:** everything goes to `My Drive/cdlp/outputs/avl_demo_discover_v4/`. Files inside keep the course id `avl_demo`. To redo a step, delete its file in that folder only.
+- **Saved replies:** the cache is shared, and a reply is found by its model and exact prompt text, whatever the folder. So validator and quiz calls with the same text as the first run cost nothing. Every `discover_v4` call is new, because the prompt is new.
+- **Calls:** `discover_v4` makes 2 calls per candidate pair, the same as `discover_v3_1`. The extract step isn't run.
+- **Answers:** YES one way makes one link. YES both ways proposes both links, and both go to review. NO both ways makes no link. Both raw answers per direction are kept in `direction_answers` in `relationships.json` (`cdlp/discovery/configs/direction_rule_v1.json`).
+- **Check before comparing:** `discovery.directions.pairs` in the new `relationships.json` should equal `discovery.both_orders.pairs` in the first run's. This run is held to the pinned embedding revision, and the concepts and chunks are copies, so it can't drift. But the embedding model picks the candidate pairs, and the first run's `colab_environment.json` records no revision, because that run came before the pin. So its revision can't be confirmed, and different pair counts would mean the two runs didn't ask about the same pairs.
+
+The benchmark stages ignore these settings: the first cell stops if `DISCOVERY_PROMPT` or `RUN_NAME` is changed for any stage but `course`, and `--pairs` refuses `discover_v4`.
 
 ### For the paper: ds101 and ml101 with necessity at weight 1
 

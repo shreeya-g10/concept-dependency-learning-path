@@ -50,10 +50,10 @@ def test_cycle_of_three():
     assert graph_labels(rels("a>b", "b>c", "c>a", "c>d")) == ["cycle", "cycle", "cycle", "ok"]
 
 
-def test_cycle_through_contradiction_pair():
-    # b>c and c>a only close a cycle by going through the a<->b contradiction.
+def test_a_contradiction_pair_does_not_put_other_links_on_a_cycle():
+    # b>c and c>a would only close a cycle by going through the a<->b contradiction (order_rule_v2).
     labels = graph_labels(rels("a>b", "b>a", "b>c", "c>a"))
-    assert labels == ["contradiction", "contradiction", "cycle", "cycle"]
+    assert labels == ["contradiction", "contradiction", "ok", "ok"]
 
 
 def test_redundant_shortcut():

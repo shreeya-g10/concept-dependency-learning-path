@@ -742,6 +742,26 @@ def test_the_runner_at_the_pinned_commit_is_this_runner():
     assert pinned.stdout == (cr.ROOT / "scripts/colab_run.py").read_text()
 
 
+def test_the_notebook_at_the_pinned_commit_has_the_pin_and_the_prompt_setting():
+    """The merge of the two features must be what Colab checks out, not one side of it."""
+    import re
+
+    first = "".join(json.loads(NOTEBOOK.read_text())["cells"][1]["source"])
+    commit = re.search(r'COMMIT = "([0-9a-f]+)"', first).group(1)
+    pinned = subprocess.run(
+        ["git", "-C", str(cr.ROOT), "show", f"{commit}:notebooks/colab_validator.ipynb"],
+        capture_output=True,
+        text=True,
+    )
+    if pinned.returncode != 0:  # e.g. a shallow CI clone without that commit
+        pytest.skip("pinned commit not in this clone's history")
+    cells = ["".join(c["source"]) for c in json.loads(pinned.stdout)["cells"]]
+    text = "\n".join(cells)
+    assert f'EMBEDDING_REVISION = "{cr.EMBEDDING_REVISION}"' in text
+    assert 'DISCOVERY_PROMPT = "discover_v3_1"' in text and 'RUN_NAME = ""' in text
+    assert "{ARGS}" in text
+
+
 def test_the_stage_command_records_the_run_and_sets_both_models(tmp_path, monkeypatch, capsys):
     tags = {"models": [{"name": m, "digest": f"d_{m}", "size": 2**30} for m in cr.MODELS]}
     monkeypatch.setattr(cr, "ROOT", tmp_path)
@@ -967,6 +987,147 @@ def test_the_notebook_and_runner_name_the_same_model():
     assert cr.EMBEDDING_MODEL in (cr.ROOT / "docs/colab_steps.md").read_text()
 
 
+# --- choosing the discovery prompt, and a run in its own folder --------------------------
+
+
+def test_v3_1_stays_the_default_and_passes_no_prompt_flag(tmp_path):
+    assert cr.DEFAULT_DISCOVERY_PROMPT == "discover_v3_1"
+    step = cr.plan("course", tmp_path, "avl_demo", ["discover"])[0]
+    assert "--prompt-version" not in step["argv"]
+    assert step["check"] is cr.check_both_orders
+
+
+def test_discover_v4_needs_its_own_folder(tmp_path):
+    with pytest.raises(ValueError, match="own folder"):
+        cr.plan("course", tmp_path, "avl_demo", ["discover"], discovery_prompt="discover_v4")
+
+
+def test_a_named_run_writes_only_to_its_own_folder(tmp_path):
+    steps = cr.plan(
+        "course",
+        tmp_path,
+        "avl_demo",
+        ["discover", "validate", "quiz", "path"],
+        discovery_prompt="discover_v4",
+        run_name="discover_v4",
+    )
+    folder = tmp_path / "outputs" / "avl_demo_discover_v4"
+    first_run = str(tmp_path / "outputs" / "avl_demo") + "/"
+    discover = steps[0]
+    assert discover["argv"][discover["argv"].index("--prompt-version") + 1] == "discover_v4"
+    assert discover["check"] is cr.check_directions
+    for step in steps:
+        assert step["out"].parent == folder
+        assert all(p.parent == folder for p in step["needs"])
+        if isinstance(step["argv"], list):
+            assert not any(str(arg).startswith(first_run) for arg in step["argv"])
+    validate = steps[1]["argv"]
+    assert "--skip-necessity" in validate  # the course id decides this, not the folder
+    quiz = steps[2]["argv"]
+    assert quiz[quiz.index("--course-id") + 1] == "avl_demo"  # the files keep the course id
+
+
+def test_a_run_name_keeps_a_real_course_on_its_necessity_sample(tmp_path):
+    step = cr.plan("course", tmp_path, "ds101", ["validate"], run_name="again")[0]
+    assert "--necessity-sample" in step["argv"]
+
+
+def first_run_files(tmp_path):
+    d = course_files(tmp_path, "avl_demo")
+    good_relationships(d)
+    return d
+
+
+def test_seeding_copies_the_inputs_and_leaves_the_first_run_alone(tmp_path):
+    source = first_run_files(tmp_path)
+    (source / "concept_filter_report.json").write_text("{}")
+    before = {p.name: p.read_bytes() for p in source.iterdir()}
+    copied = cr.seed_run_folder(tmp_path, "avl_demo", "discover_v4")
+    dest = tmp_path / "outputs" / "avl_demo_discover_v4"
+    assert set(copied) == {"concepts.json", "chunks.jsonl", "concept_filter_report.json"}
+    assert (dest / "concepts.json").read_bytes() == before["concepts.json"]
+    assert not (dest / "relationships.json").exists()
+    assert not (dest / "validated_graph.json").exists()
+    assert {p.name: p.read_bytes() for p in source.iterdir()} == before
+
+
+def test_seeding_never_overwrites_a_file_in_the_run(tmp_path):
+    first_run_files(tmp_path)
+    cr.seed_run_folder(tmp_path, "avl_demo", "v4")
+    dest = tmp_path / "outputs" / "avl_demo_v4" / "concepts.json"
+    data = json.loads(dest.read_text())
+    data["kept"] = True
+    dest.write_text(json.dumps(data))
+    assert cr.seed_run_folder(tmp_path, "avl_demo", "v4") == []
+    assert json.loads(dest.read_text())["kept"] is True
+
+
+def test_seeding_stops_if_the_course_has_no_inputs(tmp_path):
+    with pytest.raises(SystemExit, match="Run the course first"):
+        cr.seed_run_folder(tmp_path, "avl_demo", "v4")
+
+
+def test_seeding_does_nothing_without_a_run_name(tmp_path):
+    assert cr.seed_run_folder(tmp_path, "avl_demo", None) == []
+
+
+@pytest.mark.parametrize("name", ["Bad", "a b", "../up", "x" * 60])
+def test_a_bad_run_name_is_refused(name):
+    with pytest.raises(ValueError):
+        cr.run_folder("avl_demo", name)
+
+
+@pytest.mark.parametrize("stage", ["night1", "night2", "night3", "real"])
+def test_benchmark_and_real_stages_take_no_prompt_or_run_name(tmp_path, stage):
+    with pytest.raises(ValueError):
+        cr.plan(stage, tmp_path, discovery_prompt="discover_v4")
+    with pytest.raises(ValueError):
+        cr.plan(stage, tmp_path, run_name="x")
+
+
+def test_night1_still_passes_no_prompt_so_benchmarks_keep_discover_v2(tmp_path):
+    for step in cr.plan("night1", tmp_path):
+        assert "--prompt-version" not in step["argv"]
+
+
+def write_discovery(path, discovery):
+    path.write_text(json.dumps({"discovery": discovery}))
+    return path
+
+
+def test_each_prompt_checks_for_its_own_kind_of_run(tmp_path):
+    v1 = write_discovery(tmp_path / "v1.json", {"both_orders": {"rule_version": "order_rule_v1"}})
+    v2 = write_discovery(tmp_path / "v2.json", {"both_orders": {"rule_version": "order_rule_v2"}})
+    v4 = write_discovery(
+        tmp_path / "v4.json", {"directions": {"rule_version": "direction_rule_v1"}}
+    )
+    assert cr.check_both_orders(v1) is None  # a saved v1 discovery can still be validated
+    assert cr.check_both_orders(v2) is None
+    assert cr.check_both_orders(v4)
+    assert cr.check_directions(v4) is None
+    assert cr.check_directions(v2)
+
+
+def test_a_named_run_can_be_zipped_and_reported_on_its_own(tmp_path):
+    d = course_files(tmp_path, "avl_demo_v4")
+    good_relationships(d)
+    (d / "quiz_items.json").write_text(
+        (cr.ROOT / "cdlp/shared/examples/ladder_quiz_items.json").read_text()
+    )
+    assert cr.course_report(tmp_path, "avl_demo_v4")["course"] == "avl_demo_v4"
+    out = cr.zip_course(tmp_path, cr.run_folder("avl_demo", "v4"), tmp_path / "dest", stamp="x")
+    assert out.name == "course_avl_demo_v4_x.zip"
+
+
+def test_the_notebook_has_the_prompt_setting_and_v3_1_as_default():
+    text = notebook_text()
+    assert 'DISCOVERY_PROMPT = "discover_v3_1"' in text and 'RUN_NAME = ""' in text
+    assert "--steps {STEPS} {ARGS}" in text
+    assert "report --course {COURSE} {NAME_ARG}" in text
+    assert "zip --course {COURSE} {NAME_ARG}" in text
+    assert 'DISCOVERY_PROMPT == "discover_v3_1" and not RUN_NAME' in text
+
+
 # --- the pinned revision ---------------------------------------------------------------
 
 
@@ -1056,6 +1217,10 @@ def test_another_revision_stops_and_says_both(tmp_path, monkeypatch):
     "argv",
     [
         ["stage", "course", "--course", "ds101", "--steps", "discover"],
+        [
+            *["stage", "course", "--course", "avl_demo", "--steps", "discover"],
+            *["--discovery-prompt", "discover_v4", "--run-name", "discover_v4"],
+        ],
         ["stage", "night1"],
         ["stage", "real"],
         ["stage", "speed"],
