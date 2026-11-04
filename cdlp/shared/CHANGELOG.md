@@ -8,6 +8,13 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 - It may never rename, remove or retype a field, or make an optional field required.
 - So a file written at an older version stays valid. Bump `schema_version`, add an example to `cdlp/shared/examples/`, register the file name in `FILE_SCHEMAS` (`validate.py`), and get lead approval.
 
+## 1.14
+
+- `relationships.json` may carry an optional top-level `direction_answers` (both raw answers per pair and direction) and `discovery.directions` (counts per pair and the rule version), and edges may carry an optional `direction_agreement` (`one_way` or `both_yes`). Written by prompt `discover_v4`, which is not the default. `discovery.answers` may also carry `YES`, `NO` and `invalid`. Example: `examples/direction_relationships.json`.
+- `validated_graph.json` may carry an optional top-level `graph_rule`, naming the rule for which links count in the graph check. Written as `order_rule_v2` by every validator run: both links of a pair proposed in both directions, links flagged bidirectional, and links rejected on score no longer affect other links' labels. The labels and their meanings are unchanged, but older files without `graph_rule` counted every proposed link, so don't mix decisions from the two.
+- Discovery (except `relationships_baseline.json`) and validation write `schema_version` 1.14.
+- No field renamed, removed, retyped or made required; older files stay valid.
+
 ## 1.13
 
 - `quiz_items.json` items may carry an optional `difficulty` (`easy`, `medium`, `hard`) and `difficulty_source` (`ai_suggestion`, `teacher`). An AI label is only a suggestion until a teacher approves it. An item with no `difficulty` is treated as easy or any level, and a course with no labelled item keeps the old question selection.

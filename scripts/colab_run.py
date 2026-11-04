@@ -3,6 +3,8 @@
     python scripts/colab_run.py env
     python scripts/colab_run.py stage speed
     python scripts/colab_run.py stage course --course ds101 --steps extract,discover
+    python scripts/colab_run.py stage course --course avl_demo --steps discover,validate,quiz,path \
+        --discovery-prompt discover_v4 --run-name discover_v4
     python scripts/colab_run.py stage night1|night2|night3|real [--force]
     python scripts/colab_run.py progress --stage course --course ds101
     python scripts/colab_run.py report --course ds101
@@ -12,9 +14,13 @@
 Stages:
   speed   10 short and 5 long calls for each model, in a throwaway cache.
   course  extract,discover,validate,quiz,path, or any of them in that order, so discovery can
-          stop for review. Both-order discovery under order_rule_v1 and quiz_v3 are checked after
-          they run. ds101 and ml101 run necessity on a seeded sample of 40 edges; any other
-          course skips necessity. Nothing is shortened or made up: every step runs for real.
+          stop for review. The discovery prompt's rule and quiz_v3 are checked after they run.
+          ds101 and ml101 run necessity on a seeded sample of 40 edges; any other course skips
+          necessity. Nothing is shortened or made up: every step runs for real.
+          --discovery-prompt picks the prompt (default discover_v3_1). --run-name writes to its
+          own folder, outputs/<course>_<run name>/, starting from a copy of the course's concepts
+          and chunks, so the earlier run is not overwritten and the same pairs are compared.
+          A prompt other than the default needs a run name. The stages below never take either.
   night1  benchmarks: discovery_only and the baseline call, as scripts/rq1_night1.sh runs them.
   night2  benchmarks: single judge and the reported agent (semantic + graph checks,
           --skip-evidence --skip-necessity) on every proposed edge of each graph.
@@ -72,7 +78,17 @@ DISCOVERY_MODEL = "qwen2.5:7b-instruct"
 VALIDATOR_MODEL = "llama3.1:8b"
 MODELS = (DISCOVERY_MODEL, VALIDATOR_MODEL)
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-ORDER_RULE = "order_rule_v1"
+ORDER_RULE = "order_rule_v2"
+# Both ask the same pairs and map answers to links the same way; they differ only in the graph
+# check, which is the validator's. So a saved order_rule_v1 discovery file can still be validated.
+ORDER_RULES = ("order_rule_v1", ORDER_RULE)
+DIRECTION_RULE = "direction_rule_v1"
+DEFAULT_DISCOVERY_PROMPT = "discover_v3_1"
+DISCOVERY_PROMPTS = (DEFAULT_DISCOVERY_PROMPT, "discover_v4")
+RUN_NAME = re.compile(r"^[a-z0-9][a-z0-9_]*$")
+# Copied into a named run. The first two are its inputs; the others are kept for the record.
+RUN_INPUTS = ("concepts.json", "chunks.jsonl")
+RUN_RECORDS = ("unfiltered_concepts.json", "concept_filter_report.json")
 QUIZ_PROMPT = "quiz_v3"
 COURSE_STEPS = ("extract", "discover", "validate", "quiz", "path")
 COURSE_ID = re.compile(r"^[a-z][a-z0-9_]{1,39}$")  # the same rule as website/jobs.py
@@ -120,8 +136,16 @@ def require_course_files(raw: Path) -> None:
 def check_both_orders(path: Path) -> str | None:
     """Why this relationships.json is not a both-order run under the order rule, or None."""
     both = json.loads(path.read_text()).get("discovery", {}).get("both_orders", {})
-    if both.get("rule_version") != ORDER_RULE:
+    if both.get("rule_version") not in ORDER_RULES:
         return f"{path} is not a both-order run under {ORDER_RULE}; rerun discover with --force"
+    return None
+
+
+def check_directions(path: Path) -> str | None:
+    """Why this relationships.json is not a one-call-per-direction run, or None."""
+    directions = json.loads(path.read_text()).get("discovery", {}).get("directions", {})
+    if directions.get("rule_version") != DIRECTION_RULE:
+        return f"{path} is not a discover_v4 run under {DIRECTION_RULE}; rerun with --force"
     return None
 
 
@@ -164,11 +188,57 @@ def parse_steps(text: str | None) -> list[str]:
     return [s for s in COURSE_STEPS if s in wanted]
 
 
-def course_plan(root: Path, course: str, steps: list[str], raw: Path | None = None) -> list[dict]:
+def run_folder(course: str, run_name: str | None = None) -> str:
+    """The folder under outputs/. A run name keeps a comparison run apart from the course's own."""
+    if not run_name:
+        return course
+    folder = f"{course}_{run_name}"
+    if not RUN_NAME.match(run_name) or not COURSE_ID.match(folder):
+        raise ValueError(f"bad run name {run_name!r}: lower case letters, digits and _ only")
+    return folder
+
+
+def seed_run_folder(root: Path, course: str, run_name: str | None) -> list[str]:
+    """Start a named run from the course's concepts and chunks, so the same pairs are asked.
+
+    Never overwrites: a file already in the run's folder stays, and the source is only read.
+    """
+    if not run_name:
+        return []
+    source = root / "outputs" / course
+    dest = root / "outputs" / run_folder(course, run_name)
+    copied = []
+    for name in RUN_INPUTS + RUN_RECORDS:
+        if (dest / name).exists() or not (source / name).exists():
+            continue
+        dest.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source / name, dest / name)
+        copied.append(name)
+    missing = [name for name in RUN_INPUTS if not usable(dest / name)]
+    if missing:
+        raise SystemExit(
+            f"A named run starts from outputs/{course}/, which has no usable {missing}. "
+            f"Run the course first (docs/colab_steps.md)."
+        )
+    return copied
+
+
+def course_plan(
+    root: Path,
+    course: str,
+    steps: list[str],
+    raw: Path | None = None,
+    discovery_prompt: str = DEFAULT_DISCOVERY_PROMPT,
+    run_name: str | None = None,
+) -> list[dict]:
     """The course stage. Later steps need earlier outputs, so a missing one stops the run."""
     if not COURSE_ID.match(course):
         raise ValueError(f"bad course id {course!r}")
-    d = root / "outputs" / course
+    if discovery_prompt not in DISCOVERY_PROMPTS:
+        raise ValueError(f"unknown prompt {discovery_prompt!r}; choose from {DISCOVERY_PROMPTS}")
+    if discovery_prompt != DEFAULT_DISCOVERY_PROMPT and not run_name:
+        raise ValueError(f"{discovery_prompt} needs its own folder: give a run name")
+    d = root / "outputs" / run_folder(course, run_name)
     raw = raw or root / "data" / "raw" / course
     concepts, chunks = d / "concepts.json", d / "chunks.jsonl"
     relationships, graph = d / "relationships.json", d / "validated_graph.json"
@@ -227,10 +297,19 @@ def course_plan(root: Path, course: str, steps: list[str], raw: Path | None = No
                 str(d),
                 "--stats",
                 str(d / "discovery.stats.json"),
+                *(
+                    []
+                    if discovery_prompt == DEFAULT_DISCOVERY_PROMPT
+                    else ["--prompt-version", discovery_prompt]
+                ),
             ],
             "out": relationships,
             "needs": [concepts, chunks],
-            "check": check_both_orders,
+            "check": (
+                check_both_orders
+                if discovery_prompt == DEFAULT_DISCOVERY_PROMPT
+                else check_directions
+            ),
             "models": [DISCOVERY_MODEL],
         },
         "validate": {
@@ -281,8 +360,9 @@ def course_plan(root: Path, course: str, steps: list[str], raw: Path | None = No
             "models": [],
         },
     }
+    label = run_folder(course, run_name)
     return [
-        {"label": f"{course}: {name}", "stop_on_failure": True, **all_steps[name]} for name in steps
+        {"label": f"{label}: {name}", "stop_on_failure": True, **all_steps[name]} for name in steps
     ]
 
 
@@ -292,12 +372,18 @@ def plan(
     course: str | None = None,
     steps: list[str] | None = None,
     raw: Path | None = None,
+    discovery_prompt: str = DEFAULT_DISCOVERY_PROMPT,
+    run_name: str | None = None,
 ) -> list[dict]:
     """Ordered steps: {label, argv, out, needs, prepare (callable or None), ...}."""
     if stage == "course":
         if not course:
             raise ValueError("the course stage needs a course")
-        return course_plan(root, course, steps or list(COURSE_STEPS), raw)
+        return course_plan(
+            root, course, steps or list(COURSE_STEPS), raw, discovery_prompt, run_name
+        )
+    if discovery_prompt != DEFAULT_DISCOVERY_PROMPT or run_name:
+        raise ValueError(f"the {stage} stage takes no discovery prompt or run name")
     py = [sys.executable, "-m"]
     steps = []
     if stage == "night1":
@@ -493,11 +579,13 @@ def run_stage(
     raw: Path | None = None,
     log: Path | None = None,
     before_step=None,
+    discovery_prompt: str = DEFAULT_DISCOVERY_PROMPT,
+    run_name: str | None = None,
 ) -> list:
     """Run the plan in order. Done steps are skipped. A missing input is reported and skipped,
     except in a course, where each step needs the one before: there it stops the run."""
     report = []
-    todo = plan(stage, root, course, steps, raw)
+    todo = plan(stage, root, course, steps, raw, discovery_prompt, run_name)
     for i, step in enumerate(todo, 1):
         head = f"[{i}/{len(todo)}] {step['label']}"
         stop = step.get("stop_on_failure")
@@ -559,8 +647,10 @@ def progress(
     course: str | None = None,
     steps: list[str] | None = None,
     raw: Path | None = None,
+    discovery_prompt: str = DEFAULT_DISCOVERY_PROMPT,
+    run_name: str | None = None,
 ) -> dict:
-    todo = plan(stage, root, course, steps, raw)
+    todo = plan(stage, root, course, steps, raw, discovery_prompt, run_name)
     done = [s["label"] for s in todo if usable(s["out"])]
     cache = root / ".cache" / "llm"
     return {
@@ -635,7 +725,7 @@ def stage_log(stage: str, root: Path, course: str | None) -> Path:
 
 # --- what a course run produced -------------------------------------------------------
 def course_report(root: Path, course: str) -> dict:
-    """The facts to read after a course run, from the files it wrote."""
+    """The facts to read after a course run, from the files it wrote. course = its folder."""
     d = root / "outputs" / course
 
     def read(name: str) -> dict:
@@ -651,7 +741,11 @@ def course_report(root: Path, course: str) -> dict:
     return {
         "course": course,
         "concepts": len(read("concepts.json").get("concepts", [])),
+        "discovery_prompt": discovery.get("prompt_version"),
         "both_orders": discovery.get("both_orders"),
+        "directions": discovery.get("directions"),
+        "answers": discovery.get("answers"),
+        "graph_rule": graph.get("graph_rule"),
         "decisions": decisions,
         "necessity_edges_run": sum(
             e.get("necessity_gap") is not None for e in graph.get("edges", [])
@@ -944,20 +1038,27 @@ def _run_stage_command(args, parser) -> None:
         parser.error("the course stage needs --course")
     try:
         steps = parse_steps(args.steps) if stage == "course" else None
+        plan(stage, ROOT, course, steps, args.raw_dir, args.discovery_prompt, args.run_name)
     except ValueError as exc:
         parser.error(str(exc))
     require_gpu()
     models = require_models()
     require_embedding_model()
-    env = environment(VALIDATOR_MODEL, stage, course)
-    out_dir = ROOT / "outputs" / course if course else args.out_dir
+    if course:
+        copied = seed_run_folder(ROOT, course, args.run_name)
+        if copied:
+            print(f"copied from outputs/{course}/ into the run's folder: {copied}")
+    folder = run_folder(course, args.run_name) if course else None
+    env = environment(VALIDATOR_MODEL, stage, folder)
+    env["discovery_prompt"] = args.discovery_prompt if course else None
+    out_dir = ROOT / "outputs" / folder if folder else args.out_dir
     print(f"recorded environment -> {record_environment(env, out_dir)}")
     print(f"GPU: {env['gpu']}")
     for name, info in models.items():
         print(f"{name}: {info['digest']}")
     print(f"{EMBEDDING_MODEL}: {env['embedding_model']['revision']}")
     print(f"both models fit on the GPU: {env['both_models_fit']}")
-    log = stage_log(stage, ROOT, course)
+    log = stage_log(stage, ROOT, folder)
     log.parent.mkdir(parents=True, exist_ok=True)
     os.environ.update(
         LLM_MODEL=DISCOVERY_MODEL, LLM_VALIDATOR_MODEL=VALIDATOR_MODEL, LLM_CALL_LOG=str(log)
@@ -970,13 +1071,16 @@ def _run_stage_command(args, parser) -> None:
         raw=args.raw_dir,
         log=log,
         before_step=partial(unload_other_models, fit=env["both_models_fit"]),
+        discovery_prompt=args.discovery_prompt,
+        run_name=args.run_name,
     )
     summary = timing(log)
     (log.with_suffix(".summary.json")).write_text(json.dumps(summary, indent=2) + "\n")
     print_timing(summary)
-    print(json.dumps(progress(stage, ROOT, course, steps, args.raw_dir), indent=2))
-    if course:
-        print(json.dumps(course_report(ROOT, course), indent=2))
+    done = progress(stage, ROOT, course, steps, args.raw_dir, args.discovery_prompt, args.run_name)
+    print(json.dumps(done, indent=2))
+    if folder:
+        print(json.dumps(course_report(ROOT, folder), indent=2))
     failed = [label for label, status in report if status not in ("ok", "done", "missing input")]
     stopped = course and any(status == "missing input" for _, status in report)
     if failed or stopped:
@@ -993,6 +1097,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--course", help="course id, for the course stage, report and zip")
     parser.add_argument("--steps", help=f"course stage: any of {','.join(COURSE_STEPS)}")
     parser.add_argument("--raw-dir", type=Path, help="course files, default data/raw/<course>/")
+    parser.add_argument(
+        "--discovery-prompt",
+        choices=DISCOVERY_PROMPTS,
+        default=DEFAULT_DISCOVERY_PROMPT,
+        help="course stage only; anything but the default needs --run-name",
+    )
+    parser.add_argument(
+        "--run-name", help="course stage, report, zip: use the folder outputs/<course>_<run name>/"
+    )
     parser.add_argument("--model", default=os.getenv("LLM_VALIDATOR_MODEL", VALIDATOR_MODEL))
     parser.add_argument("--calls", type=int, default=10)
     parser.add_argument("--out-dir", type=Path, default=ROOT / "outputs")
@@ -1031,11 +1144,12 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "run":
         _run_stage_command(args, parser)
     elif args.command == "report":
-        print(json.dumps(course_report(ROOT, args.course), indent=2))
+        print(json.dumps(course_report(ROOT, run_folder(args.course, args.run_name)), indent=2))
     elif args.command == "zip":
-        out = zip_course(ROOT, args.course, args.dest or ROOT)
-        print(f"Wrote {out} (only outputs/{args.course}/)")
-        print(where_to_put(out.name, args.course))
+        folder = run_folder(args.course, args.run_name)
+        out = zip_course(ROOT, folder, args.dest or ROOT)
+        print(f"Wrote {out} (only outputs/{folder}/)")
+        print(where_to_put(out.name, folder))
     elif args.command == "pack":
         if not (args.course and args.concepts and args.chunks and args.zip):
             parser.error("pack needs --course, --concepts, --chunks and --zip")
@@ -1051,7 +1165,10 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps(done, indent=2))
     else:
         steps = parse_steps(args.steps) if args.stage == "course" else None
-        print(json.dumps(progress(args.stage, ROOT, args.course, steps, args.raw_dir), indent=2))
+        done = progress(
+            args.stage, ROOT, args.course, steps, args.raw_dir, args.discovery_prompt, args.run_name
+        )
+        print(json.dumps(done, indent=2))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,15 @@
+{
+  "version": "direction_rule_v1",
+  "fixed_on": "2026-11-04",
+  "applies_to": "Course runs with prompt discover_v4. --pairs benchmark runs and --one-order refuse this prompt.",
+  "asks": "One call per direction, two calls per pair, with no A or B labels: does a student need X to understand Y, then the same question the other way round. Both use the same evidence.",
+  "rule": {
+    "YES one way, NO the other": "one proposed link, direction_agreement = one_way",
+    "YES both ways": "both directions proposed, direction_agreement = both_yes. The validator labels them contradiction, so both go to HUMAN_REVIEW; never pick one automatically.",
+    "NO both ways": "no link, direction_agreement = none"
+  },
+  "invalid_replies": "A reply that is not JSON, does not name the two topics, has another answer, or says YES with no HARD or SOFT strength counts as NO. It keeps valid = false and its raw answer, and is counted as invalid.",
+  "link_fields": "Strength and evidence come from the ask that said YES. discover_v4 asks for no confidence, so the contract's required confidence is the fixed value 0.5, which carries no meaning. Don't read it as a measurement.",
+  "kept": "Both raw answers per direction are in direction_answers in relationships.json, including NO.",
+  "graph_check": "As in order_rule_v2.json."
+}

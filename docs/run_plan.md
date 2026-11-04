@@ -157,7 +157,7 @@ Extend notebooks/colab_validator.ipynb and scripts/colab_run.py so everything ca
 Requirements:
 1. Stop if no GPU is found, and record the GPU and each model's digest. Use exactly qwen2.5:7b-instruct and llama3.1:8b, one loaded at a time unless both fit.
 2. Keep outputs and the LLM cache in Drive, so a disconnect resumes without repeating finished calls. The existing cache and 85-concept ds101 files in ../cdlp-t4/outputs/ds101/ must be usable, with a documented upload step.
-3. Course runs use both-order discovery under order_rule_v1. ds101 and ml101 use --necessity-sample 40. A demo course skips necessity.
+3. Course runs use both-order discovery under order_rule_v1 (order_rule_v2 since 2026-11-04). ds101 and ml101 use --necessity-sample 40. A demo course skips necessity.
 4. Print measured seconds per call, per call type, and total time per stage.
 5. Zip only the course's outputs, and tell me exactly where to put them so the website lists the course.
 6. Update the pinned commit, and update docs/colab_steps.md with step-by-step clicks.

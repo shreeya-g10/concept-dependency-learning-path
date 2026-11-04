@@ -137,7 +137,15 @@
               "unstable",
               "reversed"
             ],
-            "description": "optional (1.11): how the link fared across both orders; rule in cdlp/discovery/configs/order_rule_v1.json"
+            "description": "optional (1.11): how the link fared across both orders; rule in cdlp/discovery/configs/order_rule_v2.json (older files: order_rule_v1.json)"
+          },
+          "direction_agreement": {
+            "type": "string",
+            "enum": [
+              "one_way",
+              "both_yes"
+            ],
+            "description": "optional (1.14): written by discover_v4; rule in cdlp/discovery/configs/direction_rule_v1.json. both_yes links go to HUMAN_REVIEW."
           }
         }
       }
@@ -156,11 +164,11 @@
         },
         "pair_order_rule": {
           "type": "string",
-          "description": "how A and B were chosen: lower_id_first (discover_v3) or sha256_of_pair_v1 (discover_v3_1)"
+          "description": "how A and B were chosen: lower_id_first (discover_v3) or sha256_of_pair_v1 (discover_v3_1). one_call_per_direction_v1 (discover_v4, 1.14): no A or B"
         },
         "answers": {
           "type": "object",
-          "description": "A_BEFORE_B, B_BEFORE_A, NEITHER, off_topic, hard and soft are counts over the run; confidence counts the proposed edges per confidence value",
+          "description": "A_BEFORE_B, B_BEFORE_A, NEITHER, off_topic, hard and soft are counts over the run; confidence counts the proposed edges per confidence value. discover_v4 writes YES, NO, invalid, off_topic, hard and soft over all asks.",
           "properties": {
             "A_BEFORE_B": {
               "type": "integer",
@@ -192,6 +200,18 @@
                 "type": "integer",
                 "minimum": 0
               }
+            },
+            "YES": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "NO": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "invalid": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         },
@@ -236,6 +256,38 @@
                 "type": "integer",
                 "minimum": 0
               }
+            }
+          }
+        },
+        "directions": {
+          "type": "object",
+          "description": "optional (1.14): counts per pair under the direction rule, written by discover_v4.",
+          "required": [
+            "rule_version",
+            "pairs",
+            "one_way",
+            "both_yes",
+            "none"
+          ],
+          "properties": {
+            "rule_version": {
+              "type": "string"
+            },
+            "pairs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "one_way": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "both_yes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "none": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         }
@@ -285,6 +337,82 @@
                     "B_BEFORE_A",
                     "NEITHER"
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "direction_answers": {
+      "type": "array",
+      "description": "optional (1.14): both raw answers per pair and direction, including NO, written by discover_v4.",
+      "items": {
+        "type": "object",
+        "required": [
+          "direction_agreement",
+          "asks"
+        ],
+        "properties": {
+          "direction_agreement": {
+            "type": "string",
+            "enum": [
+              "one_way",
+              "both_yes",
+              "none"
+            ]
+          },
+          "asks": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "needed",
+                "topic",
+                "answer",
+                "raw_answer",
+                "valid"
+              ],
+              "properties": {
+                "needed": {
+                  "type": "string"
+                },
+                "topic": {
+                  "type": "string"
+                },
+                "answer": {
+                  "type": "string",
+                  "enum": [
+                    "YES",
+                    "NO"
+                  ]
+                },
+                "raw_answer": {
+                  "type": "string",
+                  "description": "what the model replied, unchanged"
+                },
+                "valid": {
+                  "type": "boolean",
+                  "description": "false: the reply was not a clean YES or NO about these topics, so it counts as NO"
+                },
+                "on_topic": {
+                  "type": "boolean"
+                },
+                "strength": {
+                  "type": "string",
+                  "enum": [
+                    "hard",
+                    "soft",
+                    "none"
+                  ]
+                },
+                "evidence_chunk_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
