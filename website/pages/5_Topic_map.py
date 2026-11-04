@@ -93,30 +93,83 @@ def full_map_button_and_picture() -> None:
             )
         return
 
+    def wrap_label(lbl: str, max_chars: int = 18) -> str:
+        words = lbl.split()
+        lines = []
+        cur_line = []
+        cur_len = 0
+        for w in words:
+            if cur_len + len(w) + 1 > max_chars and cur_line:
+                lines.append(" ".join(cur_line))
+                cur_line = [w]
+                cur_len = len(w)
+            else:
+                cur_line.append(w)
+                cur_len += len(w) + 1
+        if cur_line:
+            lines.append(" ".join(cur_line))
+        return "\n".join(lines)
+
     network = Network(
-        height="520px",
+        height="560px",
         width="100%",
         directed=True,
         bgcolor="#ffffff",
-        font_color="#14202B",
+        font_color="#1F1B3D",
         cdn_resources="in_line",
     )
     for concept_id in sorted(linked):
+        raw_title = name(concept_id)
+        display_label = wrap_label(raw_title)
         network.add_node(
-            concept_id, label=name(concept_id), title=name(concept_id), color="#8DB9E8", size=22
+            concept_id,
+            label=display_label,
+            title=raw_title,
+            shape="box",
+            margin=10,
+            borderWidth=1.5,
+            borderWidthSelected=2.5,
+            color={
+                "background": "#F0F4FA",
+                "border": "#4B3F8F",
+                "highlight": {"background": "#E0E7FF", "border": "#312E81"},
+            },
+            font={"size": 13, "color": "#1F1B3D", "face": "system-ui, sans-serif"},
+            shadow={"enabled": True, "color": "rgba(0,0,0,0.06)", "size": 5, "x": 1, "y": 2},
         )
     for edge in accepted:
         network.add_edge(
             edge["source"],
             edge["target"],
-            arrows="to",
-            color="#14202B",
+            arrows={"to": {"enabled": True, "scaleFactor": 0.85}},
+            color="#4B3F8F",
             dashes=edge.get("strength", "hard") != "hard",
             title=strength_words(edge),
         )
-    # A tight layout: spread wide, the map zooms out on a phone until the names disappear.
-    network.barnes_hut(gravity=-1500, central_gravity=0.8, spring_length=60, spring_strength=0.08)
-    components.html(network.generate_html(), height=540, scrolling=False)
+    network.set_options("""
+    {
+      "edges": {
+        "smooth": { "type": "cubicBezier", "roundness": 0.25 }
+      },
+      "physics": {
+        "barnesHut": {
+          "gravitationalConstant": -6000,
+          "centralGravity": 0.12,
+          "springLength": 190,
+          "springConstant": 0.04,
+          "damping": 0.12,
+          "avoidOverlap": 1.0
+        },
+        "minVelocity": 0.75
+      },
+      "interaction": {
+        "hover": true,
+        "zoomView": true,
+        "navigationButtons": true
+      }
+    }
+    """)
+    components.html(network.generate_html(), height=580, scrolling=False)
     st.caption(S.MAP_KEY)
 
 

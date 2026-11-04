@@ -99,12 +99,29 @@ def asked_for(target: str) -> int:
 def next_item(target: str) -> dict | None:
     if asked_for(target) >= api.MAX_QUESTIONS_PER_TOPIC:
         return None
-    return api.next_question(
+    item = api.next_question(
         graph_data,
         valid_items,
         {**st.session_state.quiz_mastery, "__asked__": list(st.session_state.quiz_asked)},
         target,
     )
+    if item is not None:
+        return item
+    if asked_for(target) < min(3, len(valid_items)):
+        asked = set(st.session_state.quiz_asked)
+        order = api.prerequisite_order(graph_data, target)
+        for c in reversed(order):
+            candidate = next(
+                (
+                    q
+                    for q in valid_items
+                    if q.get("concept_id") == c and q.get("id", q.get("item_id")) not in asked
+                ),
+                None,
+            )
+            if candidate is not None:
+                return candidate
+    return None
 
 
 def finish() -> None:
