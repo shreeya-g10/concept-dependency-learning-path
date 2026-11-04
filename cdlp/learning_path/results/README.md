@@ -66,21 +66,32 @@ How to read this:
 |---|---|---|---|---|---|---|---|
 | follow the graph | adaptive (existing quiz, old answer model) | 4.28 | 0 | 0.866 | 0.189 | 0.811 | 2.35 |
 | | adaptive_levelled (ladder items and answer model) | 3.96 | 0 | 0.814 | 0.315 | 0.685 | 1.91 |
-| | ladder_linear | 6.27 | 3.37 | 0.825 | 0.005 | 0.995 | 3.53 |
+| | ladder_linear | 6.49 | 3.50 | 0.828 | 0.006 | 0.995 | 3.51 |
 | | ladder_middle | 5.36 | 2.95 | 0.859 | 0.032 | 0.968 | 3.28 |
 | ignore the graph | adaptive (existing quiz, old answer model) | 3.64 | 0 | 0.775 | 0.407 | 0.593 | 1.77 |
 | | adaptive_levelled (ladder items and answer model) | 3.32 | 0 | 0.728 | 0.538 | 0.462 | 1.31 |
-| | ladder_linear | 4.92 | 2.77 | 0.689 | 0.002 | 0.998 | 4.06 |
+| | ladder_linear | 5.85 | 3.28 | 0.726 | 0.002 | 0.998 | 3.88 |
 | | ladder_middle | 5.11 | 2.87 | 0.712 | 0.197 | 0.803 | 3.15 |
 
-Rules behind these numbers: only a real hard question earns Know it, and after an easy wrong answer (shown as "Start from the basics") `ladder_linear` skips only the topics that depend on that topic. On a straight chain this behaves as stopping at the first gap did.
+With no hard questions at all (`no_hard_items`, the worst case):
+
+| Students | Strategy | Questions | Self-report taps | Accuracy | Wrongly known | Gap coverage | Path length |
+|---|---|---|---|---|---|---|---|
+| follow the graph | adaptive_levelled | 3.96 | 0 | 0.814 | 0.315 | 0.685 | 1.91 |
+| | ladder_linear | 4.60 | 3.54 | 0.536 | 0.000 | 1.000 | 5.00 |
+| | ladder_middle | 3.88 | 3.00 | 0.536 | 0.000 | 1.000 | 5.00 |
+| ignore the graph | adaptive_levelled | 3.32 | 0 | 0.728 | 0.538 | 0.462 | 1.31 |
+| | ladder_linear | 4.39 | 3.29 | 0.504 | 0.000 | 1.000 | 5.00 |
+| | ladder_middle | 3.89 | 3.00 | 0.504 | 0.000 | 1.000 | 5.00 |
+
+Rules behind these numbers: only a real hard question earns Know it, and with no hard question left nothing stands in, so the topic ends at Quick revision without asking. After an easy wrong answer (shown as "Start from the basics"), only topics that depend on that topic through hard links are skipped; soft-linked and unrelated topics are still asked. A straight chain of hard links behaves as stopping at the first gap did.
 
 How to read this:
 - `adaptive` is the same run as `rq2_rq4_results.json` (a test pins this). `adaptive_levelled` is the fair comparison, because it shares the ladders' items and answer model. It asks easy items first, which is why it calls more gaps known than `adaptive`.
-- The ladders trade length for safety. They almost never call a gap known, but they ask more questions and leave more on the plan. Against `adaptive_levelled`, `ladder_linear` accuracy does not clearly rise when students follow the graph (+0.011, 95% interval -0.015 to +0.038) and falls when they do not (-0.038, -0.061 to -0.016).
-- Asking unrelated topics after a gap costs about 0.25 and 0.72 more questions than stopping did, and raises `ladder_linear` accuracy by 0.007 and 0.033. Topics that depend on a gap are still not checked, for 73% and 86% of students here, so known topics stay on the plan (0.86 and 1.55 per student). The example graph has only one unrelated pair (Recursion and Trees), so this says little about wider real graphs.
-- `ladder_middle` scores better than `ladder_linear` on accuracy, and asks fewer questions when students follow the graph, but it infers known topics, so it calls more gaps known. When students ignore the graph that inference is often wrong (0.197).
-- **`no_hard_items` is the main risk.** Only a real hard question earns Know it, so with no hard questions nobody can reach it: every plan holds all 5 topics, accuracy falls to 0.536 and 0.504, and nothing is called known wrongly. A stand-in for hard is still asked and recorded, but cannot change the result: 1.70 and 1.12 such questions per student for `ladder_linear`. Real hard questions may be dropped often, because the checks are not loosened for them, so the real drop rate matters.
+- The ladders trade length for safety. They almost never call a gap known, but they ask more questions and leave more on the plan. Against `adaptive_levelled`, `ladder_linear` accuracy is level in both conditions (+0.015, 95% interval -0.012 to +0.042, and -0.002, -0.026 to +0.022), for about 2.5 more questions plus the self-report taps.
+- Asking soft-linked topics helps most when knowledge ignores the graph. Topics that depend on a gap through hard links are still not checked, for 71% and 76% of students here, so known topics stay on the plan (0.84 and 1.37 per student). The example graph has one soft link (Recursion to Binary Trees), so wider real graphs may differ.
+- `ladder_middle` scores higher on accuracy when students follow the graph, but it infers known topics, so it calls more gaps known. When students ignore the graph that inference is often wrong (0.197). Its inference still crosses soft links.
+- **`no_hard_items` is the main risk.** Nobody can reach Know it, so every plan holds all 5 topics and accuracy falls to about 0.5, though nothing is wrongly called known. Each topic that reaches the hard step ends at Quick revision without a wasted question (2.06 and 1.54 such topics per student for `ladder_linear`). Hard questions may be dropped often, because the checks are not loosened for them, so a topic missing a level now gets its one retry. The real drop rate is still unknown.
 - `flat_levels` and `unreliable_self_report` show the same pattern, so it does not rest on the chosen level chances alone. Other answer seeds (42 to 46) move accuracy by at most 0.02.
 
 ## quiz_check replays on the ds101 review drafts (2026-11-03)

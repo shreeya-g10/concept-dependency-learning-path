@@ -11,7 +11,7 @@ Contracts in `cdlp/shared/schemas/` are the interface between modules. Every fil
 ## 1.13
 
 - `quiz_items.json` items may carry an optional `difficulty` (`easy`, `medium`, `hard`) and `difficulty_source` (`ai_suggestion`, `teacher`). An AI label is only a suggestion until a teacher approves it. An item with no `difficulty` is treated as easy or any level, and a course with no labelled item keeps the old question selection.
-- `generation` may carry optional `drop_rate_by_level` and `concepts_missing_level`, written by prompt `quiz_v3`, which is now the default. Quiz generation writes `schema_version` 1.13. Example: `examples/ladder_quiz_items.json` (mock, hand-written questions and made-up counts).
+- `generation` may carry optional `drop_rate_by_level`, `concepts_missing_level` and `retried_only_for_missing_level`, written by prompt `quiz_v3`, which is now the default. Under `quiz_v3` the one retry per topic also fires when a level is missing, using `quiz_retry_v2`. Quiz generation writes `schema_version` 1.13. Example: `examples/ladder_quiz_items.json` (mock, hand-written questions and made-up counts).
 - No field renamed, removed, retyped or made required; older files stay valid.
 
 ## 1.12

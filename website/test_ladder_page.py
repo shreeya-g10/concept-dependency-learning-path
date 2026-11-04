@@ -173,20 +173,46 @@ def test_nothing_known_says_only_where_to_start():
     assert "Start with Recursion." in shown(at) and "You already know" not in shown(at)
 
 
-def test_a_gap_keeps_asking_unrelated_topics_and_skips_what_depends_on_it():
+def test_a_gap_on_a_soft_link_keeps_asking_and_the_note_says_so():
     at = studied(start(), "recursion", "no")
     at = tap(at, False)
     at = at.button(key="quiz_continue").click().run()
-    assert heading(at) == "### Have you studied Trees?"  # unrelated to Recursion
+    assert heading(at) == "### Have you studied Trees?"
     at = know(at, "trees")
+    assert heading(at) == "### Have you studied Binary Trees?"  # only a soft link from Recursion
+    at = know(at, "binary_tree")
+    at = know(at, "binary_search_tree")
+    at = know(at, "avl_tree")
     assert not at.exception and at.title[0].value == S.PLAN_TITLE
     text = shown(at)
-    assert "You already know Trees, so start with Recursion." in text
-    assert S.PLAN_LADDER_SKIPPED.format(topic="Recursion") in text
-    assert "We stopped at" not in text
-    lines = [m.value for m in at.markdown]
-    assert lines.count(S.PLAN_RESULTS["not_checked"]) == 3
-    assert S.PLAN_RESULTS["start_here"] in lines
+    assert S.PLAN_LADDER_STILL_ASKED.format(topics="Binary Trees", topic="Recursion") in text
+    assert "We stopped at" not in text and "We did not ask" not in text
+    assert S.PLAN_RESULTS["not_checked"] not in [m.value for m in at.markdown]
+    assert "so start with Recursion." in text
+
+
+def test_a_gap_on_hard_links_says_those_topics_were_not_asked():
+    at = know(start(), "recursion")
+    at = studied(at, "trees", "no")
+    at = tap(at, False)
+    at = at.button(key="quiz_continue").click().run()
+    text = shown(at)
+    assert S.PLAN_LADDER_STOPPED.format(topic="Trees") in text
+    assert "We still asked" not in text
+    assert [m.value for m in at.markdown].count(S.PLAN_RESULTS["not_checked"]) == 3
+
+
+def test_no_hard_question_ends_at_quick_revision_without_asking(course):
+    quiz = json.loads((course / "quiz_items.json").read_text())
+    quiz["items"] = [i for i in quiz["items"] if i["difficulty"] != "hard"]
+    (course / "quiz_items.json").write_text(json.dumps(quiz))
+    common.st.cache_data.clear()
+    at = studied(start("trees"), "trees", "yes")
+    at = tap(at, True)  # medium right, and no hard question exists
+    assert not at.exception and at.title[0].value == S.PLAN_TITLE
+    assert S.PLAN_RESULTS["quick_revision"] in [m.value for m in at.markdown]
+    log = json.loads((course / "student_answers.json").read_text())["answers"]
+    assert len(log) == 1
 
 
 def test_the_card_says_start_from_the_basics():

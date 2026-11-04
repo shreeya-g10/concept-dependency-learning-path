@@ -86,8 +86,8 @@ def test_without_hard_items_nothing_is_known_by_a_stand_in():
     cfg = {**SMALL, "drop_levels": ["hard"]}
     strategies = evaluate.evaluate_ladders(GRAPH, QUIZ, students, cfg)["strategies"]
     for name in evaluate.LADDER_STRATEGIES:
-        assert strategies[name]["know_it_by_stand_in"] == 0
-        assert strategies[name]["questions_that_cannot_change_the_result"] > 0
+        assert strategies[name]["stand_ins_for_hard"] == 0
+        assert strategies[name]["no_hard_question"] > 0
     assert strategies["ladder_linear"]["wrongly_known"] == 0
 
 

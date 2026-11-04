@@ -8,8 +8,9 @@ only sets the starting level. It never marks a topic as known.
     medium wrong after a Yes start -> easy
     medium right, hard wrong -> quick_revision
     easy right, medium wrong -> study_this
-    easy wrong -> start_here: ladder_linear skips the topics that depend on it, which stay
-    not_checked, and keeps asking unrelated topics. On a straight chain that ends the quiz.
+    easy wrong -> start_here: ladder_linear skips the topics that depend on it through hard
+    links, which stay not_checked, and keeps asking the rest, soft-linked topics included. On a
+    straight chain of hard links that ends the quiz.
 
 State lives in the mastery dict under "__ladder__", beside "__asked__" and "__observed__". The
 values update_mastery would write are not used here: its propagation lifts ancestors, which
@@ -17,13 +18,14 @@ would mark a topic already graded study_this as known after a later right answer
 
 ladder_linear asks the first unfinished topic. ladder_middle (evaluated, not shown) asks the
 middle of what is still open: know_it also infers the topic's ancestors, and any other result
-closes the topics after it, so the search moves earlier.
+closes the topics that depend on it through hard links, so the search moves earlier.
 
-No level question left for a slot: the nearest level stands in (the easier one on a tie) and
-this is recorded under the topic's "stand_ins". No question left at all: the topic ends at the
-result the answers so far support, which never claims more than they showed. Only a real hard
-question earns know_it: an easier one standing in for hard ends at quick_revision either way, and
-is still recorded. A difficulty label from the AI is only a suggestion until a teacher approves it.
+No easy or medium question left for a slot: the nearest level stands in (the easier one on a tie)
+and this is recorded under the topic's "stand_ins". No hard question left: nothing stands in,
+because an easier question could not earn know_it. The topic ends at quick_revision without asking,
+and "no_hard_question" is recorded. No question left at all: the topic ends at the result the
+answers so far support, which never claims more than they showed. A difficulty label from the AI
+is only a suggestion until a teacher approves it.
 
 start_here is the stored name of the result students read as "Start from the basics".
 """
@@ -35,7 +37,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from cdlp.learning_path.graph import ancestors, dependents, generic_path, load_graph
+from cdlp.learning_path.graph import ancestors, generic_path, load_graph
 
 LEVELS = ("easy", "medium", "hard")
 SELF_REPORTS = ("yes", "no", "not_sure")
@@ -56,6 +58,23 @@ def configured_strategy() -> str:
     if strategy != "adaptive" and strategy not in STRATEGIES:
         raise ValueError(f"{CONFIG.name}: unknown strategy {strategy!r}")
     return strategy
+
+
+def hard_dependents(G: Any, concept: str) -> set[str]:
+    """Topics reached from this one through hard links only. A soft link does not make a topic
+    depend on this one, and neither does a hard link that comes after a soft one."""
+    hard_next: dict[str, list[str]] = {}
+    for source, target, data in G.edges(data=True):
+        if data.get("strength", "hard") == "hard":
+            hard_next.setdefault(source, []).append(target)
+    found: set[str] = set()
+    waiting = list(hard_next.get(concept, []))
+    while waiting:
+        current = waiting.pop()
+        if current not in found:
+            found.add(current)
+            waiting.extend(hard_next.get(current, []))
+    return found
 
 
 def has_levels(items: list[dict]) -> bool:
@@ -113,7 +132,7 @@ def _current_topic(graph: dict, items: list[dict], mastery: dict, target: str, s
         skipped: set[str] = set()
         for concept in order:
             if result(concept) == START_HERE:
-                skipped |= dependents(G, concept)
+                skipped |= hard_dependents(G, concept)
             elif concept not in skipped and can_ask(concept):
                 return concept
         return None
@@ -125,7 +144,7 @@ def _current_topic(graph: dict, items: list[dict], mastery: dict, target: str, s
     closed: set[str] = set()
     for concept in order:
         if result(concept) not in (None, KNOW_IT):
-            closed |= dependents(G, concept)
+            closed |= hard_dependents(G, concept)
     still_open = [c for c in order if c not in closed and can_ask(c)]
     return still_open[len(still_open) // 2] if still_open else None
 
@@ -235,6 +254,11 @@ def record_answer(
         # A question standing in for hard cannot earn know_it, right or wrong.
         result = KNOW_IT if correct and actual == "hard" else QUICK_REVISION
 
+    if result is None and topic["level"] == "hard":
+        unasked = _unasked(items, updated, concept)
+        if not any(level_of(i) == "hard" for i in unasked):  # nothing may stand in for hard
+            topic["no_hard_question"] = True
+            result = QUICK_REVISION
     if result is None and pick_item(items, updated, concept, topic["level"]) is None:
         result = if_none_left
     if result is not None:
@@ -257,6 +281,7 @@ def summary(
                 "result": topic.get("result") or NOT_CHECKED,
                 "inferred": bool(topic.get("inferred")),
                 "stand_ins": list(topic.get("stand_ins", [])),
+                "no_hard_question": bool(topic.get("no_hard_question")),
                 "questions": len(topic.get("answers", [])),
             }
         )
@@ -267,13 +292,16 @@ def summary(
         G = load_graph(graph)
         results = {r["concept_id"]: r["result"] for r in rows}
         for concept in (c for c in order if results[c] == START_HERE):
-            depends = dependents(G, concept)
+            depends = hard_dependents(G, concept)
             later = order[order.index(concept) + 1 :]
+            helped = set(G.successors(concept)) - depends
             stops.append(
                 {
                     "concept_id": concept,
                     "not_checked": [c for c in later if c in depends and results[c] == NOT_CHECKED],
                     "stops_everything_later": set(later) <= depends,
+                    # Linked by a soft link, and really asked: another gap may have skipped one.
+                    "still_asked": [c for c in later if c in helped and results[c] != NOT_CHECKED],
                 }
             )
     return {

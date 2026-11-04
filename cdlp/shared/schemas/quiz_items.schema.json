@@ -238,6 +238,13 @@
               "type": "string"
             }
           }
+        },
+        "retried_only_for_missing_level": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "optional (1.13): concept ids whose one retry happened only because a level was missing. They had enough items for the older rule, so each is an extra retry."
         }
       }
     }

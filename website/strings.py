@@ -242,8 +242,11 @@ PLAN_LADDER_STOPPED = (
     "The later topics stay on your plan as not checked yet."
 )
 PLAN_LADDER_SKIPPED = (
-    "We did not ask about the topics that build on {topic}. "
+    "We did not ask about the topics that need {topic} first. "
     "They stay on your plan as not checked yet."
+)
+PLAN_LADDER_STILL_ASKED = (
+    "We still asked about {topics}, because {topic} helps with it but is not needed first."
 )
 
 # ---- topic map ------------------------------------------------------------------------

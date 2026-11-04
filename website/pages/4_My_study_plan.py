@@ -134,6 +134,14 @@ if ladder:
                 S.PLAN_LADDER_STOPPED if stop["stops_everything_later"] else S.PLAN_LADDER_SKIPPED
             )
             st.info(note.format(topic=name(stop["concept_id"])), icon="ℹ️")
+        if stop["still_asked"]:
+            asked_names = S.PLAN_AND.join(name(c) for c in stop["still_asked"])
+            st.info(
+                S.PLAN_LADDER_STILL_ASKED.format(
+                    topics=asked_names, topic=name(stop["concept_id"])
+                ),
+                icon="ℹ️",
+            )
     for concept_id in ladder["known"]:
         st.caption(
             S.PLAN_RESULT_LINE.format(

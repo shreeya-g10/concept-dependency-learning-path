@@ -442,18 +442,13 @@ def _plan_scores(
 def _ladder_extras(graph_data: dict, items: list[dict], mastery: dict, target: str, name: str):
     summary = api.ladder_summary(graph_data, items, mastery, target, name)
     rows = summary["rows"]
-    hard_stand_ins = [s for r in rows for s in r["stand_ins"] if s["wanted"] == "hard"]
     return {
         "not_checked": sum(r["result"] == "not_checked" for r in rows),
         "stopped_early": 1.0 if any(s["not_checked"] for s in summary["stops"]) else 0.0,
         "skipped_by_a_gap": sum(len(s["not_checked"]) for s in summary["stops"]),
         "stand_ins": sum(len(r["stand_ins"]) for r in rows),
-        # Asked, but a stand-in for hard ends at Quick revision whatever the answer.
-        "questions_that_cannot_change_the_result": len(hard_stand_ins),
-        "know_it_by_stand_in": sum(
-            r["result"] == "know_it" and any(s["wanted"] == "hard" for s in r["stand_ins"])
-            for r in rows
-        ),
+        "stand_ins_for_hard": sum(s["wanted"] == "hard" for r in rows for s in r["stand_ins"]),
+        "no_hard_question": sum(r["no_hard_question"] for r in rows),
     }
 
 

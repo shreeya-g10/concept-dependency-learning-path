@@ -27,7 +27,9 @@ any accuracy figure for the checks must come from questions not used to design t
 
 quiz_v3 asks for one easy, one medium and one hard question per topic. Every draft passes the same
 checks: none is loosened to keep hard questions, and generation reports the drop rate per level.
-The model's difficulty is stored as an "ai_suggestion" until a teacher approves it.
+The model's difficulty is stored as an "ai_suggestion" until a teacher approves it. A topic left
+missing a level also gets the one retry (prompts/quiz_retry_v2.txt), which says which level is
+missing and why its drafts failed. It is still one retry per topic, under the same checks.
 """
 
 from __future__ import annotations
@@ -59,6 +61,7 @@ CHECK_PROMPT_VERSION = "quiz_check_v2"  # quiz_check_v1 is kept for the record
 CHECK_VERSION = "quiz_check_v3"
 OLD_CHECK_VERSION = "quiz_check_v2"
 RETRY_PROMPT_VERSION = "quiz_retry_v1"
+LEVELLED_RETRY_PROMPT_VERSION = "quiz_retry_v2"
 CHECK_ITEMS = True  # a second model must confirm every item (quiz_v2)
 N_QUESTIONS = 4
 # Below this a topic gets one retry. One question cannot tell a slip from a real gap.
@@ -459,19 +462,50 @@ def _v2_prompt(concept: dict, evidence: list[dict], template: str) -> str:
     )
 
 
+def missing_levels(topic: dict) -> list[str]:
+    """The levels this topic has no kept item for, in level order."""
+    have = {item.get("difficulty") for item in topic["items"]}
+    return [level for level in LEVELS if level not in have]
+
+
+def _levelled_failures(topic: dict, missing: list[str]) -> list[str]:
+    """Why drafts failed, the missing levels first so the limit never cuts them."""
+    level_of = topic.get("failure_levels", {})
+    rows = sorted(topic["failures"], key=lambda f: level_of.get(f[0]) not in missing)
+    lines = []
+    for question, reason in rows[:MAX_FAILURES_SHOWN]:
+        advice = FAILURE_ADVICE.get(reason, "It failed a check.")
+        level = level_of.get(question)
+        tag = f"{level} question " if level in LEVELS else ""
+        lines.append(f'- {tag}"{question}": {advice}' if question else f"- {advice}")
+    failed = {level_of.get(question) for question, _ in topic["failures"]}
+    lines += [f"- No {level} question was written." for level in missing if level not in failed]
+    return lines
+
+
 def _retry_prompt(topic: dict, template: str, retry_template: str) -> str:
     """The first prompt, plus why the drafts failed and which questions to leave alone."""
+    accepted = [f"- {item['question']}" for item in topic["items"]]
+    if topic.get("levelled"):
+        missing = missing_levels(topic)
+        return retry_template.format(
+            base_prompt=_v2_prompt(topic["concept"], topic["evidence"], template),
+            concept_name=topic["concept"].get("name", topic["concept"]["id"]),
+            missing_levels=", ".join(missing),
+            failures="\n".join(_levelled_failures(topic, missing)) or "(none listed)",
+            accepted="\n".join(accepted) or "(none yet)",
+            n_questions=len(missing) or N_LEVELLED_QUESTIONS,
+        )
     failures = []
     for question, reason in topic["failures"][:MAX_FAILURES_SHOWN]:
         advice = FAILURE_ADVICE.get(reason, "It failed a check.")  # never crash a long run
         failures.append(f'- "{question}": {advice}' if question else f"- {advice}")
-    accepted = [f"- {item['question']}" for item in topic["items"]]
     return retry_template.format(
         base_prompt=_v2_prompt(topic["concept"], topic["evidence"], template),
         concept_name=topic["concept"].get("name", topic["concept"]["id"]),
         failures="\n".join(failures) or "(none listed)",
         accepted="\n".join(accepted) or "(none yet)",
-        n_questions=N_LEVELLED_QUESTIONS if topic.get("levelled") else N_QUESTIONS,
+        n_questions=N_QUESTIONS,
     )
 
 
@@ -555,6 +589,8 @@ def _take_drafts(raw: list, topic: dict, skipped: Counter) -> list[dict]:
         if problem:
             skipped[problem] += 1
             topic["failures"].append((question if isinstance(question, str) else "", problem))
+            if topic.get("levelled") and isinstance(question, str):
+                topic.setdefault("failure_levels", {})[question] = _draft_level(one)
             topic.setdefault("dropped", []).append(
                 {
                     "concept_id": concept["id"],
@@ -582,6 +618,9 @@ def _check_drafts(new: list[dict], topic: dict, template: str, model: str | None
         if problem:
             skipped[problem] += 1
             topic["failures"].append((item["question"], problem))
+            if topic.get("levelled"):
+                level = item.get("difficulty", "unlabelled")
+                topic.setdefault("failure_levels", {})[item["question"]] = level
             topic["items"].remove(item)
             topic.setdefault("dropped", []).append(
                 {
@@ -611,7 +650,8 @@ def generate_quiz_items(
 
     With quiz_v2 each item must also carry a word-for-word quote from the book, and a
     second model, shown only the excerpt and the quote, must judge the item sound. Items that
-    fail are dropped and counted. A topic left with fewer than MIN_ITEMS_PER_TOPIC gets one
+    fail are dropped and counted. A topic left with fewer than MIN_ITEMS_PER_TOPIC, or under
+    quiz_v3 missing a level, gets one
     retry that says why its drafts failed, and the new drafts pass the same checks. A topic
     can still end up with no questions: it is then not ready.
 
@@ -672,6 +712,7 @@ def generate_quiz_items(
         )
     checked = 0
     retried: list[str] = []
+    retried_only_for_level: list[str] = []
     skipped_first_try: Counter = Counter()
     if is_v2:
         check_template = load_prompt(CHECK_PROMPT_VERSION) if check else ""
@@ -687,15 +728,24 @@ def generate_quiz_items(
 
         checked += run_checks(new_drafts)
         skipped_first_try = Counter(skipped)
-        retry_template = load_prompt(RETRY_PROMPT_VERSION)
+        retry_version = (
+            LEVELLED_RETRY_PROMPT_VERSION
+            if prompt_version in LEVELLED_PROMPTS
+            else RETRY_PROMPT_VERSION
+        )
+        retry_template = load_prompt(retry_version)
         retry_batches = []
         for topic in topics:
-            if len(topic["items"]) < MIN_ITEMS_PER_TOPIC:
+            too_few = len(topic["items"]) < MIN_ITEMS_PER_TOPIC
+            missing = bool(topic.get("levelled") and missing_levels(topic))
+            if too_few or missing:
                 retried.append(topic["concept"]["id"])
+                if not too_few:
+                    retried_only_for_level.append(topic["concept"]["id"])
                 raw = _ask_for_drafts(
                     _retry_prompt(topic, template, retry_template),
                     topic,
-                    RETRY_PROMPT_VERSION,
+                    retry_version,
                     model,
                     skipped,
                 )
@@ -717,7 +767,15 @@ def generate_quiz_items(
             "check_version": check_version if is_v2 else None,
             "items_checked": checked,
             "min_items_per_topic": MIN_ITEMS_PER_TOPIC if is_v2 else None,
-            "retry_prompt_version": RETRY_PROMPT_VERSION if is_v2 else None,
+            "retry_prompt_version": (
+                (
+                    LEVELLED_RETRY_PROMPT_VERSION
+                    if prompt_version in LEVELLED_PROMPTS
+                    else RETRY_PROMPT_VERSION
+                )
+                if is_v2
+                else None
+            ),
             "topics_retried": retried,
             "concepts": len(concepts),
             "concepts_without_chunks": no_chunks,
@@ -730,6 +788,7 @@ def generate_quiz_items(
             **(
                 {
                     "drop_rate_by_level": drop_rate_by_level(topics),
+                    "retried_only_for_missing_level": retried_only_for_level,
                     "concepts_missing_level": {
                         level: sorted(
                             t["concept"]["id"]
