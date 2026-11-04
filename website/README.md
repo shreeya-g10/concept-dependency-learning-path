@@ -22,7 +22,7 @@ Every page reads pipeline outputs from `outputs/`. When those don't exist yet, i
 | `pages/2_See_your_topics.py` | Concepts + source pages |
 | `pages/3_Quick_check.py` | Adaptive quiz |
 | `pages/4_My_study_plan.py` | Personal path |
-| `pages/5_Topic_map.py` | Concept lists + optional interactive graph |
+| `pages/5_Topic_map.py` | My Study Path and All Topics views, concept lists; picture shows by itself at 30 links or fewer |
 | `pages/teacher_AI_checks_and_review.py` | For teachers: decisions, checks, evidence, necessity gap, review |
 | `pages/teacher_AI_suggestions.py` | For teachers: LLM-proposed edges |
 

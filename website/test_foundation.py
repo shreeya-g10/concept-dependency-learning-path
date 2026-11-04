@@ -237,7 +237,19 @@ def test_study_plan_ignores_answers_from_another_course(demo_outputs):
     assert any(S.PLAN_EMPTY in i.value for i in at.info)
 
 
+def more_than_thirty_links(outputs: Path) -> None:
+    """The map shows by itself at 30 links or fewer, so these need a larger one."""
+    path = outputs / "ds101" / "validated_graph.json"
+    graph = json.loads(path.read_text())
+    extra = [
+        {**graph["edges"][0], "source": f"x{i}", "target": f"x{i + 1}", "decision": "ACCEPT"}
+        for i in range(31)
+    ]
+    path.write_text(json.dumps({**graph, "edges": [*graph["edges"], *extra]}))
+
+
 def test_topic_map_sends_the_heavy_picture_only_on_request(demo_outputs):
+    more_than_thirty_links(demo_outputs)
     at = AppTest.from_file(str(SITE / ui.PAGES["map"].path), default_timeout=60).run()
     assert not at.exception
     assert not at.get("iframe")
@@ -246,6 +258,7 @@ def test_topic_map_sends_the_heavy_picture_only_on_request(demo_outputs):
 
 
 def test_the_full_map_button_comes_before_the_topic_lists(demo_outputs):
+    more_than_thirty_links(demo_outputs)
     at = AppTest.from_file(str(SITE / ui.PAGES["map"].path), default_timeout=60).run()
     keys = [b.key for b in at.button]
     assert keys[0] == "map_full_button"

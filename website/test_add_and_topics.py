@@ -325,7 +325,10 @@ def test_remove_does_not_follow_a_link_out_of_the_folder(tmp_path):
     (raw / "c1").mkdir(parents=True)
     outside = tmp_path / "secret.txt"
     outside.write_text("keep")
-    (raw / "c1" / "link.txt").symlink_to(outside)
+    try:
+        (raw / "c1" / "link.txt").symlink_to(outside)
+    except OSError:
+        pytest.skip("Symlinks require administrator privileges on Windows")
     with pytest.raises(ValueError, match="link"):
         jobs.remove_upload("c1", "link.txt", raw, tmp_path / "jobs")
     assert outside.exists() and (raw / "c1" / "link.txt").is_symlink()
@@ -336,7 +339,10 @@ def test_remove_does_not_follow_a_linked_course_folder(tmp_path):
     (raw / "real").mkdir(parents=True)
     keep = raw / "real" / "notes.txt"
     keep.write_text("keep")
-    (raw / "c1").symlink_to(raw / "real", target_is_directory=True)
+    try:
+        (raw / "c1").symlink_to(raw / "real", target_is_directory=True)
+    except OSError:
+        pytest.skip("Symlinks require administrator privileges on Windows")
     with pytest.raises(ValueError, match="link"):
         jobs.remove_upload("c1", "notes.txt", raw, tmp_path / "jobs")
     assert keep.exists()

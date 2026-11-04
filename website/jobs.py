@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import os
 import re
@@ -31,6 +32,8 @@ import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -267,10 +270,32 @@ def job_dir(course_id: str, jobs: Path | None = None) -> Path:
     return (jobs or JOBS) / course_id
 
 
+def _log_status_failure(folder: Path, exc: OSError) -> None:
+    """Never hidden. The runner's stderr goes nowhere, so the job's own log gets it as well."""
+    logger.error("Could not write the job status in %s: %s", folder, exc)
+    try:
+        with open(folder / "pipeline.log", "a", encoding="utf-8") as log:
+            log.write(f"\ncould not write the job status: {exc}\n")
+    except OSError as log_exc:
+        logger.error("Could not write to the job log in %s: %s", folder, log_exc)
+
+
 def _write_state(folder: Path, state: dict) -> None:
-    tmp = folder / "job.json.tmp"
-    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    tmp.replace(folder / "job.json")
+    tmp = folder / f"job.json.{os.getpid()}.tmp"
+    content = json.dumps(state, indent=2)
+    tmp.write_text(content, encoding="utf-8")
+    dest = folder / "job.json"
+    for _ in range(10):
+        try:
+            tmp.replace(dest)
+            return
+        except OSError:
+            time.sleep(0.05)
+    try:
+        dest.write_text(content, encoding="utf-8")
+        tmp.unlink(missing_ok=True)
+    except OSError as exc:
+        _log_status_failure(folder, exc)
 
 
 def _read_state(folder: Path) -> dict | None:
@@ -445,7 +470,17 @@ def read_status(course_id: str, jobs: Path | None = None, tail: int = 60) -> dic
     if current == "starting" and time.time() - state.get("created_at", 0) > START_TIMEOUT:
         current, error = "failed", "The background runner did not start."
     elif current == "running" and not _alive(state.get("pid")):
-        current, error = "failed", "The background runner stopped before the pipeline finished."
+        for _ in range(10):
+            time.sleep(0.1)
+            latest = _read_state(folder)
+            if latest and latest.get("state") in ("succeeded", "failed"):
+                state = latest
+                current = state.get("state", "failed")
+                if current == "failed":
+                    error = failure_reason(log, state.get("returncode"))
+                break
+        else:
+            current, error = "failed", "The background runner stopped before the pipeline finished."
     elif current == "failed":
         error = failure_reason(log, state.get("returncode"))
     stages = stage_progress(log, current)

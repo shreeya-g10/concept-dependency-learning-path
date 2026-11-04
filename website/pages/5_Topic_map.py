@@ -1,8 +1,10 @@
 """Topic map: learn before -> this topic -> learn next, as tappable cards.
 
-Works on a phone and on weak internet: the full picture sends the whole drawing library, so
-it stays behind a button. Everything here reads the ACCEPT links of validated_graph.json
-directly; the machine-written `reason` of a link is for teachers and is not shown.
+Works on a phone and on weak internet: the picture sends the whole drawing library, so a map
+of more than FULL_MAP_LIMIT links stays behind a button. Two views once a student has a plan:
+My Study Path (their topics, in the words of the study plan) and All Topics. Everything here
+reads the ACCEPT links of validated_graph.json directly; the machine-written `reason` of a link
+is for teachers and is not shown.
 """
 
 from __future__ import annotations
@@ -11,7 +13,34 @@ import common
 import streamlit as st
 import streamlit.components.v1 as components
 import strings as S
+import study_path
 import ui
+
+from cdlp.learning_path import api
+
+FULL_MAP_LIMIT = 30  # at most this many links: the picture shows without asking
+
+# The page background and text of .streamlit/config.toml, so the picture sits in the theme.
+MAP_BACKGROUND = "#F4F2FB"
+MAP_TEXT = "#1F1B3D"
+# background, border, border width
+PATH_COLOURS = {
+    "next": ("#FEF3C7", "#D97706", 3.5),
+    "done": ("#D1FAE5", "#059669", 2.0),
+    "know_it": ("#D1FAE5", "#059669", 2.0),
+    "quick_revision": ("#DBEAFE", "#2563EB", 2.0),
+    "study_this": ("#E6E2F6", "#4B3F8F", 2.0),
+    "start_here": ("#FCE7F3", "#BE185D", 2.0),
+    "not_checked": ("#F3F4F6", "#6B7280", 1.5),
+    "later": ("#F3F4F6", "#6B7280", 1.5),
+}
+GOAL_BORDER = "#4338CA"
+# pyvis puts its picture on a white page with a grey frame, and vis.js has bright green buttons.
+MAP_CSS = (
+    f"html, body, .card {{ background: {MAP_BACKGROUND} !important; }}"
+    ".card, #mynetwork { border: 0 !important; }"
+    ".vis-navigation .vis-button { filter: hue-rotate(130deg) saturate(0.6); }"
+)
 
 ui.page_header(S.MAP_TITLE, S.MAP_INTRO, source_file="validated_graph.json")
 
@@ -62,28 +91,76 @@ def search(query: str) -> list[str]:
     ]
 
 
-def full_map_button_and_picture() -> None:
-    """Near the top, so it is easy to find. The drawing library loads only after the tap."""
-    showing = st.session_state.get("map_full", False)
-    if ui.action_button(
-        S.MAP_HIDE_FULL if showing else S.MAP_SEE_FULL,
-        icon="🗺️",
-        primary=False,
-        key="map_full_button",
-    ):
-        st.session_state.map_full = not showing
-        st.rerun()
-    if not showing:
-        return
+def wrap_label(label: str, max_chars: int = 18) -> str:
+    lines: list[list[str]] = [[]]
+    for word in label.split():
+        if lines[-1] and len(" ".join([*lines[-1], word])) > max_chars:
+            lines.append([])
+        lines[-1].append(word)
+    return "\n".join(" ".join(line) for line in lines)
 
+
+def path_view() -> dict | None:
+    """The student's plan for the topic they picked, or None when they have no plan yet."""
+    target = st.session_state.get("study_target")
+    if target not in ready or not study_path.answered(common.get_active_course()):
+        return None
+    quiz = common.load("quiz_items.json")
+    order = api.prerequisite_order(graph_data, target)
+    return {
+        "target": target,
+        "order": order,
+        "edges": [e for e in accepted if e["source"] in order and e["target"] in order],
+        "plan": study_path.plan_state(common.get_active_course(), graph_data, quiz, target),
+    }
+
+
+def path_summary(path: dict) -> str:
+    plan = path["plan"]
+    if plan["next_up"]:
+        return S.PLAN_JUST_START.format(topic=name(plan["next_up"]))
+    if plan["order"]:
+        return S.PLAN_ALL_DONE.format(topic=name(path["target"]))
+    return S.PLAN_ALL_KNOWN.format(topic=name(path["target"]))
+
+
+def path_node(path: dict, concept_id: str) -> dict:
+    """The add_node arguments for one topic of My Study Path."""
+    state = study_path.state_of(path["plan"], concept_id)
+    words = study_path.topic_words(path["plan"], concept_id)
+    background, border, width = PATH_COLOURS[state]
+    if concept_id == path["target"]:
+        words = [*words, S.MAP_GOAL]
+        if state != "next":
+            border, width = GOAL_BORDER, 3.0
+    lines = [wrap_label(name(concept_id)), *(wrap_label(w, 22) for w in words)]
+    return {
+        "label": "\n".join(lines),
+        "words": ", ".join(words),
+        "background": background,
+        "border": border,
+        "width": width,
+    }
+
+
+def all_topics_node(concept_id: str) -> dict:
+    return {
+        "label": wrap_label(name(concept_id)),
+        "background": "#E6E2F6",
+        "border": "#4B3F8F",
+        "width": 1.5,
+    }
+
+
+def draw(nodes: list[tuple[str, dict]], edges: list[dict], *, in_order: bool) -> None:
+    """The picture, or a list of links if the drawing library is missing."""
     try:
         from pyvis.network import Network
     except ImportError:
-        Network = None
-
-    st.caption(S.MAP_PICTURE_NOTE)
-    if Network is None:
-        for edge in accepted:
+        for concept_id, node in nodes:
+            if node.get("words"):
+                st.markdown(S.MAP_PATH_LINE.format(topic=name(concept_id), words=node["words"]))
+        for edge in edges:
             st.markdown(
                 S.MAP_LIST_ONLY.format(
                     source=name(edge["source"]),
@@ -93,51 +170,33 @@ def full_map_button_and_picture() -> None:
             )
         return
 
-    def wrap_label(lbl: str, max_chars: int = 18) -> str:
-        words = lbl.split()
-        lines = []
-        cur_line = []
-        cur_len = 0
-        for w in words:
-            if cur_len + len(w) + 1 > max_chars and cur_line:
-                lines.append(" ".join(cur_line))
-                cur_line = [w]
-                cur_len = len(w)
-            else:
-                cur_line.append(w)
-                cur_len += len(w) + 1
-        if cur_line:
-            lines.append(" ".join(cur_line))
-        return "\n".join(lines)
-
+    st.caption(S.MAP_PICTURE_NOTE)
     network = Network(
         height="560px",
         width="100%",
         directed=True,
-        bgcolor="#ffffff",
-        font_color="#1F1B3D",
+        bgcolor=MAP_BACKGROUND,
+        font_color=MAP_TEXT,
         cdn_resources="in_line",
     )
-    for concept_id in sorted(linked):
-        raw_title = name(concept_id)
-        display_label = wrap_label(raw_title)
+    for concept_id, node in nodes:
         network.add_node(
             concept_id,
-            label=display_label,
-            title=raw_title,
+            label=node["label"],
+            title=name(concept_id),
             shape="box",
             margin=10,
-            borderWidth=1.5,
-            borderWidthSelected=2.5,
+            borderWidth=node["width"],
+            borderWidthSelected=3.0,
             color={
-                "background": "#F0F4FA",
-                "border": "#4B3F8F",
-                "highlight": {"background": "#E0E7FF", "border": "#312E81"},
+                "background": node["background"],
+                "border": node["border"],
+                "highlight": {"background": node["background"], "border": "#312E81"},
             },
-            font={"size": 13, "color": "#1F1B3D", "face": "system-ui, sans-serif"},
+            font={"size": 14, "color": MAP_TEXT, "face": "system-ui, sans-serif"},
             shadow={"enabled": True, "color": "rgba(0,0,0,0.06)", "size": 5, "x": 1, "y": 2},
         )
-    for edge in accepted:
+    for edge in edges:
         network.add_edge(
             edge["source"],
             edge["target"],
@@ -146,35 +205,96 @@ def full_map_button_and_picture() -> None:
             dashes=edge.get("strength", "hard") != "hard",
             title=strength_words(edge),
         )
-    network.set_options("""
-    {
-      "edges": {
-        "smooth": { "type": "cubicBezier", "roundness": 0.25 }
-      },
-      "physics": {
-        "barnesHut": {
-          "gravitationalConstant": -6000,
-          "centralGravity": 0.12,
-          "springLength": 190,
-          "springConstant": 0.04,
-          "damping": 0.12,
-          "avoidOverlap": 1.0
-        },
-        "minVelocity": 0.75
-      },
-      "interaction": {
-        "hover": true,
-        "zoomView": true,
-        "navigationButtons": true
-      }
-    }
-    """)
-    components.html(network.generate_html(), height=580, scrolling=False)
+    network.set_options(PATH_LAYOUT if in_order else FREE_LAYOUT)
+    themed = network.generate_html().replace("</head>", f"<style>{MAP_CSS}</style></head>", 1)
+    components.html(themed, height=580, scrolling=False)
     st.caption(S.MAP_KEY)
 
 
+PATH_LAYOUT = """
+{
+  "layout": {
+    "hierarchical": {
+      "enabled": true,
+      "direction": "UD",
+      "sortMethod": "directed",
+      "nodeSpacing": 170,
+      "levelSeparation": 120
+    }
+  },
+  "physics": { "enabled": false },
+  "interaction": { "hover": true, "zoomView": true, "dragNodes": true }
+}
+"""
+FREE_LAYOUT = """
+{
+  "layout": { "randomSeed": 7 },
+  "edges": {
+    "smooth": { "type": "cubicBezier", "roundness": 0.25 }
+  },
+  "physics": {
+    "barnesHut": {
+      "gravitationalConstant": -2500,
+      "centralGravity": 0.25,
+      "springLength": 110,
+      "springConstant": 0.04,
+      "damping": 0.12,
+      "avoidOverlap": 1.0
+    },
+    "minVelocity": 0.75
+  },
+  "interaction": {
+    "hover": true,
+    "zoomView": true,
+    "navigationButtons": true
+  }
+}
+"""
+
+
+def show_map() -> None:
+    """The view switch, then the picture. Near the top, so it is easy to find.
+
+    A view of more than FULL_MAP_LIMIT links sends the drawing library only after its own tap,
+    so opening a large path never also opens a larger All Topics map.
+    """
+    path = path_view()
+    on_path = (
+        path is not None
+        and st.radio(
+            S.MAP_VIEW_LABEL,
+            [S.MAP_VIEW_PATH, S.MAP_VIEW_ALL],
+            horizontal=True,
+            key="map_view_mode",
+        )
+        == S.MAP_VIEW_PATH
+    )
+    edges = path["edges"] if on_path else accepted
+    if on_path:
+        st.markdown(path_summary(path))
+    if len(edges) > FULL_MAP_LIMIT:
+        flag = "map_path_full" if on_path else "map_full"
+        showing = st.session_state.get(flag, False)
+        see, hide = (
+            (S.MAP_SEE_PATH, S.MAP_HIDE_PATH) if on_path else (S.MAP_SEE_FULL, S.MAP_HIDE_FULL)
+        )
+        if ui.action_button(
+            hide if showing else see, icon="🗺️", primary=False, key="map_full_button"
+        ):
+            st.session_state[flag] = not showing
+            st.rerun()
+        if not showing:
+            return
+
+    if on_path:
+        nodes = [(c, path_node(path, c)) for c in path["order"]]
+    else:
+        nodes = [(c, all_topics_node(c)) for c in sorted(linked)]
+    draw(nodes, edges, in_order=on_path)
+
+
 st.markdown(S.MAP_READY_COUNT.format(ready=len(ready), total=len(names)))
-full_map_button_and_picture()
+show_map()
 query = st.text_input(S.MAP_PICK, placeholder=S.MAP_SEARCH_HINT, key="map_search")
 if query.strip():
     found = search(query)

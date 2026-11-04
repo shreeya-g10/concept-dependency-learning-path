@@ -15,6 +15,7 @@ from __future__ import annotations
 import common
 import streamlit as st
 import strings as S
+import study_path
 import ui
 
 from cdlp.learning_path import api
@@ -44,28 +45,13 @@ if (
     ui.empty_state(S.PLAN_EMPTY, S.PLAN_EMPTY_NEXT, action=S.PLAN_TO_QUIZ, page="quiz", icon="✏️")
     st.stop()
 
-mastery = st.session_state.quiz_mastery
-quiz_data = common.load("quiz_items.json")
-with_asked = {**mastery, "__asked__": list(st.session_state.get("quiz_asked", []))}
-ladder = (
-    api.ladder_summary(graph_data, quiz_data, with_asked, target)
-    if api.uses_ladder(quiz_data)
-    else None
-)
-if ladder:
-    more_questions = api.ladder_next(graph_data, quiz_data, with_asked, target)
-    limit_stopped = ladder["limit_reached"]
-    steps = api.personalized_path(graph_data, mastery, target)  # nothing on it was only inferred
-else:
-    more_questions = api.next_question(graph_data, quiz_data, with_asked, target)
-    asked_for_target = st.session_state.get("quiz_topic_counts", {}).get(target, 0)
-    limit_stopped = more_questions is not None and asked_for_target >= api.MAX_QUESTIONS_PER_TOPIC
-    steps = api.personalized_path(
-        graph_data, api.only_answered(mastery) if limit_stopped else mastery, target
-    )
-plan_order = [step["concept_id"] for step in steps]
-done = st.session_state.setdefault("plan_done", {}).setdefault(course, [])
-next_up = next((c for c in plan_order if c not in done), None)
+plan = study_path.plan_state(course, graph_data, common.load("quiz_items.json"), target)
+ladder = plan["ladder"]
+more_questions = plan["more_questions"]
+limit_stopped = plan["limit_stopped"]
+steps = plan["steps"]
+done = plan["done"]
+next_up = plan["next_up"]
 
 
 def name(concept_id: str) -> str:
@@ -92,10 +78,21 @@ def other_topic_button(*, primary: bool) -> None:
         st.switch_page(ui.PAGES["quiz"].path)
 
 
+def map_button() -> None:
+    """The picture of this path is on the topic map. A topic with no links has no map to open."""
+    has_links = any(target in (e["source"], e["target"]) for e in accepted)
+    if has_links and ui.action_button(
+        S.PLAN_SEE_ON_MAP, icon="🗺️", primary=False, key="plan_to_map"
+    ):
+        st.session_state.map_view_mode = S.MAP_VIEW_PATH
+        st.switch_page(ui.PAGES["map"].path)
+
+
 if not steps:
     header()
     st.success(S.PLAN_ALL_KNOWN.format(topic=name(target)))
     other_topic_button(primary=True)
+    map_button()
     st.stop()
 
 # The first thing on screen, above the page title, so a phone shows it without scrolling.
@@ -113,13 +110,9 @@ if limit_stopped:
     st.info(S.PLAN_LIMIT_NOTE.format(n=api.MAX_QUESTIONS_PER_TOPIC), icon="ℹ️")
 
 
-def result_words(row: dict) -> str:
-    return S.PLAN_RESULT_THINK_KNOWN if row["inferred"] else S.PLAN_RESULTS[row["result"]]
-
-
-result_of = {}
+result_of = plan["rows"]
+result_words = study_path.result_words
 if ladder:
-    result_of = {row["concept_id"]: row for row in ladder["rows"]}
     first = ladder["first_to_study"]
     if first:
         known = [name(c) for c in ladder["known"]]
@@ -149,13 +142,12 @@ if ladder:
             )
         )
 
-STATUS = {"done": S.PLAN_STATUS_DONE, "next": S.PLAN_STATUS_NEXT, "later": S.PLAN_STATUS_LATER}
 for number, step in enumerate(steps, start=1):
     concept_id = step["concept_id"]
-    status = "done" if concept_id in done else "next" if concept_id == next_up else "later"
+    status = study_path.status_of(plan, concept_id)
     with st.container(border=True):
         title = S.PLAN_STEP.format(number=number, topic=name(concept_id))
-        st.markdown(f"**{title}** · {STATUS[status]}")
+        st.markdown(f"**{title}** · {study_path.STATUS[status]}")
         if concept_id in result_of:
             st.markdown(result_words(result_of[concept_id]))
         st.write(step["why"])
@@ -174,6 +166,4 @@ if (
     st.session_state.quiz_picking = False
     st.switch_page(ui.PAGES["quiz"].path)
 other_topic_button(primary=False)
-ui.action_button(
-    "Continue to Next Step: Topic Map", page="map", icon="🔗", primary=True, key="plan_to_map"
-)
+map_button()

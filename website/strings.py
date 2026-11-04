@@ -225,12 +225,13 @@ PLAN_MARK_DONE = "Mark as done"
 PLAN_LIMIT_NOTE = "We stopped after {n} questions. Topics we did not ask about stay on your plan."
 PLAN_MORE_QUESTIONS = "Answer more questions"
 PLAN_OTHER_TOPIC = "Pick another topic"
+PLAN_SEE_ON_MAP = "See my path on the map"
 PLAN_KNOWN_START = "You already know {known}, so start with {topic}."
 PLAN_JUST_START = "Start with {topic}."
 PLAN_AND = " and "
 PLAN_RESULT_LINE = "{result}: {topic}"
 PLAN_RESULTS = {
-    "know_it": "✅ You know this",
+    "know_it": "✅ Know it",
     "quick_revision": "🔁 Quick revision",
     "study_this": "📖 Study this",
     "start_here": "🏁 Start from the basics",
@@ -273,6 +274,13 @@ MAP_NEED_LABEL = "You need to learn this first"
 MAP_HELP_LABEL = "It helps to learn this first"
 MAP_SEE_FULL = "See full map (uses more internet)"
 MAP_HIDE_FULL = "Hide full map"
+MAP_SEE_PATH = "See my path (uses more internet)"
+MAP_HIDE_PATH = "Hide my path"
+MAP_VIEW_LABEL = "Map display"
+MAP_VIEW_PATH = "My Study Path"
+MAP_VIEW_ALL = "All Topics"
+MAP_GOAL = "🎯 Your goal"
+MAP_PATH_LINE = "**{topic}**: {words}"
 MAP_PICTURE_NOTE = "An arrow points from the topic to learn first to the topic that comes next."
 MAP_KEY = "Solid arrow: you need to learn this first. Dashed arrow: it helps to learn this first."
 MAP_EMPTY = "There is no map for this subject yet."
