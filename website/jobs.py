@@ -253,7 +253,8 @@ def llm_status(url: str | None = None, timeout: float = 1.0) -> tuple[bool, str]
         return False, (
             f"No LLM is reachable at {url}. Extraction, discovery and validation need one, "
             "so the pipeline would stop at discovery. Start Ollama (`ollama serve`) or set "
-            "LLM_BASE_URL in .env to a free OpenAI-compatible endpoint, then reload this page. "
+            "LLM_BASE_URL in .env to a free OpenAI-compatible endpoint, then "
+            "reload this page."
             "(The hosted website has no LLM: run the website locally to build a course.)"
         )
 
@@ -672,24 +673,525 @@ def generate_course_from_uploads(course_id: str, out_dir: Path) -> bool:
         encoding="utf-8",
     )
 
+    quiz_categories = [
+        (
+            ["variable", "constant", "keyword", "datatype", "identifier"],
+            [
+                (
+                    "What is a variable in programming?",
+                    "A named storage location in memory used to hold data that can "
+                    "change during "
+                    "execution.",
+                    [
+                        "A fixed instruction that cannot be modified once written in source code.",
+                        "A compiler directive used exclusively for importing header files.",
+                        "A hardware register reserved exclusively for operating system processes.",
+                    ],
+                ),
+                (
+                    "Which of the following is a key rule for naming identifiers and variables?",
+                    "An identifier cannot start with a digit and cannot be a reserved keyword.",
+                    [
+                        "An identifier must begin with a number from 0 to 9.",
+                        "An identifier can contain spaces and punctuation marks like @ and #.",
+                        "An identifier is strictly limited to exactly three characters in length.",
+                    ],
+                ),
+                (
+                    "What distinguishes a constant from a variable?",
+                    "A constant maintains a fixed value that cannot be altered during "
+                    "program execution.",
+                    [
+                        "A constant is automatically deleted from memory after its first read.",
+                        "A constant can only hold boolean values.",
+                        "A constant must be re-declared inside every loop.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["operator", "instruction", "expression", "arithmetic", "precedence"],
+            [
+                (
+                    "What is the primary function of operators in programming expressions?",
+                    "To perform arithmetic, relational, or logical evaluations on operands.",
+                    [
+                        "To allocate dynamic heap memory for data structures.",
+                        "To define class hierarchies and inheritance trees.",
+                        "To convert high-level source files into assembly instructions.",
+                    ],
+                ),
+                (
+                    "What is the key difference between the equality operator (==) "
+                    "and the assignment"
+                    "operator (=)?",
+                    "The equality operator compares two values, whereas the "
+                    "assignment operator assigns a"
+                    "value to a variable.",
+                    [
+                        "The equality operator stores a value, whereas the assignment "
+                        "operator checks for"
+                        "equivalence.",
+                        "The equality operator is only valid for floating-point calculations.",
+                        "Both operators perform identical operations and can be used "
+                        "interchangeably.",
+                    ],
+                ),
+                (
+                    "In operator precedence rules, how are mixed arithmeticexpressions evaluated?",
+                    "Multiplication and division are evaluated before addition and "
+                    "subtraction unless"
+                    "parentheses are used.",
+                    [
+                        "All operators are always evaluated strictly from right to left.",
+                        "Addition and subtraction always take priority over multiplication.",
+                        "Expressions are evaluated in random order depending on CPU "
+                        "thread availability.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["conditional", "if", "else", "switch", "branch"],
+            [
+                (
+                    "What is the purpose of conditional control statements (such as if-else)?",
+                    "To choose between different blocks of code based on whether a "
+                    "condition is true or"
+                    "false.",
+                    [
+                        "To repeat a block of code continuously until user termination.",
+                        "To declare global functions and their parameters.",
+                        "To free memory buffers allocated on the stack.",
+                    ],
+                ),
+                (
+                    "How are numeric conditions evaluated in conditional expressions "
+                    "in languages like C"
+                    "and Python?",
+                    "Zero evaluates to false, while non-zero values evaluate to true.",
+                    [
+                        "Zero always evaluates to true, while non-zero values evaluate tofalse.",
+                        "Only negative integers evaluate to true; positive integers are "
+                        "always false.",
+                        "Numeric values cannot be used in conditional expressions without "
+                        "string conversion.",
+                    ],
+                ),
+                (
+                    "When is a switch-case statement preferred over a long chain of "
+                    "if-else statements?",
+                    "When testing a single variable against multiple discrete "
+                    "constant values for cleaner"
+                    "readability.",
+                    [
+                        "When evaluating complex range checks with relational inequalities.",
+                        "When checking floating-point numbers with decimal precision.",
+                        "When defining recursive algorithms on tree data structures.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["loop", "iteration", "while", "for", "do"],
+            [
+                (
+                    "What is the fundamental purpose of loop control instructions?",
+                    "To execute a block of statements repeatedly as long as a "
+                    "specified condition remains"
+                    "true.",
+                    [
+                        "To jump immediately to the end of the program without executing "
+                        "further code.",
+                        "To declare user-defined structures and data types.",
+                        "To allocate contiguous array blocks on the heap.",
+                    ],
+                ),
+                (
+                    "What is the difference between a while loop and a do-while loop?",
+                    "A while loop tests the condition before execution, while a "
+                    "do-while loop executes at"
+                    "least once before testing.",
+                    [
+                        "A while loop cannot use counter variables, whereas a do-while "
+                        "loop requires one.",
+                        "A do-while loop is only used for file input and output operations.",
+                        "A while loop runs indefinitely, while a do-while loop neverexecutes.",
+                    ],
+                ),
+                (
+                    "What happens when a 'break' statement is encountered inside a loop?",
+                    "The loop is terminated immediately and control passes to the "
+                    "statement following the"
+                    "loop.",
+                    [
+                        "The current iteration is skipped, continuing immediately with "
+                        "the next loop"
+                        "iteration.",
+                        "The program halts and prompts the user for keyboard input.",
+                        "The loop counter resets to zero and restarts from the beginning.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["function", "recursion", "modular", "parameter", "return"],
+            [
+                (
+                    "Why are functions used in computer programs?",
+                    "To break complex code into reusable, modular, and testable blocks.",
+                    [
+                        "To prevent other developers from modifying variables.",
+                        "To replace the main function with multiple parallel threads.",
+                        "To allocate virtual memory partitions in the operating system.",
+                    ],
+                ),
+                (
+                    "What is recursion in computer programming?",
+                    "A technique where a function calls itself to solve smaller "
+                    "sub-problems until"
+                    "reaching a base condition.",
+                    [
+                        "A memory error caused when two functions have identical names.",
+                        "A loop structure that executes strictly on GPU hardware.",
+                        "A compiler mechanism that converts interpreted scripts to Cbytecode.",
+                    ],
+                ),
+                (
+                    "What is the consequence of omitting a base case in a recursive function?",
+                    "The function calls itself indefinitely, exhausting stack memory "
+                    "and causing a stack"
+                    "overflow.",
+                    [
+                        "The function executes once and returns null without error.",
+                        "The compiler automatically generates an iterative loop replacement.",
+                        "The program slows down by a factor of two but produces correctresults.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["pointer", "address", "dereference", "memory"],
+            [
+                (
+                    "What is a pointer in programming?",
+                    "A variable that stores the memory address of another variable.",
+                    [
+                        "A special data type that can only hold positive floating-pointnumbers.",
+                        "A hardware register reserved exclusively for graphics rendering.",
+                        "A compiler error that occurs when a variable is used beforedeclaration.",
+                    ],
+                ),
+                (
+                    "What is the purpose of the dereference operator (*) when usedwith a pointer?",
+                    "To access or modify the value stored at the memory address thepointer holds.",
+                    [
+                        "To multiply the memory address by the size of the underlyingdata type.",
+                        "To retrieve the address where the pointer variable itself is stored.",
+                        "To free the dynamic memory allocated to the pointer.",
+                    ],
+                ),
+                (
+                    "What does the address-of operator (&) return when prefixed to avariable?",
+                    "The memory address where the variable is located.",
+                    [
+                        "The total number of bytes the variable occupies in memory.",
+                        "A boolean value indicating whether the variable is positive.",
+                        "A duplicate copy of the variable's value on the heap.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["array", "list", "index", "vector"],
+            [
+                (
+                    "What is an array in computer programming?",
+                    "A fixed-size collection of elements of the same data type stored "
+                    "in contiguous memory"
+                    "locations.",
+                    [
+                        "A dynamically linked set of nodes scattered arbitrarily acrossmemory.",
+                        "A key-value data structure with constant-time lookup for "
+                        "arbitrary strings.",
+                        "A hierarchical tree structure where each element has two childpointers.",
+                    ],
+                ),
+                (
+                    "In zero-indexed languages, what are the valid index bounds for "
+                    "an array of size N?",
+                    "Indices range from 0 to N - 1.",
+                    [
+                        "Indices range from 1 to N.",
+                        "Indices range from -1 to N - 1.",
+                        "Indices range from 0 to N.",
+                    ],
+                ),
+                (
+                    "What is the primary risk of accessing an array index that "
+                    "exceeds its declared"
+                    "boundary?",
+                    "Accessing unauthorized memory, causing segmentation faults or "
+                    "undefined behavior.",
+                    [
+                        "The array will automatically expand its capacity and initialize "
+                        "new elements.",
+                        "The compiler will halt and delete the source file from disk.",
+                        "The operating system automatically wraps the index back to zero.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["string", "char", "text", "null"],
+            [
+                (
+                    "How is a string represented in memory in C-style programming?",
+                    "As an array of characters terminated by a null character ('\\0').",
+                    [
+                        "As a primitive integer representing the byte length of the text.",
+                        "As a doubly linked list of unicode code points.",
+                        "As a compressed binary file stored in secondary storage.",
+                    ],
+                ),
+                (
+                    "Why is the null terminator ('\\0') required at the end of a string?",
+                    "To mark the boundary where the string data ends in memory.",
+                    [
+                        "To tell the operating system to capitalize the first letter ofthe string.",
+                        "To prevent the string from being modified during runtime.",
+                        "To convert the string into an executable binary instruction.",
+                    ],
+                ),
+                (
+                    "What does the standard strlen function calculate?",
+                    "The number of characters in the string, excluding the "
+                    "terminating null character.",
+                    [
+                        "The total allocated buffer size including the null character.",
+                        "The number of words separated by whitespace.",
+                        "The memory address where the string is stored.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["struct", "union", "record"],
+            [
+                (
+                    "What is the primary purpose of a 'struct' in C and systems programming?",
+                    "To group heterogeneous data types together under a single "
+                    "user-defined record name.",
+                    [
+                        "To define a set of constant values with sequential integer IDs.",
+                        "To restrict access to private member variables in procedurallanguages.",
+                        "To create a dynamic FIFO queue with enqueue and dequeue operations.",
+                    ],
+                ),
+                (
+                    "How are member variables accessed from a structure variable vs a "
+                    "structure pointer?",
+                    "The dot operator (.) is used with a variable, while the arrow "
+                    "operator (->) is used"
+                    "with a pointer.",
+                    [
+                        "The arrow operator (->) is used for variables, and the dot "
+                        "operator (.) for pointers.",
+                        "The colon operator (:) is used for all structure member accesses.",
+                        "Members can only be accessed through public getter methods.",
+                    ],
+                ),
+                (
+                    "How does memory allocation differ between a 'struct' and a 'union'?",
+                    "A struct allocates separate memory for all members, whereas a "
+                    "union shares the same"
+                    "memory space for all members.",
+                    [
+                        "A struct is stored on the heap, whereas a union is stored in CPU "
+                        "registers.",
+                        "A union can hold unlimited fields, whereas a struct is limited "
+                        "to ten fields.",
+                        "Struct and union have identical memory allocation semantics.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["file", "io", "stream", "disk"],
+            [
+                (
+                    "What is the primary purpose of File I/O operations?",
+                    "To persist data on secondary storage so information is retained "
+                    "after program"
+                    "termination.",
+                    [
+                        "To allocate temporary cache space in the CPU during arithmeticoperations.",
+                        "To convert high-level programming logic into assembly instructions.",
+                        "To allow multiple functions to share local stack variables.",
+                    ],
+                ),
+                (
+                    "Why is it essential to close an open file using fclose after "
+                    "operations are complete?",
+                    "To flush write buffers to disk and release file descriptor "
+                    "resources back to the OS.",
+                    [
+                        "To delete the contents of the file from the hard drive.",
+                        "To encrypt the file contents with a random password.",
+                        "Closing files is completely optional and has no impact on system "
+                        "resources.",
+                    ],
+                ),
+                (
+                    "What does an open file call (such as fopen) return if the file "
+                    "cannot be opened?",
+                    "A NULL pointer indicating that the file could not be accessed.",
+                    [
+                        "A newly created empty file with the same name automatically.",
+                        "An operating system crash with immediate machine restart.",
+                        "A pointer to the root directory of the operating system.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["html", "tag", "layout", "web", "page", "browser", "css"],
+            [
+                (
+                    "What is the primary function of HTML in web architecture?",
+                    "Defining the structural content and semantic hierarchy of web pages.",
+                    [
+                        "Styling colors, layout grids, and animations.",
+                        "Handling database connections and user authentication on the server.",
+                        "Compiling JavaScript code into machine bytecode.",
+                    ],
+                ),
+                (
+                    "What is the difference between block elements (e.g., <div>, <p>) "
+                    "and inline elements"
+                    "(e.g., <span>, <a>)?",
+                    "Block elements begin on a new line and occupy the full container "
+                    "width, whereas"
+                    "inline elements sit within text flow.",
+                    [
+                        "Block elements cannot contain text, while inline elements can "
+                        "contain images and"
+                        "tables.",
+                        "Inline elements are exclusively used within the <head> section "
+                        "of an HTML document.",
+                        "Block elements are strictly rendered on mobile devices only.",
+                    ],
+                ),
+                (
+                    "Which HTML attribute provides alternative descriptive text for images for "
+                    "accessibility and screen readers?",
+                    "The 'alt' attribute.",
+                    [
+                        "The 'src' attribute.",
+                        "The 'href' attribute.",
+                        "The 'title_text' attribute.",
+                    ],
+                ),
+            ],
+        ),
+        (
+            ["tree", "bst", "avl", "heap", "binary", "graph"],
+            [
+                (
+                    "What is the defining invariant of a Binary Search Tree (BST)?",
+                    "For every node, all keys in its left subtree are smaller, and "
+                    "all keys in its right"
+                    "subtree are greater.",
+                    [
+                        "Every non-leaf node must have exactly two child nodes.",
+                        "All leaf nodes must reside at the exact same depth.",
+                        "Node values must be stored in alphabetical order across siblingnodes.",
+                    ],
+                ),
+                (
+                    "What is the balancing invariant of an AVL tree?",
+                    "For any node, the height difference between its left and right "
+                    "subtrees is at most 1.",
+                    [
+                        "All levels of the tree must be completely full of nodes.",
+                        "Every parent node must be smaller than both of its child nodes.",
+                        "Nodes must be colored red or black to maintain balance.",
+                    ],
+                ),
+                (
+                    "What is the average time complexity of searching for an element "
+                    "in a balanced BST or"
+                    "AVL tree with N nodes?",
+                    "O(log N)",
+                    [
+                        "O(N^2)",
+                        "O(1)",
+                        "O(N!)",
+                    ],
+                ),
+            ],
+        ),
+    ]
+
     quiz_items = []
     for c in concepts:
-        desc = c["description"][:80].rstrip(".") or f"the core principles of {c['name']}"
-        ans = f"It covers {desc}."
-        quiz_items.append(
-            {
-                "id": f"q_{c['id']}_1",
-                "concept_id": c["id"],
-                "question": f"What is the primary role of {c['name']} in this subject?",
-                "options": [
-                    ans,
-                    f"It completely replaces the topic of {concepts[0]['name']}.",
-                    "It is a deprecated command that should never be used.",
-                    "It is strictly an internal hardware configuration setting.",
-                ],
-                "answer": ans,
-            }
-        )
+        c_name = c["name"].lower()
+        matched = False
+        for keywords, q_defs in quiz_categories:
+            if any(k in c_name for k in keywords):
+                matched = True
+                for idx, (q_text, ans, distractors) in enumerate(q_defs, 1):
+                    quiz_items.append(
+                        {
+                            "id": f"q_{c['id']}_{idx}",
+                            "concept_id": c["id"],
+                            "question": q_text,
+                            "options": [ans] + distractors,
+                            "answer": ans,
+                        }
+                    )
+                break
+        if not matched:
+            ans1 = (
+                f"It provides the foundational rules, terminology, and mechanics for {c['name']}."
+            )
+            quiz_items.append(
+                {
+                    "id": f"q_{c['id']}_1",
+                    "concept_id": c["id"],
+                    "question": "Which statement best describes the primary role of "
+                    "{c['name']} in this"
+                    "subject?",
+                    "options": [
+                        ans1,
+                        "It is a deprecated configuration that has been phased out.",
+                        "It is an internal hardware interrupt that cannot be controlled "
+                        "in software.",
+                        "It is an optional decorative element with no logical effect.",
+                    ],
+                    "answer": ans1,
+                }
+            )
+            ans2 = (
+                "It establishes structured techniques and constraints applied by advanced topics."
+            )
+            quiz_items.append(
+                {
+                    "id": f"q_{c['id']}_2",
+                    "concept_id": c["id"],
+                    "question": "In the learning progression of this course, how "
+                    "does {c['name']} support"
+                    "subsequent topics?",
+                    "options": [
+                        ans2,
+                        "It completely supersedes and eliminates the need for any otherconcepts.",
+                        "It only operates in simulated sandbox environments without "
+                        "practical utility.",
+                        "It resets the system state to default values after every execution.",
+                    ],
+                    "answer": ans2,
+                }
+            )
 
     (out_dir / "quiz_items.json").write_text(
         json.dumps(
