@@ -177,8 +177,7 @@ def ladder_record(
 def ladder_summary(
     graph: dict, quiz: dict | list, mastery: dict, target: str, strategy: str | None = None
 ) -> dict:
-    """Each topic's result in graph order, plus known, first_to_study, limit_reached, stopped_at
-    and not_checked_after_stop."""
+    """Each topic's result in graph order, plus known, first_to_study, limit_reached and stops."""
     return ladder.summary(
         graph,
         _quiz_items(quiz),

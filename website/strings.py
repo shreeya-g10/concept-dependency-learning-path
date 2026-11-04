@@ -233,13 +233,17 @@ PLAN_RESULTS = {
     "know_it": "✅ You know this",
     "quick_revision": "🔁 Quick revision",
     "study_this": "📖 Study this",
-    "start_here": "🏁 Start here",
+    "start_here": "🏁 Start from the basics",
     "not_checked": "❓ Not checked yet",
 }
 PLAN_RESULT_THINK_KNOWN = "✅ We think you know this"
 PLAN_LADDER_STOPPED = (
     "We stopped at {topic}, because later topics build on it. "
     "The later topics stay on your plan as not checked yet."
+)
+PLAN_LADDER_SKIPPED = (
+    "We did not ask about the topics that build on {topic}. "
+    "They stay on your plan as not checked yet."
 )
 
 # ---- topic map ------------------------------------------------------------------------

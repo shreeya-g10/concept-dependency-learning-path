@@ -107,10 +107,76 @@ def test_easy_wrong_stops_the_quiz_and_later_topics_are_not_checked():
     assert got["recursion"] == "know_it" and got["trees"] == "start_here"
     assert [got[c] for c in ORDER[2:]] == ["not_checked"] * 3
     summary = api.ladder_summary(GRAPH, QUIZ, mastery, TARGET, STRATEGY)
-    assert summary["stopped_at"] == "trees" and not summary["limit_reached"]
-    assert summary["not_checked_after_stop"] == ORDER[2:]
+    assert not summary["limit_reached"]
+    assert summary["stops"] == [
+        {"concept_id": "trees", "not_checked": ORDER[2:], "stops_everything_later": True}
+    ]
     assert not any("binary" in i or "avl" in i for i in asked)
     assert "binary_tree" not in mastery  # not checked is never a guess
+
+
+def test_a_gap_skips_only_what_depends_on_it_and_unrelated_topics_are_still_asked():
+    """Recursion and Trees are unrelated. Binary Trees and later depend on Recursion."""
+    script = {"recursion": ("no", [False]), "trees": ("yes", [True, True])}
+    mastery, asked = play(script)
+    got = results(mastery)
+    assert got["recursion"] == "start_here" and got["trees"] == "know_it"
+    assert [got[c] for c in ORDER[2:]] == ["not_checked"] * 3
+    assert not any("binary" in i or "avl" in i for i in asked)
+    assert api.ladder_next(GRAPH, QUIZ, mastery, TARGET, STRATEGY) is None
+    assert api.ladder_summary(GRAPH, QUIZ, mastery, TARGET, STRATEGY)["stops"] == [
+        {"concept_id": "recursion", "not_checked": ORDER[2:], "stops_everything_later": False}
+    ]
+    plan = [s["concept_id"] for s in api.personalized_path(GRAPH, mastery, TARGET)]
+    assert plan == ["recursion", *ORDER[2:]]  # what depends on the gap stays on the plan
+
+
+def test_two_unrelated_gaps_each_count():
+    mastery, _ = play({"recursion": ("no", [False]), "trees": ("no", [False])})
+    summary = api.ladder_summary(GRAPH, QUIZ, mastery, TARGET, STRATEGY)
+    assert [s["concept_id"] for s in summary["stops"]] == ["recursion", "trees"]
+    assert api.ladder_next(GRAPH, QUIZ, mastery, TARGET, STRATEGY) is None
+
+
+def chain_graph(concepts):
+    edge = {"type": "PREREQUISITE", "strength": "hard", "decision": "ACCEPT"}
+    return {
+        "nodes": [{"id": c} for c in concepts],
+        "edges": [
+            {**edge, "id": f"e{n}", "source": a, "target": b}
+            for n, (a, b) in enumerate(zip(concepts, concepts[1:], strict=False))
+        ],
+    }
+
+
+@pytest.mark.parametrize("start", ["yes", "no"])
+@pytest.mark.parametrize("answers", itertools.product([True, False], repeat=4))
+def test_a_straight_chain_ends_at_the_first_gap(start, answers):
+    """A straight chain has nothing unrelated: nothing after the first gap is ever asked."""
+    concepts = ["a", "b", "c"]
+    graph = chain_graph(concepts)
+    items = [
+        {"id": f"{c}_{v}", "concept_id": c, "question": "q", "options": ["x", "y"], "answer": "x"}
+        | {"difficulty": v}
+        for c in concepts
+        for v in ladder.LEVELS
+    ]
+    mastery: dict = {}
+    remaining = list(answers) * 3
+    while (step := api.ladder_next(graph, items, mastery, "c", STRATEGY)) is not None:
+        if "self_report" in step:
+            mastery = api.ladder_self_report(mastery, step["self_report"], start)
+        else:
+            correct = remaining.pop(0)
+            mastery = api.ladder_record(graph, items, mastery, "c", step, correct, STRATEGY)
+    rows = api.ladder_summary(graph, items, mastery, "c", STRATEGY)["rows"]
+    got = [r["result"] for r in rows]
+    if "start_here" in got:
+        gap = got.index("start_here")
+        assert got[gap + 1 :] == ["not_checked"] * (len(got) - gap - 1)
+        assert all(r["questions"] == 0 for r in rows[gap + 1 :])
+    else:
+        assert "not_checked" not in got
 
 
 def test_study_this_and_quick_revision_keep_going():
@@ -173,6 +239,26 @@ def test_nearest_level_stands_in_and_it_is_recorded():
     assert topic["stand_ins"] == [{"wanted": "easy", "used": "medium", "item_id": "i0"}]
     rows = api.ladder_summary(GRAPH, items, mastery, "recursion", STRATEGY)["rows"]
     assert rows[0]["stand_ins"] == topic["stand_ins"]
+
+
+@pytest.mark.parametrize("stand_in", ["medium", "easy"])
+@pytest.mark.parametrize("correct", [True, False])
+def test_a_stand_in_for_hard_cannot_earn_know_it(stand_in, correct):
+    items = levels_only("medium", stand_in)
+    mastery, asked = play({"recursion": ("yes", [True, correct])}, quiz=items, target="recursion")
+    assert asked == ["i0", "i1"]
+    assert mastery["recursion"] == ladder.RESULT_MASTERY["quick_revision"]
+    rows = api.ladder_summary(GRAPH, items, mastery, "recursion", STRATEGY)["rows"]
+    assert rows[0]["result"] == "quick_revision"
+    assert rows[0]["stand_ins"] == [{"wanted": "hard", "used": stand_in, "item_id": "i1"}]
+
+
+def test_a_real_hard_question_still_earns_know_it_after_an_earlier_stand_in():
+    items = levels_only("hard", "hard")  # the medium slot is filled by a hard question
+    mastery, _ = play({"recursion": ("yes", [True, True])}, quiz=items, target="recursion")
+    rows = api.ladder_summary(GRAPH, items, mastery, "recursion", STRATEGY)["rows"]
+    assert rows[0]["result"] == "know_it"
+    assert rows[0]["stand_ins"] == [{"wanted": "medium", "used": "hard", "item_id": "i0"}]
 
 
 def test_a_tie_between_levels_takes_the_easier_one():
@@ -286,7 +372,7 @@ def test_middle_moves_earlier_after_a_gap_and_never_asks_past_it():
     assert got["binary_search_tree"] == got["avl_tree"] == "not_checked"
     assert any("recursion" in i or "q_trees" in i for i in asked)
     summary = api.ladder_summary(GRAPH, QUIZ, mastery, TARGET, "ladder_middle")
-    assert summary["stopped_at"] is None
+    assert summary["stops"] == []
 
 
 # --- rule 6: old quiz files, rule 8: stable api, rule 10: one config value -----------------

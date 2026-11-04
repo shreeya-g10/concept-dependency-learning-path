@@ -81,6 +81,16 @@ def test_results_say_they_are_simulated_with_placeholders():
     assert set(out["conditions"]) == {"graph_consistent", "graph_independent"}
 
 
+def test_without_hard_items_nothing_is_known_by_a_stand_in():
+    students = generate_simulated_students(GRAPH, num_students=30, seed=42)["students"]
+    cfg = {**SMALL, "drop_levels": ["hard"]}
+    strategies = evaluate.evaluate_ladders(GRAPH, QUIZ, students, cfg)["strategies"]
+    for name in evaluate.LADDER_STRATEGIES:
+        assert strategies[name]["know_it_by_stand_in"] == 0
+        assert strategies[name]["questions_that_cannot_change_the_result"] > 0
+    assert strategies["ladder_linear"]["wrongly_known"] == 0
+
+
 def test_placeholder_items_are_marked_and_can_drop_a_level():
     items = evaluate.placeholder_ladder_items(GRAPH, "avl_tree", ["hard"])
     assert all("placeholder" in i["id"] and "placeholder" in i["question"] for i in items)

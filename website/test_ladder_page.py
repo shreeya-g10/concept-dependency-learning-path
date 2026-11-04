@@ -163,10 +163,35 @@ def test_the_plan_shows_each_result_and_starts_at_the_first_not_known():
 
 
 def test_nothing_known_says_only_where_to_start():
-    at = studied(start(), "recursion", "not_sure")
+    at = start("binary_tree")
+    at = studied(at, "recursion", "not_sure")
+    at = tap(at, False)
+    at = at.button(key="quiz_continue").click().run()
+    at = studied(at, "trees", "no")
     at = tap(at, False)
     at = at.button(key="quiz_continue").click().run()
     assert "Start with Recursion." in shown(at) and "You already know" not in shown(at)
+
+
+def test_a_gap_keeps_asking_unrelated_topics_and_skips_what_depends_on_it():
+    at = studied(start(), "recursion", "no")
+    at = tap(at, False)
+    at = at.button(key="quiz_continue").click().run()
+    assert heading(at) == "### Have you studied Trees?"  # unrelated to Recursion
+    at = know(at, "trees")
+    assert not at.exception and at.title[0].value == S.PLAN_TITLE
+    text = shown(at)
+    assert "You already know Trees, so start with Recursion." in text
+    assert S.PLAN_LADDER_SKIPPED.format(topic="Recursion") in text
+    assert "We stopped at" not in text
+    lines = [m.value for m in at.markdown]
+    assert lines.count(S.PLAN_RESULTS["not_checked"]) == 3
+    assert S.PLAN_RESULTS["start_here"] in lines
+
+
+def test_the_card_says_start_from_the_basics():
+    assert S.PLAN_RESULTS["start_here"] == "🏁 Start from the basics"
+    assert "Start here" not in S.PLAN_RESULTS.values()
 
 
 def test_all_known_says_so():

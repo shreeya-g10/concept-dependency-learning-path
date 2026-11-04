@@ -8,7 +8,8 @@ only sets the starting level. It never marks a topic as known.
     medium wrong after a Yes start -> easy
     medium right, hard wrong -> quick_revision
     easy right, medium wrong -> study_this
-    easy wrong -> start_here, and ladder_linear stops: later topics stay not_checked
+    easy wrong -> start_here: ladder_linear skips the topics that depend on it, which stay
+    not_checked, and keeps asking unrelated topics. On a straight chain that ends the quiz.
 
 State lives in the mastery dict under "__ladder__", beside "__asked__" and "__observed__". The
 values update_mastery would write are not used here: its propagation lifts ancestors, which
@@ -20,8 +21,11 @@ closes the topics after it, so the search moves earlier.
 
 No level question left for a slot: the nearest level stands in (the easier one on a tie) and
 this is recorded under the topic's "stand_ins". No question left at all: the topic ends at the
-result the answers so far support, which never claims more than they showed. A difficulty label
-from the AI is only a suggestion until a teacher approves it.
+result the answers so far support, which never claims more than they showed. Only a real hard
+question earns know_it: an easier one standing in for hard ends at quick_revision either way, and
+is still recorded. A difficulty label from the AI is only a suggestion until a teacher approves it.
+
+start_here is the stored name of the result students read as "Start from the basics".
 """
 
 from __future__ import annotations
@@ -106,10 +110,11 @@ def _current_topic(graph: dict, items: list[dict], mastery: dict, target: str, s
         )
 
     if strategy == "ladder_linear":
+        skipped: set[str] = set()
         for concept in order:
             if result(concept) == START_HERE:
-                return None
-            if can_ask(concept):
+                skipped |= dependents(G, concept)
+            elif concept not in skipped and can_ask(concept):
                 return concept
         return None
 
@@ -227,7 +232,8 @@ def record_answer(
         else:
             result = STUDY_THIS
     else:
-        result = KNOW_IT if correct else QUICK_REVISION
+        # A question standing in for hard cannot earn know_it, right or wrong.
+        result = KNOW_IT if correct and actual == "hard" else QUICK_REVISION
 
     if result is None and pick_item(items, updated, concept, topic["level"]) is None:
         result = if_none_left
@@ -256,16 +262,24 @@ def summary(
         )
     at_limit = state["asked_for_target"].get(target, 0) >= max_questions
     more_without_limit = next_step(graph, items, mastery, target, strategy, 10**9) is not None
-    stopped_at = None
+    stops = []
     if strategy == "ladder_linear":  # ladder_middle moves earlier after a wrong answer
-        stopped_at = next((r["concept_id"] for r in rows if r["result"] == START_HERE), None)
+        G = load_graph(graph)
+        results = {r["concept_id"]: r["result"] for r in rows}
+        for concept in (c for c in order if results[c] == START_HERE):
+            depends = dependents(G, concept)
+            later = order[order.index(concept) + 1 :]
+            stops.append(
+                {
+                    "concept_id": concept,
+                    "not_checked": [c for c in later if c in depends and results[c] == NOT_CHECKED],
+                    "stops_everything_later": set(later) <= depends,
+                }
+            )
     return {
         "rows": rows,
         "known": [r["concept_id"] for r in rows if r["result"] == KNOW_IT],
         "first_to_study": next((r["concept_id"] for r in rows if r["result"] != KNOW_IT), None),
-        "stopped_at": stopped_at,
-        "not_checked_after_stop": (
-            [r["concept_id"] for r in rows[order.index(stopped_at) + 1 :]] if stopped_at else []
-        ),
+        "stops": stops,
         "limit_reached": at_limit and more_without_limit,
     }

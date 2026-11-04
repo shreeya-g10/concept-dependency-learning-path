@@ -128,8 +128,12 @@ if ladder:
         )
         line = S.PLAN_KNOWN_START if known else S.PLAN_JUST_START
         st.markdown(line.format(known=known_words, topic=name(first)))
-    if ladder["not_checked_after_stop"]:
-        st.info(S.PLAN_LADDER_STOPPED.format(topic=name(ladder["stopped_at"])), icon="ℹ️")
+    for stop in ladder["stops"]:
+        if stop["not_checked"]:
+            note = (
+                S.PLAN_LADDER_STOPPED if stop["stops_everything_later"] else S.PLAN_LADDER_SKIPPED
+            )
+            st.info(note.format(topic=name(stop["concept_id"])), icon="ℹ️")
     for concept_id in ladder["known"]:
         st.caption(
             S.PLAN_RESULT_LINE.format(
