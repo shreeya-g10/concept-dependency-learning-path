@@ -105,26 +105,12 @@ def navigation():
             for k in keys
         ]
 
-    show_teacher = st.sidebar.toggle(
-        "🔬 Evaluator / Teacher Mode",
-        value=st.session_state.get("show_teacher_nav", False),
-        help="Show academic evaluation checks, ablations, and review queues.",
-        key="teacher_mode_toggle",
+    return st.navigation(
+        {
+            S.NAV_GROUP_STUDENTS: group(STUDENT_PAGES),
+            S.NAV_GROUP_TEACHERS: group(TEACHER_PAGES),
+        }
     )
-    st.session_state["show_teacher_nav"] = show_teacher
-
-    nav_dict = {S.NAV_GROUP_STUDENTS: group(STUDENT_PAGES)}
-    if show_teacher:
-        nav_dict[S.NAV_GROUP_TEACHERS] = group(TEACHER_PAGES)
-
-    return st.navigation(nav_dict)
-    if False:  # dead branch keeping old signature
-        return st.navigation(
-            {
-                S.NAV_GROUP_STUDENTS: group(STUDENT_PAGES),
-                S.NAV_GROUP_TEACHERS: group(TEACHER_PAGES),
-            }
-        )
 
 
 def step_indicator(step: int) -> None:

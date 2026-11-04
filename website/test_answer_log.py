@@ -468,7 +468,19 @@ def map_page(focus: str | None = None) -> AppTest:
     return at.run()
 
 
+def more_than_thirty_links(outputs: Path) -> None:
+    """The map shows by itself at 30 links or fewer, so these need a larger one."""
+    path = with_examples(outputs) / "validated_graph.json"
+    graph = json.loads(path.read_text())
+    extra = [
+        {**graph["edges"][0], "source": f"x{i}", "target": f"x{i + 1}", "decision": "ACCEPT"}
+        for i in range(31)
+    ]
+    path.write_text(json.dumps({**graph, "edges": [*graph["edges"], *extra]}))
+
+
 def test_map_shows_before_this_next_without_the_heavy_picture(outputs):
+    more_than_thirty_links(outputs)
     at = map_page("binary_tree")
     assert not at.exception
     assert not at.get("iframe")
@@ -526,6 +538,7 @@ def test_map_cards_use_accepted_links_only(outputs):
 
 def test_full_map_picture_uses_accepted_links_only_and_waits_for_the_button(outputs):
     pytest.importorskip("pyvis")  # not installed in CI: see the next test for that case
+    more_than_thirty_links(outputs)
     at = map_page("binary_tree")
     assert not at.get("iframe")  # off until the button is pressed
     at = at.button(key="map_full_button").click().run()
@@ -540,6 +553,7 @@ def test_full_map_picture_uses_accepted_links_only_and_waits_for_the_button(outp
 
 def test_full_map_without_the_drawing_library_lists_accepted_links_only(outputs, monkeypatch):
     monkeypatch.setitem(sys.modules, "pyvis.network", None)  # importing it now fails
+    more_than_thirty_links(outputs)
     names = common.concept_names()
     at = map_page("binary_tree")
     assert not any("comes before" in m.value for m in at.markdown)  # off until the button
@@ -571,7 +585,7 @@ def test_machine_reason_is_not_shown_to_students(outputs):
 
 def test_pages_import_only_the_public_apis():
     for page in (QUIZ, PLAN, TOPIC_MAP):
-        for line in page.read_text().splitlines():
+        for line in page.read_text(encoding="utf-8").splitlines():
             if re.match(r"\s*(from|import) cdlp", line):
                 assert "learning_path import api" in line or "root_cause import api" in line, line
 

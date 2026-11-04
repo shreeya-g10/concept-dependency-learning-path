@@ -159,7 +159,7 @@ def test_the_plan_shows_each_result_and_starts_at_the_first_not_known():
     lines = [m.value for m in at.markdown]
     assert S.PLAN_RESULTS["quick_revision"] in lines and S.PLAN_RESULTS["study_this"] in lines
     assert "Study this next: Binary Search Trees" in text
-    assert "✅ You know this: Binary Trees" in text
+    assert "✅ Know it: Binary Trees" in text
 
 
 def test_nothing_known_says_only_where_to_start():
