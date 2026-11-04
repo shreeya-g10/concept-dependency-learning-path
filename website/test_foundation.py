@@ -327,3 +327,9 @@ def test_theme_has_strong_contrast():
     assert contrast(theme["textColor"], theme["backgroundColor"]) >= 7
     assert contrast(theme["textColor"], theme["secondaryBackgroundColor"]) >= 7
     assert contrast(theme["primaryColor"], "#FFFFFF") >= 7  # white words on the main button
+
+
+def test_the_demo_course_has_a_clean_name_and_is_not_a_built_in_course():
+    assert common.course_label("avl_demo_discover_v4") == "AVL Trees (demo)"
+    assert "avl_demo_discover_v4" not in common.COURSE_NAMES  # so never a fallback course
+    assert common.course_label("biology_notes") == "Biology notes"  # others are unchanged

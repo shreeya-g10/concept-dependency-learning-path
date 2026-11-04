@@ -36,6 +36,11 @@ COURSE_NAMES = {
 }
 
 
+# Display names for folders whose name is not fit to show. Not built in: they are not fallback
+# courses, and these are the only entries, so nothing else changes.
+FOLDER_NAMES = {"avl_demo_discover_v4": "AVL Trees (demo)"}
+
+
 # A folder in outputs/ is a course only when a finished run left these files in it.
 COURSE_FILES = ("concepts.json", "validated_graph.json")
 
@@ -122,7 +127,8 @@ def preview_graph(course_id: str) -> dict:
 
 def course_label(course_id: str) -> str:
     """The name students see. Never shows a raw id for a built-in course."""
-    return COURSE_NAMES.get(course_id) or course_id.replace("_", " ").strip().capitalize()
+    name = COURSE_NAMES.get(course_id) or FOLDER_NAMES.get(course_id)
+    return name or course_id.replace("_", " ").strip().capitalize()
 
 
 def course_title(course_id: str) -> str:
