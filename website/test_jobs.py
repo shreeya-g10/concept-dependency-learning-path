@@ -20,6 +20,7 @@ if str(SITE) not in sys.path:  # as `streamlit run website/Home.py` does
 
 import common  # noqa: E402
 import jobs  # noqa: E402
+import strings as S  # noqa: E402
 
 PAGE = SITE / "pages" / "1_Add_your_notes.py"
 ALL_STAGES = "".join(f"print('==> {key}', flush=True)\n" for key, _ in jobs.STAGES[:5])
@@ -316,6 +317,73 @@ def test_page_shows_progress_of_a_running_job(page, tmp_path):
     assert "✅ Reading your file and finding topics" in text
     assert "⏳ Finding which topics come first…" in text
     assert "cdlp" not in text and "Dependency discovery" not in text  # no stage names
+
+
+def real_pipeline_script(tmp_path: Path, *, break_quiz: bool = False) -> list[str]:
+    """The real pipeline.py, including its contract check, with only the LLM stages replaced by
+    copies of the examples. It writes the files real runs write beside the contract files."""
+    out = tmp_path / "course_out"
+    body = f"""
+import importlib.util, shutil, sys
+from pathlib import Path
+
+root = Path({str(jobs.ROOT)!r})
+sys.path.insert(0, str(root))
+spec = importlib.util.spec_from_file_location("pipeline", root / "pipeline.py")
+pipeline = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pipeline)
+examples = root / "cdlp" / "shared" / "examples"
+out = Path({str(out)!r})
+copies = {{
+    "cdlp.extraction": ["concepts.json", "chunks.jsonl"],
+    "cdlp.discovery": ["relationships.json"],
+    "cdlp.validation": ["validated_graph.json"],
+    "cdlp.learning_path.quiz": ["quiz_items.json"],
+}}
+
+def run(module, *args):
+    print(f"\\n==> {{module}}", flush=True)
+    for name in copies.get(module, []):
+        shutil.copy(examples / name, out / name)
+    if module == "cdlp.extraction":
+        (out / "concept_filter_report.json").write_text("{{}}")
+    if module == "cdlp.validation":
+        (out / "minus_necessity.stats.json").write_text("{{}}")
+    if module == "cdlp.learning_path" and {break_quiz!r}:
+        (out / "quiz_items.json").write_text('{{"course_id": "ds101"}}')
+
+pipeline.run = run
+sys.argv = ["pipeline.py", "--course", "c1", "--out-dir", str(out)]
+pipeline.main()
+"""
+    return fake_pipeline(tmp_path, body)
+
+
+def test_a_real_pipeline_run_with_no_contract_files_shows_success(page, tmp_path):
+    jobs.start_job("c1", real_pipeline_script(tmp_path), jobs=tmp_path / "jobs")
+    status = wait_until_finished("c1", tmp_path / "jobs")
+    assert status["state"] == "succeeded", status["log"]
+    assert status["returncode"] == 0 and status["progress"] == 1.0
+    assert {s["status"] for s in status["stages"]} == {"done", "skipped"}
+    assert "[SKIP]" in status["log"] and "concept_filter_report.json" in status["log"]
+
+    at = page("c1")
+    assert not at.exception
+    assert not any(S.ADD_FAILED in e.value for e in at.error)
+    assert any("We finished reading your notes" in s.value for s in at.success)
+    assert any(b.label == S.ADD_NEXT for b in at.button)
+
+
+def test_a_real_pipeline_run_with_a_broken_file_shows_failure_and_names_it(page, tmp_path):
+    jobs.start_job("c1", real_pipeline_script(tmp_path, break_quiz=True), jobs=tmp_path / "jobs")
+    status = wait_until_finished("c1", tmp_path / "jobs")
+    assert status["state"] == "failed" and status["returncode"] == 1
+    assert "quiz_items.json" in status["error"]
+
+    at = page("c1")
+    assert not at.exception and not at.success
+    assert any("What to do" in e.value for e in at.error)
+    assert any("1 failed: quiz_items.json" in c.value for c in at.code)
 
 
 def test_page_shows_why_a_job_failed(page, tmp_path):

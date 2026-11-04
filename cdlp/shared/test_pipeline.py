@@ -285,3 +285,144 @@ def test_pipeline_passes_quick_build_flags_to_validation(tmp_path, monkeypatch):
     v = seen["cdlp.validation"]
     assert "--skip-necessity" in v and arg(v, "--demo-subset") == "25"
     assert arg(v, "--necessity-sample") == "40"
+
+
+# --- the last step: the contract check -------------------------------------------------
+
+# What real runs write beside the contract files. The fakes above never write them, which is why
+# a crash on files with no contract reached the website without a test failing.
+NO_CONTRACT = [
+    "concept_filter_report.json",
+    "minus_necessity.stats.json",
+    "full_agent.stats.json",
+    "discovery.stats.json",
+    "validated_graph.necessity_sample.json",
+    "colab_calls.jsonl",
+]
+
+
+def finish_run(tmp_path, monkeypatch, *, after=None):
+    """pipeline.main() with the LLM stages faked, then `after` changes the folder. Returns exit."""
+    pipeline = load_pipeline()
+
+    def fake_run(module, *args):
+        if module == "cdlp.extraction":
+            out = Path(arg(args, "--out-dir"))
+            relabel(EXAMPLES / "concepts.json", out / "concepts.json", "ds101")
+            relabel(EXAMPLES / "chunks.jsonl", out / "chunks.jsonl", "ds101")
+        elif module == "cdlp.discovery":
+            relabel(
+                EXAMPLES / "relationships.json",
+                Path(arg(args, "--out-dir")) / "relationships.json",
+                "ds101",
+            )
+        elif module == "cdlp.validation":
+            relabel(EXAMPLES / "validated_graph.json", Path(arg(args, "--out")), "ds101")
+        elif module == "cdlp.learning_path.quiz":
+            relabel(EXAMPLES / "quiz_items.json", Path(arg(args, "--out")), "ds101")
+        elif module == "cdlp.learning_path" and after:
+            after(tmp_path)
+
+    monkeypatch.setattr(pipeline, "run", fake_run)
+    monkeypatch.setattr(
+        "sys.argv", ["pipeline.py", "--course", "ds101", "--out-dir", str(tmp_path)]
+    )
+    with pytest.raises(SystemExit) as exit_info:
+        pipeline.main()
+    return exit_info.value.code
+
+
+def write_real_extras(folder: Path) -> None:
+    for name in NO_CONTRACT:
+        (folder / name).write_text("{}\n")
+
+
+def test_files_with_no_contract_do_not_stop_the_run_and_are_listed(tmp_path, monkeypatch, capsys):
+    assert finish_run(tmp_path, monkeypatch, after=write_real_extras) == 0
+    out = capsys.readouterr().out
+    for name in NO_CONTRACT:
+        assert f"[SKIP] {tmp_path / name} (no contract)" in out
+    assert f"[OK] {tmp_path / 'validated_graph.json'}" in out
+
+
+def test_those_names_are_what_the_real_modules_write():
+    extraction = (ROOT / "cdlp/extraction/__main__.py").read_text()
+    validation = (ROOT / "cdlp/validation/__main__.py").read_text()
+    assert '"concept_filter_report.json"' in extraction
+    assert '.stats.json"' in validation and '.necessity_sample.json"' in validation
+
+
+def test_a_subfolder_is_listed_and_does_not_stop_the_run(tmp_path, monkeypatch, capsys):
+    def add_folder(folder):
+        (folder / "filtered").mkdir()
+
+    assert finish_run(tmp_path, monkeypatch, after=add_folder) == 0
+    assert f"[SKIP] {tmp_path / 'filtered'} (a folder)" in capsys.readouterr().out
+
+
+def test_a_file_with_no_contract_is_not_read_so_it_can_hold_anything(tmp_path, monkeypatch):
+    def add_odd_file(folder):
+        (folder / "notes.stats.json").write_text("this is not JSON")
+
+    assert finish_run(tmp_path, monkeypatch, after=add_odd_file) == 0
+
+
+def test_every_contract_file_is_still_checked(tmp_path, monkeypatch, capsys):
+    assert finish_run(tmp_path, monkeypatch, after=write_real_extras) == 0
+    out = capsys.readouterr().out
+    for name in ("concepts.json", "chunks.jsonl", "relationships.json", "quiz_items.json"):
+        assert f"[OK] {tmp_path / name}" in out
+
+
+def test_a_broken_contract_file_still_fails_the_run(tmp_path, monkeypatch, capsys):
+    def break_quiz(folder):
+        write_real_extras(folder)
+        (folder / "quiz_items.json").write_text('{"course_id": "ds101"}')
+
+    assert finish_run(tmp_path, monkeypatch, after=break_quiz) == 1
+    out = capsys.readouterr().out
+    assert f"[FAIL] {tmp_path / 'quiz_items.json'}" in out
+    assert "schema_version" in out  # the reason is printed
+
+
+def test_a_contract_file_cut_short_fails_the_run_rather_than_crashing(
+    tmp_path, monkeypatch, capsys
+):
+    """Broken JSON raises ValueError too: catching it around the check would hide this."""
+
+    def cut_short(folder):
+        (folder / "validated_graph.json").write_text('{"schema_version": "1.0", "nod')
+
+    assert finish_run(tmp_path, monkeypatch, after=cut_short) == 1
+    out = capsys.readouterr().out
+    assert f"[FAIL] {tmp_path / 'validated_graph.json'}" in out
+    assert "not valid JSON" in out
+
+
+def test_a_broken_extra_named_like_a_contract_fails_too(tmp_path, monkeypatch, capsys):
+    """unfiltered_concepts.json ends in concepts.json, so it has a contract."""
+
+    def bad_unfiltered(folder):
+        (folder / "unfiltered_concepts.json").write_text('{"course_id": "ds101"}')
+
+    assert finish_run(tmp_path, monkeypatch, after=bad_unfiltered) == 1
+    assert "[FAIL]" in capsys.readouterr().out
+
+
+def test_the_last_line_says_what_happened(tmp_path, monkeypatch, capsys):
+    """The website shows the last log line when a run fails."""
+
+    def break_quiz(folder):
+        write_real_extras(folder)
+        (folder / "quiz_items.json").write_text('{"course_id": "ds101"}')
+
+    finish_run(tmp_path, monkeypatch, after=break_quiz)
+    last = capsys.readouterr().out.strip().splitlines()[-1]
+    assert "1 failed: quiz_items.json" in last and f"{len(NO_CONTRACT)} skipped" in last
+
+
+def test_the_contract_check_marker_stays_for_the_websites_progress_list(
+    tmp_path, monkeypatch, capsys
+):
+    finish_run(tmp_path, monkeypatch, after=write_real_extras)
+    assert "\n==> contract check\n" in capsys.readouterr().out
