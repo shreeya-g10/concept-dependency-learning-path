@@ -71,18 +71,28 @@ In Drive, open `cdlp` → **New** → **New folder** → name it `raw`. Inside i
 
 ## 3. Run (in Colab)
 
-1. Click each cell's ▶ in order, from step 0 to step 6. Step 3 downloads the embedding model and prints `embedding model ready, dimension: 384`. Step 4 asks to connect Google Drive: click **Connect to Google Drive** and allow it.
+1. Click each cell's ▶ in order, from step 0 to step 6. Step 3 downloads the pinned embedding model and prints `embedding model ready, revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 dimension: 384`. Step 4 asks to connect Google Drive: click **Connect to Google Drive** and allow it.
 2. Step 5 prints seconds per call: 10 short and 5 long calls for each model. Use them to estimate the stage before step 6.
 3. Step 6 runs the stage and prints one line per step, then the measured time.
 4. Keep the browser tab open: an idle tab disconnects.
 5. Check progress at any time with step 7.
 6. **After a disconnect:** **Runtime** → **Run all**, or run steps 0–4 and then step 6 again. Colab's disk is wiped between sessions, so step 3 downloads the embedding model again.
 
-### If a stage says the embedding model is not downloaded
+### The pinned embedding model
 
-Step 5 or 6 stops with `The embedding model sentence-transformers/all-MiniLM-L6-v2 is not downloaded`. Extraction needs this model and does not fall back to anything else, so the stage stops before it starts.
+The model is pinned to revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`, the one that produced the existing 85-concept ds101 list. Embeddings decide which concepts merge and which pairs become candidates, so another revision could change results. To keep this true:
 
-1. Run step 3 again and check that it prints `embedding model ready, dimension: 384`.
+- Step 3 downloads that revision by commit, and points the cache's `refs/main` at it, because every module loads through `refs/main`.
+- A stage stops if the model is at any other revision.
+- Stages run with `HF_HUB_OFFLINE=1`, so no step can fetch a newer revision. Stages only reach Hugging Face through step 3.
+
+To move to a new revision, change it in `scripts/colab_run.py` and in step 3, and update the pinned `COMMIT`. Treat that as a change to the results: the 85-concept list was not made with it.
+
+### If a stage says the embedding model is not downloaded or is at another revision
+
+Step 5 or 6 stops with `The embedding model sentence-transformers/all-MiniLM-L6-v2 is not downloaded`, or `is at revision ..., but this project is pinned to ...`. Extraction needs this model and does not fall back to anything else, so the stage stops before it starts.
+
+1. Run step 3 again and check that it prints `embedding model ready, revision: 1110a243fdf4706b3f48f1d95db1a4f5529b4d41 dimension: 384`.
 2. Run the stage again. Nothing is lost, because finished steps are skipped.
 
 If the message also says `HF_HOME` is set, the model was saved somewhere extraction does not look. Extraction only looks in `~/.cache/huggingface/hub`. To fix it:
@@ -124,7 +134,7 @@ What happens:
 - **Saved replies:** the cache is shared, and a reply is found by its model and exact prompt text, whatever the folder. So validator and quiz calls with the same text as the first run cost nothing. Every `discover_v4` call is new, because the prompt is new.
 - **Calls:** `discover_v4` makes 2 calls per candidate pair, the same as `discover_v3_1`. The extract step isn't run.
 - **Answers:** YES one way makes one link. YES both ways proposes both links, and both go to review. NO both ways makes no link. Both raw answers per direction are kept in `direction_answers` in `relationships.json` (`cdlp/discovery/configs/direction_rule_v1.json`).
-- **Check before comparing:** `discovery.directions.pairs` in the new `relationships.json` should equal `discovery.both_orders.pairs` in the first run's. Step 3 downloads the latest embedding model, which picks the candidate pairs, so if the revision changed the two runs may have asked about different pairs. Compare the revisions in `colab_environment.json` as well.
+- **Check before comparing:** `discovery.directions.pairs` in the new `relationships.json` should equal `discovery.both_orders.pairs` in the first run's. This run is held to the pinned embedding revision, and the concepts and chunks are copies, so it can't drift. But the embedding model picks the candidate pairs, and the first run's `colab_environment.json` records no revision, because that run came before the pin. So its revision can't be confirmed, and different pair counts would mean the two runs didn't ask about the same pairs.
 
 The benchmark stages ignore these settings: the first cell stops if `DISCOVERY_PROMPT` or `RUN_NAME` is changed for any stage but `course`, and `--pairs` refuses `discover_v4`.
 
@@ -152,4 +162,4 @@ It opens a downloaded course and works normally, except that the reason after a 
 
 ## Record in the results and the paper
 
-From `colab_environment.json`: the GPU, the Ollama version, both model digests and the embedding model's revision. Compare the `llama3.1:8b` digest with the local model's ID (`ollama list`: `46e0c10c039e`), and the embedding revision with the laptop's (`1110a243fdf4706b3f48f1d95db1a4f5529b4d41`), so the paper can say whether Colab ran the same weights. Step 3 downloads the latest revision, so it can differ between sessions: check every run's entry. From `colab_calls.summary.json`: seconds per call for each call type. From the course report: `drop_rate_by_level` and `concepts_missing_level`.
+From `colab_environment.json`: the GPU, the Ollama version, both model digests and the embedding model's revision. Compare the `llama3.1:8b` digest with the local model's ID (`ollama list`: `46e0c10c039e`) so the paper can say whether Colab ran the same weights. The embedding revision is pinned to the laptop's, so it should be `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` in every run's entry. From `colab_calls.summary.json`: seconds per call for each call type. From the course report: `drop_rate_by_level` and `concepts_missing_level`.

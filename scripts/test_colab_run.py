@@ -742,13 +742,33 @@ def test_the_runner_at_the_pinned_commit_is_this_runner():
     assert pinned.stdout == (cr.ROOT / "scripts/colab_run.py").read_text()
 
 
+def test_the_notebook_at_the_pinned_commit_has_the_pin_and_the_prompt_setting():
+    """The merge of the two features must be what Colab checks out, not one side of it."""
+    import re
+
+    first = "".join(json.loads(NOTEBOOK.read_text())["cells"][1]["source"])
+    commit = re.search(r'COMMIT = "([0-9a-f]+)"', first).group(1)
+    pinned = subprocess.run(
+        ["git", "-C", str(cr.ROOT), "show", f"{commit}:notebooks/colab_validator.ipynb"],
+        capture_output=True,
+        text=True,
+    )
+    if pinned.returncode != 0:  # e.g. a shallow CI clone without that commit
+        pytest.skip("pinned commit not in this clone's history")
+    cells = ["".join(c["source"]) for c in json.loads(pinned.stdout)["cells"]]
+    text = "\n".join(cells)
+    assert f'EMBEDDING_REVISION = "{cr.EMBEDDING_REVISION}"' in text
+    assert 'DISCOVERY_PROMPT = "discover_v3_1"' in text and 'RUN_NAME = ""' in text
+    assert "{ARGS}" in text
+
+
 def test_the_stage_command_records_the_run_and_sets_both_models(tmp_path, monkeypatch, capsys):
     tags = {"models": [{"name": m, "digest": f"d_{m}", "size": 2**30} for m in cr.MODELS]}
     monkeypatch.setattr(cr, "ROOT", tmp_path)
     monkeypatch.setattr(cr, "_out", lambda cmd: "Tesla T4, 15360 MiB" if "nvidia" in cmd[0] else "")
     monkeypatch.setattr(cr, "_tags", lambda: tags)
-    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
-    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: cr.EMBEDDING_REVISION)
+    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG", "HF_HUB_OFFLINE"):
         monkeypatch.setenv(name, "before")
     seen = {}
 
@@ -773,8 +793,8 @@ def test_a_failed_stage_exits_with_an_error(tmp_path, monkeypatch):
     monkeypatch.setattr(cr, "ROOT", tmp_path)
     monkeypatch.setattr(cr, "_out", lambda cmd: "Tesla T4, 15360 MiB" if "nvidia" in cmd[0] else "")
     monkeypatch.setattr(cr, "_tags", lambda: tags)
-    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
-    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: cr.EMBEDDING_REVISION)
+    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG", "HF_HUB_OFFLINE"):
         monkeypatch.setenv(name, "before")
     monkeypatch.setattr(cr, "run_stage", lambda *a, **k: [("x: discover", "exit 3")])
     with pytest.raises(SystemExit, match="failed steps"):
@@ -784,12 +804,15 @@ def test_a_failed_stage_exits_with_an_error(tmp_path, monkeypatch):
 # --- the embedding model ---------------------------------------------------------------
 
 
-def fake_home(tmp_path, monkeypatch, *, weights="model.safetensors", modules=True, ref="rev1"):
+PINNED = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+
+
+def fake_home(tmp_path, monkeypatch, *, weights="model.safetensors", modules=True, ref=PINNED):
     """A Hugging Face cache laid out the way a finished download leaves it."""
     monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
     monkeypatch.delenv("HF_HOME", raising=False)
     folder = cr.embedding_model_folder()
-    snapshot = folder / "snapshots" / "rev1"
+    snapshot = folder / "snapshots" / (ref or PINNED)
     snapshot.mkdir(parents=True)
     (folder / "refs").mkdir()
     if ref is not None:
@@ -803,13 +826,13 @@ def fake_home(tmp_path, monkeypatch, *, weights="model.safetensors", modules=Tru
 
 def test_a_finished_download_gives_its_revision(tmp_path, monkeypatch):
     fake_home(tmp_path, monkeypatch)
-    assert cr.embedding_model_revision() == "rev1"
-    assert cr.require_embedding_model() == "rev1"
+    assert cr.embedding_model_revision() == PINNED
+    assert cr.require_embedding_model() == PINNED
 
 
 def test_older_weights_file_also_counts(tmp_path, monkeypatch):
     fake_home(tmp_path, monkeypatch, weights="pytorch_model.bin")
-    assert cr.embedding_model_revision() == "rev1"
+    assert cr.embedding_model_revision() == PINNED
 
 
 def test_no_model_at_all_is_not_downloaded(tmp_path, monkeypatch):
@@ -818,16 +841,24 @@ def test_no_model_at_all_is_not_downloaded(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "broken", [{"weights": None}, {"modules": False}, {"ref": None}, {"ref": ""}, {"ref": "other"}]
+    "broken", [{"weights": None}, {"modules": False}, {"ref": None}, {"ref": ""}]
 )
 def test_an_interrupted_download_is_not_downloaded(tmp_path, monkeypatch, broken):
     fake_home(tmp_path, monkeypatch, **broken)
     assert cr.embedding_model_revision() is None
 
 
+def test_refs_main_pointing_at_a_snapshot_that_is_not_there_is_not_downloaded(
+    tmp_path, monkeypatch
+):
+    folder = fake_home(tmp_path, monkeypatch)
+    (folder / "refs" / "main").write_text("other")
+    assert cr.embedding_model_revision() is None
+
+
 def test_weights_that_point_nowhere_are_not_downloaded(tmp_path, monkeypatch):
     folder = fake_home(tmp_path, monkeypatch, weights=None)
-    (folder / "snapshots" / "rev1" / "model.safetensors").symlink_to(folder / "blobs" / "gone")
+    (folder / "snapshots" / PINNED / "model.safetensors").symlink_to(folder / "blobs" / "gone")
     assert cr.embedding_model_revision() is None
 
 
@@ -901,15 +932,15 @@ def test_the_revision_is_recorded_beside_the_gpu_and_digests(
     tmp_path, monkeypatch, gpu_and_models, capsys
 ):
     monkeypatch.setattr(cr, "ROOT", tmp_path)
-    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "rev1")
-    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG"):
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: cr.EMBEDDING_REVISION)
+    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG", "HF_HUB_OFFLINE"):
         monkeypatch.setenv(name, "before")
     monkeypatch.setattr(cr, "run_stage", lambda *a, **k: [("ds101: discover", "ok")])
     cr.main(["stage", "course", "--course", "ds101", "--steps", "discover"])
     env = json.loads((tmp_path / "outputs/ds101/colab_environment.json").read_text())[0]
-    assert env["embedding_model"] == {"name": cr.EMBEDDING_MODEL, "revision": "rev1"}
+    assert env["embedding_model"] == {"name": cr.EMBEDDING_MODEL, "revision": cr.EMBEDDING_REVISION}
     assert env["gpu"] and env["models"]["llama3.1:8b"]["digest"] == "d"
-    assert f"{cr.EMBEDDING_MODEL}: rev1" in capsys.readouterr().out
+    assert f"{cr.EMBEDDING_MODEL}: {cr.EMBEDDING_REVISION}" in capsys.readouterr().out
 
 
 def test_the_env_command_reports_a_missing_model_without_stopping(tmp_path, monkeypatch):
@@ -940,7 +971,7 @@ def test_step_3_downloads_the_model_after_the_installs_and_prints_its_dimension(
     download = step.index('"sentence-transformers/all-MiniLM-L6-v2"')
     assert last_install < download
     assert "SentenceTransformer(" in step and "get_sentence_embedding_dimension()" in step
-    assert 'print("embedding model ready, dimension:", dimension)' in step
+    assert 'print("embedding model ready, revision:"' in step and '"dimension:", dimension)' in step
     assert 'device="cpu"' in step  # the notebook must hold no GPU memory while stages run
     assert "local_files_only" not in step  # this cell is the one that downloads
     # Not behind a condition, so it runs in every session.
@@ -1095,3 +1126,141 @@ def test_the_notebook_has_the_prompt_setting_and_v3_1_as_default():
     assert "report --course {COURSE} {NAME_ARG}" in text
     assert "zip --course {COURSE} {NAME_ARG}" in text
     assert 'DISCOVERY_PROMPT == "discover_v3_1" and not RUN_NAME' in text
+
+
+# --- the pinned revision ---------------------------------------------------------------
+
+
+def step_3_python():
+    """Step 3's download lines, without the shell lines above them."""
+    cells = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text())["cells"]]
+    step = next(c for c in cells if c.startswith("# Step 3"))
+    return step[step.index("from pathlib import Path") :]
+
+
+def run_step_3(tmp_path, monkeypatch, snapshot_files=("model.safetensors", "modules.json")):
+    """Runs step 3's real lines. The fake library does what a download by commit really does:
+    it writes the snapshot and does NOT write refs/main (checked on a real download, 2026-11-04)."""
+    import types
+
+    calls = []
+
+    class FakeModel:
+        def __init__(self, name, **kwargs):
+            calls.append((name, kwargs))
+            snapshot = cr.embedding_model_folder() / "snapshots" / kwargs["revision"]
+            snapshot.mkdir(parents=True, exist_ok=True)
+            for file in snapshot_files:
+                (snapshot / file).write_text("x")
+
+        def get_sentence_embedding_dimension(self):
+            return 384
+
+    fake = types.ModuleType("sentence_transformers")
+    fake.SentenceTransformer = FakeModel
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake)
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("HF_HOME", raising=False)
+    exec(step_3_python(), {})
+    return calls
+
+
+def test_the_pin_is_the_revision_that_made_the_concept_list():
+    assert cr.EMBEDDING_REVISION == PINNED and len(PINNED) == 40
+
+
+def test_the_notebook_runner_and_docs_all_name_the_same_revision():
+    assert f'EMBEDDING_REVISION = "{cr.EMBEDDING_REVISION}"' in step_3_python()
+    assert cr.EMBEDDING_REVISION in (cr.ROOT / "docs/colab_steps.md").read_text()
+
+
+def test_step_3_downloads_exactly_the_pinned_revision(tmp_path, monkeypatch, capsys):
+    calls = run_step_3(tmp_path, monkeypatch)
+    assert calls == [(cr.EMBEDDING_MODEL, {"revision": PINNED, "device": "cpu"})]
+    out = capsys.readouterr().out
+    assert PINNED in out and "384" in out
+
+
+def test_after_step_3_a_stage_can_start(tmp_path, monkeypatch):
+    """A download by commit alone leaves no refs/main, which extraction would refuse."""
+    run_step_3(tmp_path, monkeypatch)
+    assert (cr.embedding_model_folder() / "refs" / "main").read_text() == PINNED
+    assert cr.require_embedding_model() == PINNED
+
+
+def test_step_3_corrects_a_cache_that_points_at_another_revision(tmp_path, monkeypatch):
+    monkeypatch.setattr(cr.Path, "home", lambda: tmp_path)
+    folder = cr.embedding_model_folder()
+    (folder / "refs").mkdir(parents=True)
+    (folder / "refs" / "main").write_text("newer")
+    run_step_3(tmp_path, monkeypatch)
+    assert cr.require_embedding_model() == PINNED
+
+
+def test_a_download_by_commit_without_refs_main_counts_as_not_downloaded(tmp_path, monkeypatch):
+    folder = fake_home(tmp_path, monkeypatch, ref=None)
+    assert not (folder / "refs" / "main").exists()
+    with pytest.raises(SystemExit, match="is not downloaded"):
+        cr.require_embedding_model()
+
+
+def test_another_revision_stops_and_says_both(tmp_path, monkeypatch):
+    fake_home(tmp_path, monkeypatch, ref="abc123newer")
+    assert cr.embedding_model_revision() == "abc123newer"  # complete, and still not the pin
+    with pytest.raises(SystemExit) as stopped:
+        cr.require_embedding_model()
+    message = str(stopped.value)
+    assert "abc123newer" in message and PINNED in message and "step 3" in message
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["stage", "course", "--course", "ds101", "--steps", "discover"],
+        [
+            *["stage", "course", "--course", "avl_demo", "--steps", "discover"],
+            *["--discovery-prompt", "discover_v4", "--run-name", "discover_v4"],
+        ],
+        ["stage", "night1"],
+        ["stage", "real"],
+        ["stage", "speed"],
+    ],
+)
+def test_no_stage_starts_at_another_revision(tmp_path, monkeypatch, gpu_and_models, argv):
+    monkeypatch.setattr(cr, "ROOT", tmp_path)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: "abc123newer")
+    monkeypatch.setattr(cr, "run_stage", lambda *a, **k: pytest.fail("a stage started"))
+    monkeypatch.setattr(cr, "speed_stage", lambda *a, **k: pytest.fail("speed started"))
+    with pytest.raises(SystemExit, match="is at revision abc123newer"):
+        cr.main(argv)
+    assert not list(tmp_path.rglob("colab_environment.json"))
+
+
+def test_stages_run_offline_so_no_step_can_fetch_a_newer_revision(
+    tmp_path, monkeypatch, gpu_and_models
+):
+    """Discovery and validation load the model by name, so online they could update it."""
+    monkeypatch.setattr(cr, "ROOT", tmp_path)
+    monkeypatch.setattr(cr, "embedding_model_revision", lambda: PINNED)
+    for name in ("LLM_MODEL", "LLM_VALIDATOR_MODEL", "LLM_CALL_LOG", "HF_HUB_OFFLINE"):
+        monkeypatch.setenv(name, "before")
+    seen = {}
+
+    def fake_run_stage(*a, **k):
+        seen["offline"] = cr.os.environ["HF_HUB_OFFLINE"]
+        return [("ds101: discover", "ok")]
+
+    monkeypatch.setattr(cr, "run_stage", fake_run_stage)
+    cr.main(["stage", "course", "--course", "ds101", "--steps", "discover"])
+    assert seen["offline"] == "1"
+
+
+def test_step_3_itself_is_not_offline():
+    """It is the one place allowed to download, and the setting stays inside the stage process."""
+    assert "HF_HUB_OFFLINE" not in notebook_text()
+
+
+def test_the_other_modules_still_load_through_refs_main():
+    """If a module starts passing its own revision, this design needs another look."""
+    for path in ("cdlp/extraction/extract.py", "cdlp/discovery/candidates.py"):
+        assert "revision=" not in (cr.ROOT / path).read_text()

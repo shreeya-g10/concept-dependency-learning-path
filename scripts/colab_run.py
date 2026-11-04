@@ -29,8 +29,9 @@ Stages:
   real    ds101 / ml101: the full agent with necessity on a seeded sample of 40 proposed
           edges (report-only), then the same agent with necessity at weight 1 (cache hits).
 
-A stage also stops if the embedding model is not downloaded (notebook step 3), because extraction
-refuses to run without it and would otherwise fail only inside a step.
+A stage also stops if the embedding model is not downloaded at the pinned revision (notebook step
+3): extraction refuses to run without it, and another revision could merge concepts differently
+from the existing 85-concept list. Stages run with HF_HUB_OFFLINE=1, so no step can fetch another.
 
 A step whose output is already there and valid is skipped, and every LLM call is cached, so
 a Colab disconnect loses the call in flight and whatever Drive had not yet saved. Run the same
@@ -78,6 +79,8 @@ DISCOVERY_MODEL = "qwen2.5:7b-instruct"
 VALIDATOR_MODEL = "llama3.1:8b"
 MODELS = (DISCOVERY_MODEL, VALIDATOR_MODEL)
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+# The revision that produced the existing 85-concept ds101 list. Notebook step 3 pins the same.
+EMBEDDING_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 ORDER_RULE = "order_rule_v2"
 # Both ask the same pairs and map answers to links the same way; they differ only in the graph
 # check, which is the validator's. So a saved order_rule_v1 discovery file can still be validated.
@@ -885,7 +888,8 @@ def embedding_model_folder() -> Path:
 
 
 def embedding_model_revision() -> str | None:
-    """The downloaded revision, or None. An interrupted download has no usable weights."""
+    """The revision the modules will load, or None. They all load through refs/main, so that is
+    what counts. An interrupted download has no usable weights."""
     folder = embedding_model_folder()
     try:
         revision = (folder / "refs" / "main").read_text().strip()
@@ -901,8 +905,14 @@ def embedding_model_revision() -> str | None:
 def require_embedding_model() -> str:
     """Caught here at the start, not inside a step. Extraction's refusal to fall back stays."""
     revision = embedding_model_revision()
-    if revision:
+    if revision == EMBEDDING_REVISION:
         return revision
+    if revision:
+        raise SystemExit(
+            f"The embedding model {EMBEDDING_MODEL} is at revision {revision}, but this project is "
+            f"pinned to {EMBEDDING_REVISION}, which produced the existing concept list. Another "
+            "revision could merge concepts differently. Run step 3 of the notebook, then rerun."
+        )
     message = (
         f"The embedding model {EMBEDDING_MODEL} is not downloaded in "
         f"{embedding_model_folder()}. Run step 3 of the notebook, which downloads it, then rerun."
@@ -1061,7 +1071,12 @@ def _run_stage_command(args, parser) -> None:
     log = stage_log(stage, ROOT, folder)
     log.parent.mkdir(parents=True, exist_ok=True)
     os.environ.update(
-        LLM_MODEL=DISCOVERY_MODEL, LLM_VALIDATOR_MODEL=VALIDATOR_MODEL, LLM_CALL_LOG=str(log)
+        LLM_MODEL=DISCOVERY_MODEL,
+        LLM_VALIDATOR_MODEL=VALIDATOR_MODEL,
+        LLM_CALL_LOG=str(log),
+        # Discovery and validation load the embedding model by name, so online they could fetch a
+        # newer revision if the hub moves. Offline they can only use the pinned copy just checked.
+        HF_HUB_OFFLINE="1",
     )
     report = run_stage(
         stage,
