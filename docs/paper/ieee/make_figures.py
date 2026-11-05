@@ -200,8 +200,72 @@ def kappa() -> None:
     save(fig, "fig_kappa.png")
 
 
+def avl_graph() -> None:
+    """The Tree -> AVL Tree chain of the demo deck: each chain link coloured by its decision,
+    with the accepted links that lead into a chain topic drawn in grey."""
+    data = load("docs/paper/results/avl_demo_accepted_graph.json")
+    chain = [data["chain"][0]["source"]] + [link["target"] for link in data["chain"]]
+    names = {}
+    for edge in data["edges"]:
+        names[edge["source"]], names[edge["target"]] = edge["source_name"], edge["target_name"]
+    pos = {node: (0.0, -1.0 * i) for i, node in enumerate(chain)}
+    into = [e for e in data["edges"] if e["target"] in chain]
+    row_count, slot = {}, {}
+    for edge in sorted(into, key=lambda e: (chain.index(e["target"]), e["source_name"])):
+        if edge["source"] in pos:
+            continue
+        row = chain.index(edge["target"])
+        row_count[row] = row_count.get(row, 0) + 1
+        slot[edge["source"]] = row_count[row]
+        pos[edge["source"]] = (0.25 + 1.15 * row_count[row], -1.0 * row)
+    fig, ax = plt.subplots(figsize=(WIDTH, 2.9))
+    arrow = {"arrowstyle": "-|>", "mutation_scale": 6, "shrinkA": 9, "shrinkB": 9}
+    for edge in into:
+        if edge["source"] in chain:
+            if chain.index(edge["target"]) - chain.index(edge["source"]) == 1:
+                continue  # drawn below with its decision colour
+            rad = 0.5
+        else:
+            # later topics in a row arc over or under the nearer ones instead of crossing them
+            rad = {1: 0.0, 2: -0.3, 3: 0.3}[slot[edge["source"]]]
+        ax.annotate(
+            "", xy=pos[edge["target"]], xytext=pos[edge["source"]],
+            arrowprops={**arrow, "color": "0.6", "linewidth": 0.6,
+                        "connectionstyle": f"arc3,rad={rad}"},
+        )  # fmt: skip
+    style = {
+        "ACCEPT": (COLORS[2], "-"),
+        "HUMAN_REVIEW": ("#E69F00", "--"),
+        "REJECT": (COLORS[1], ":"),
+    }
+    for link in data["chain"]:
+        color, line = style[link["decision"]]
+        ax.annotate(
+            "", xy=pos[link["target"]], xytext=pos[link["source"]],
+            arrowprops={**arrow, "color": color, "linewidth": 1.4, "linestyle": line},
+        )  # fmt: skip
+        (_, y1), (_, y2) = pos[link["source"]], pos[link["target"]]
+        ax.text(0.1, (y1 + y2) / 2, link["decision"].replace("HUMAN_", ""), ha="left",
+                va="center", fontsize=5.5, color=color, fontweight="bold")  # fmt: skip
+    for node, (x, y) in pos.items():
+        label = names[node]
+        if len(label) > 10 and " " in label:
+            label = label.replace(" ", "\n", 1)
+        ax.text(
+            x, y, label, ha="center", va="center", fontsize=5.6, zorder=3,
+            color="white" if node in chain else "black",
+            bbox={"boxstyle": "round,pad=0.3", "linewidth": 0.5, "edgecolor": "black",
+                  "facecolor": COLORS[0] if node in chain else "#DCEAF5"},
+        )  # fmt: skip
+    ax.set_axis_off()
+    ax.set_xlim(-0.75, max(x for x, _ in pos.values()) + 0.55)
+    ax.set_ylim(-len(chain) + 0.4, 0.55)
+    save(fig, "fig_avl_graph.png")
+
+
 if __name__ == "__main__":
     OUT.mkdir(exist_ok=True)
     necessity()
     rq2()
     kappa()
+    avl_graph()

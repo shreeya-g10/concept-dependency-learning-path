@@ -337,7 +337,8 @@ def body(paper):
         "prompt, so course runs now ask both orders. On 500 simulated students over a "
         "five-concept graph, adaptive diagnosis used 14.4% fewer questions than asking every "
         "concept at similar accuracy (0.866 vs. 0.870), but only when knowledge followed the "
-        "graph. This is work in progress: the main evaluation of edge validation on public "
+        "graph. A walkthrough on an AVL-tree slide deck shows how the agent keeps the graph "
+        "acyclic and sends links proposed in both directions to a teacher. This is work in progress: the main evaluation of edge validation on public "
         "benchmarks and full courses is pending, and all numbers are preliminary.",
     )
     label_par(
@@ -499,6 +500,15 @@ def body(paper):
         "the standard protocol and ask each pair once, in the dataset’s own orientation, so "
         "they cannot show this effect."
     )
+    paper.p(
+        "A newer prompt, discover_v4, removes the <i>A</i>/<i>B</i> labels altogether. It asks one "
+        "yes/no question per direction, “does a student need <i>X</i> to understand "
+        "<i>Y</i>?”, so each pair costs two calls with the same excerpts. One yes gives one "
+        "proposed edge; yes in both directions proposes both edges, which go to review and are "
+        "never resolved automatically. Replies that do not name the pair count as no, and both raw "
+        "answers are kept. It is used for the walkthrough in Section VI-I and is not yet compared "
+        "with v3.1."
+    )
     paper.h2("C. Validation Agent")
     paper.p(
         "Every proposed edge is treated as a claim. The agent uses a different model "
@@ -540,6 +550,13 @@ def body(paper):
         "the score is at least 0.6 and no active check says none. It is rejected if the score is "
         "below 0.35, or if evidence and semantic are both weak or none. Otherwise it goes to "
         "review. These values are a first choice, not yet calibrated."
+    )
+    paper.p(
+        "<i>Which edges count as structure.</i> Under order_rule_v2, edges proposed in both "
+        "directions and edges rejected on their scores do not count in other edges’ cycle "
+        "and redundancy checks, since neither is a claim the graph should act on. Only edges "
+        "labelled ok can be accepted, so the accepted graph is always a DAG. This rule was chosen "
+        "after seeing the demo deck of Section VI-I, not on gold labels."
     )
     paper.h2("D. Impact-Ranked Human Review")
     paper.p(
@@ -593,6 +610,15 @@ def body(paper):
         "answer, judges each option from the excerpt and can veto the item. A topic left with "
         "fewer than two items gets one retry that states why its drafts failed."
     )
+    paper.p(
+        "Items are written at three levels (easy, medium and hard). On the website, a student "
+        "first says how well they know a topic, which only sets the starting level, and then "
+        "climbs or drops a level per answer. A correct hard answer marks the topic known; a "
+        "correct medium answer with a wrong hard one gives quick revision; a correct easy answer "
+        "with a wrong medium one gives study; a wrong easy answer means start from the basics, "
+        "and only topics that depend on it through hard edges are then held back. The simulations "
+        "in Section VI-E use the mastery rule above, not the ladder."
+    )
     paper.h2("F. Root-Cause Tracing")
     paper.p(
         "Given a wrong answer on concept <i>T</i>, the candidates are <i>T</i> and its ancestors "
@@ -617,10 +643,12 @@ def body(paper):
             ["Course", "Files", "Chunks", "Concepts", "Gold rows"],
             ["ds101", 13, 149, "259 (85 after filter)", "9 (pilot)"],
             ["ml101", 10, 78, "pending", "4 (pilot)"],
+            ["AVL demo", 1, 33, "26 (34 before filter)", "none"],
         ],
         [0.6, 0.45, 0.55, 1.2, 0.7],
-        note="Gold rows exclude 7 tied pairs awaiting adjudication. A larger gold set will be "
-        "labelled on the real concepts.",
+        note="Gold rows exclude 7 tied pairs awaiting adjudication. ds101 also has 120 set 2 pairs "
+        "from one annotator (Section V-C). The AVL demo is a slide deck written by the authors "
+        "for the walkthrough.",
     )
     paper.p(
         "Public benchmarks are AL-CPL [7] and the University Course dataset [6] (Table II). "
@@ -671,6 +699,12 @@ def body(paper):
         "label-stratified sample of 200 pairs, posed in the dataset’s own orientation, with "
         "a nested 100-pair subset for the self-consistency judge."
     )
+    paper.p(
+        "A second ds101 set of 120 pairs among the filtered concepts was labelled by one author "
+        "without AI help or access to model output: 16 hard, 42 soft and 62 none, split before "
+        "any scoring into 36 development and 84 test pairs. With a single annotator it has no "
+        "κ, so it is a gold set with known limits rather than an agreed one."
+    )
     paper.h2("D. Simulated Students and Environment")
     paper.p(
         "Students are sampled from a learning frontier so that knowledge follows the graph, with "
@@ -686,7 +720,7 @@ def body(paper):
         "The scoring harness, baselines, ablation flags and benchmark sampler for RQ1 are "
         "implemented, but no RQ1 run is complete, so we report no precision, recall or F1. RQ3 has "
         "only a development set. The findings below are preliminary, and none is a final "
-        "evaluation."
+        "evaluation; Section VI-I is an illustration only."
     )
     paper.h2("A. Discovery on a Real Textbook")
     paper.p(
@@ -836,6 +870,44 @@ def body(paper):
         "Coloured bars of kappa: all pairs 0.49 raw and 0.77 after the rule, ds101 0.85 and 1.00, "
         "ml101 0.17 and 0.55.",
     )
+    paper.h2("I. Walkthrough: An AVL Trees Slide Deck (Not an Evaluation)")
+    paper.p(
+        "To show the whole system on one input, we ran it on a 33-slide deck on AVL trees that "
+        "the authors wrote for the demo, with discover_v4 and order_rule_v2, on a free Colab T4 "
+        "GPU (repository commit e1f909c). Both rules were chosen after seeing this deck’s "
+        "results under the earlier rules, so we give no counts from it as evidence. Fig. 5 "
+        "follows the intended chain tree → binary tree → BST → rotation → AVL tree."
+    )
+    paper.figure(
+        HERE / "figures" / "fig_avl_graph.png",
+        3.4,
+        "Validator decisions on the AVL demo chain (coloured), with the accepted edges into each "
+        "chain topic (grey). Two links were proposed in both directions and await a teacher; one "
+        "was rejected as redundant.",
+        "The chain tree, binary tree, binary search tree, rotation, AVL tree drawn top to bottom. "
+        "Tree to binary tree is green and accepted. Binary tree to BST and rotation to AVL tree are "
+        "orange and dashed, in review. BST to rotation is red and dotted, rejected. Grey arrows "
+        "show accepted edges from linked list, recursion, child, node, insertion, inorder "
+        "traversal, leaf and logarithmic time.",
+    )
+    paper.p(
+        "Tree → binary tree was accepted with a verbatim quote from slide 12 (“A Binary "
+        "Tree is a Tree in which every node has at most two children”). For binary tree → BST "
+        "the model answered yes in both directions, so both edges went to review. The checks "
+        "already separate them: binary tree → BST scored strong on evidence and semantics, and "
+        "BST → binary tree scored weak and none. This supports testing the pre-declared variant "
+        "that lets the validator pick a direction. Rotation → AVL tree went to review for the "
+        "same reason, but there both directions scored strong, so a teacher is needed."
+    )
+    paper.p(
+        "BST → rotation exposed a flaw. It was rejected as implied by BST → insertion → "
+        "rotation, but BST → insertion had itself been rejected as redundant. A rejected edge "
+        "should not make another edge redundant, and this will be fixed before any reported run. "
+        "Until a teacher resolves the review items, the accepted graph does not connect binary "
+        "tree or BST to AVL tree, so a student’s AVL path cannot include them. The "
+        "walkthrough therefore shows the intended safety property, an acyclic graph with doubtful "
+        "edges held back, and also why the human review step is part of the system."
+    )
 
     paper.h1("VII. Limitations")
     paper.bullets(
@@ -857,6 +929,8 @@ def body(paper):
             "rather than removing it and has not been run at scale, so its effect on edge quality "
             "is unknown. The concept filter lost none of the 4 gold concepts with an exact ID match, "
             "but a 6-concept list is too small to judge it, and it is untested on ml101.",
+            "<b>Rules chosen on the demo deck.</b> discover_v4 and order_rule_v2 were chosen after "
+            "seeing the authors’ own AVL deck, so that deck cannot be used to measure them.",
             "<b>Hardware.</b> Two models do not fit together in 8 GB of memory, which limited how "
             "much we could run.",
         ]
@@ -876,7 +950,8 @@ def body(paper):
         "early findings are mixed and useful. Simulating a learner’s missing knowledge was "
         "unstable, a real textbook exposed silent failures in discovery, proposed links depended "
         "heavily on question order, and adaptive diagnosis saves questions mainly when knowledge "
-        "follows the graph. Whether the agent improves edge quality remains to be measured, and "
+        "follows the graph. On an AVL deck, the agent kept the graph acyclic but held key links "
+        "for review, which a teacher must resolve. Whether the agent improves edge quality remains to be measured, and "
         "that is the next step."
     )
 

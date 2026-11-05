@@ -1,0 +1,277 @@
+{
+  "note": "Accepted links of the author-written AVL demo deck (discover_v4, order_rule_v2), before any teacher review. Demo material: never a research result.",
+  "source": "outputs/avl_demo_discover_v4/validated_graph.json from the Colab run",
+  "repo_commit": "e1f909c86c0a30d5a762335eb8516bea4861468e",
+  "decisions": {
+    "ACCEPT": 33,
+    "HUMAN_REVIEW": 59,
+    "REJECT": 43
+  },
+  "edges": [
+    {
+      "source": "array",
+      "target": "binary_search",
+      "source_name": "Array",
+      "target_name": "Binary Search",
+      "strength": "hard"
+    },
+    {
+      "source": "avl_insertion",
+      "target": "avl_deletion",
+      "source_name": "AVL Insertion",
+      "target_name": "AVL Deletion",
+      "strength": "soft"
+    },
+    {
+      "source": "deletion",
+      "target": "avl_deletion",
+      "source_name": "Deletion",
+      "target_name": "AVL Deletion",
+      "strength": "hard"
+    },
+    {
+      "source": "search",
+      "target": "avl_deletion",
+      "source_name": "Search",
+      "target_name": "AVL Deletion",
+      "strength": "soft"
+    },
+    {
+      "source": "rotation",
+      "target": "avl_insertion",
+      "source_name": "Rotation",
+      "target_name": "AVL Insertion",
+      "strength": "hard"
+    },
+    {
+      "source": "inorder_traversal",
+      "target": "avl_tree",
+      "source_name": "Inorder Traversal",
+      "target_name": "AVL Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "leaf",
+      "target": "avl_tree",
+      "source_name": "Leaf",
+      "target_name": "AVL Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "logarithmic_time",
+      "target": "avl_tree",
+      "source_name": "Logarithmic Time",
+      "target_name": "AVL Tree",
+      "strength": "soft"
+    },
+    {
+      "source": "binary_search_tree",
+      "target": "balance_factor",
+      "source_name": "Binary Search Tree",
+      "target_name": "Balance Factor",
+      "strength": "hard"
+    },
+    {
+      "source": "balance_factor",
+      "target": "deletion",
+      "source_name": "Balance Factor",
+      "target_name": "Deletion",
+      "strength": "soft"
+    },
+    {
+      "source": "leaf",
+      "target": "balance_factor",
+      "source_name": "Leaf",
+      "target_name": "Balance Factor",
+      "strength": "hard"
+    },
+    {
+      "source": "balance_factor",
+      "target": "left_rotation",
+      "source_name": "Balance Factor",
+      "target_name": "Left Rotation",
+      "strength": "soft"
+    },
+    {
+      "source": "binary_search",
+      "target": "insertion",
+      "source_name": "Binary Search",
+      "target_name": "Insertion",
+      "strength": "soft"
+    },
+    {
+      "source": "time_complexity",
+      "target": "binary_search",
+      "source_name": "Time Complexity",
+      "target_name": "Binary Search",
+      "strength": "soft"
+    },
+    {
+      "source": "node",
+      "target": "binary_search_tree",
+      "source_name": "Node",
+      "target_name": "Binary Search Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "tree",
+      "target": "binary_search_tree",
+      "source_name": "Tree",
+      "target_name": "Binary Search Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "child",
+      "target": "binary_tree",
+      "source_name": "Child",
+      "target_name": "Binary Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "node",
+      "target": "binary_tree",
+      "source_name": "Node",
+      "target_name": "Binary Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "binary_tree",
+      "target": "skewed_binary_tree",
+      "source_name": "Binary Tree",
+      "target_name": "Skewed Binary Tree",
+      "strength": "soft"
+    },
+    {
+      "source": "tree",
+      "target": "binary_tree",
+      "source_name": "Tree",
+      "target_name": "Binary Tree",
+      "strength": "hard"
+    },
+    {
+      "source": "child",
+      "target": "leaf",
+      "source_name": "Child",
+      "target_name": "Leaf",
+      "strength": "hard"
+    },
+    {
+      "source": "child",
+      "target": "level_order_traversal",
+      "source_name": "Child",
+      "target_name": "Level-Order Traversal",
+      "strength": "hard"
+    },
+    {
+      "source": "rotation",
+      "target": "deletion",
+      "source_name": "Rotation",
+      "target_name": "Deletion",
+      "strength": "hard"
+    },
+    {
+      "source": "inorder_traversal",
+      "target": "search",
+      "source_name": "Inorder Traversal",
+      "target_name": "Search",
+      "strength": "soft"
+    },
+    {
+      "source": "leaf",
+      "target": "insertion",
+      "source_name": "Leaf",
+      "target_name": "Insertion",
+      "strength": "soft"
+    },
+    {
+      "source": "logarithmic_time",
+      "target": "insertion",
+      "source_name": "Logarithmic Time",
+      "target_name": "Insertion",
+      "strength": "soft"
+    },
+    {
+      "source": "insertion",
+      "target": "rotation",
+      "source_name": "Insertion",
+      "target_name": "Rotation",
+      "strength": "soft"
+    },
+    {
+      "source": "node",
+      "target": "level_order_traversal",
+      "source_name": "Node",
+      "target_name": "Level-Order Traversal",
+      "strength": "hard"
+    },
+    {
+      "source": "queue",
+      "target": "level_order_traversal",
+      "source_name": "Queue",
+      "target_name": "Level-Order Traversal",
+      "strength": "hard"
+    },
+    {
+      "source": "tree",
+      "target": "level_order_traversal",
+      "source_name": "Tree",
+      "target_name": "Level-Order Traversal",
+      "strength": "hard"
+    },
+    {
+      "source": "linked_list",
+      "target": "tree",
+      "source_name": "Linked List",
+      "target_name": "Tree",
+      "strength": "soft"
+    },
+    {
+      "source": "logarithmic_time",
+      "target": "search",
+      "source_name": "Logarithmic Time",
+      "target_name": "Search",
+      "strength": "soft"
+    },
+    {
+      "source": "recursion",
+      "target": "tree",
+      "source_name": "Recursion",
+      "target_name": "Tree",
+      "strength": "hard"
+    }
+  ],
+  "chain": [
+    {
+      "source": "tree",
+      "target": "binary_tree",
+      "source_name": "Tree",
+      "target_name": "Binary Tree",
+      "decision": "ACCEPT",
+      "id": "r89"
+    },
+    {
+      "source": "binary_tree",
+      "target": "binary_search_tree",
+      "source_name": "Binary Tree",
+      "target_name": "Binary Search Tree",
+      "decision": "HUMAN_REVIEW",
+      "id": "r65"
+    },
+    {
+      "source": "binary_search_tree",
+      "target": "rotation",
+      "source_name": "Binary Search Tree",
+      "target_name": "Rotation",
+      "decision": "REJECT",
+      "id": "r77"
+    },
+    {
+      "source": "rotation",
+      "target": "avl_tree",
+      "source_name": "Rotation",
+      "target_name": "AVL Tree",
+      "decision": "HUMAN_REVIEW",
+      "id": "r42"
+    }
+  ]
+}
