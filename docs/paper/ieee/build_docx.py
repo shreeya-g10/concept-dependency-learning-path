@@ -875,8 +875,23 @@ def body(paper):
         "To show the whole system on one input, we ran it on a 33-slide deck on AVL trees that "
         "the authors wrote for the demo, with discover_v4 and order_rule_v2, on a free Colab T4 "
         "GPU (repository commit e1f909c). Both rules were chosen after seeing this deck’s "
-        "results under the earlier rules, so we give no counts from it as evidence. Fig. 5 "
-        "follows the intended chain tree → binary tree → BST → rotation → AVL tree."
+        "results under the earlier rules, so we give no counts from it as evidence. Fig. 5 is "
+        "the accepted graph as the website’s topic map draws it for a student: solid "
+        "arrows are hard prerequisites and dashed arrows soft ones."
+    )
+    paper.figure(
+        HERE / "figures" / "fig_avl_website_map.png",
+        3.4,
+        "Accepted prerequisite graph of the AVL demo deck, drawn by the website’s topic "
+        "map code, with larger labels for print (solid: hard, dashed: soft). An arrow points "
+        "from the topic to learn first.",
+        "A network of 25 topic boxes joined by arrows, as shown on the website. Tree leads to "
+        "binary tree and binary search tree; leaf, inorder traversal and logarithmic time lead "
+        "to AVL tree; insertion leads to rotation.",
+    )
+    paper.p(
+        "Fig. 6 follows the intended chain tree → binary tree → BST → rotation → AVL "
+        "tree through the validator’s decisions."
     )
     paper.figure(
         HERE / "figures" / "fig_avl_graph.png",
@@ -898,6 +913,11 @@ def body(paper):
         "BST → binary tree scored weak and none. This supports testing the pre-declared variant "
         "that lets the validator pick a direction. Rotation → AVL tree went to review for the "
         "same reason, but there both directions scored strong, so a teacher is needed."
+    )
+    paper.p(
+        "The deck’s quiz uses quiz_v3 items at three levels with the ladder of Section IV-E. "
+        "Reading the kept items, we still found wrong ones that had passed every check, so "
+        "teacher approval of items is planned before any use with real students."
     )
     paper.p(
         "BST → rotation exposed a flaw. It was rejected as implied by BST → insertion → "
